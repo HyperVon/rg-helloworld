@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package rg.rasterizer.v1;
+
+option go_package = "rghello.dev/rasterizer/proto/rasterizer/v1;rbproto";
+option java_package = "dev.rghello.rasterizer.v1";
+option csharp_namespace = "RgHello.Rasterizer.V1";
+
+service Rasterizer {
+  rpc RenderGlyph(RenderGlyphRequest) returns (RenderGlyphResponse);
+}
+
+message RenderGlyphRequest {
+  string run_id = 1;
+  string step_id = 2;
+  string glyph_instance_id = 3;
+  int32 position = 4;
+  int32 attempt = 5;
+  Canvas canvas = 6;
+  RenderProfile profile = 7;
+  repeated Segment segments = 8;
+  TraceContext trace_context = 9;
+}
+
+message Canvas {
+  uint32 width = 1;
+  uint32 height = 2;
+  double baseline = 3;
+}
+
+message Segment {
+  double x1 = 1;
+  double y1 = 2;
+  double x2 = 3;
+  double y2 = 4;
+}
+
+message RenderProfile {
+  double stroke_width = 1;
+  bool antialias = 2;
+  string line_cap = 3;
+  uint32 supersampling = 4;
+}
+
+message TraceContext {
+  string traceparent = 1;
+  string tracestate = 2;
+}
+
+message RenderGlyphResponse {
+  string artifact_id = 1;
+  string object_key = 2;
+  string sha256 = 3;
+  uint32 width = 4;
+  uint32 height = 5;
+  uint64 byte_count = 6;
+  string content_type = 7;
+}

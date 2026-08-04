@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rghello.dev/schemas/events/phrase-composed.v1.schema.json",
+  "title": "PhraseComposed",
+  "description": "Event published by the Python image pipeline after composing all glyph rasters into a phrase image (topic rg.phrase-composed.v1)",
+  "type": "object",
+  "required": [
+    "runId",
+    "stepId",
+    "attempt",
+    "inputMaturity",
+    "outputMaturity",
+    "inputArtifacts",
+    "outputArtifacts",
+    "transformation",
+    "compositionManifest",
+    "phraseImage"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "runId": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
+    },
+    "stepId": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
+    },
+    "attempt": { "type": "integer", "minimum": 1 },
+    "inputMaturity": { "type": "integer", "const": 40 },
+    "outputMaturity": { "type": "integer", "const": 50 },
+    "inputArtifacts": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "outputArtifacts": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "transformation": {
+      "type": "object",
+      "required": ["name", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "const": "compose-phrase" },
+        "version": { "type": "string" }
+      }
+    },
+    "compositionManifest": {
+      "type": "object",
+      "required": ["layout"],
+      "additionalProperties": false,
+      "properties": {
+        "layout": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["position", "bbox"],
+            "additionalProperties": false,
+            "properties": {
+              "position": { "type": "integer", "minimum": 0 },
+              "bbox": {
+                "type": "object",
+                "required": ["x", "y", "width", "height"],
+                "additionalProperties": false,
+                "properties": {
+                  "x": { "type": "integer" },
+                  "y": { "type": "integer" },
+                  "width": { "type": "integer" },
+                  "height": { "type": "integer" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "phraseImage": {
+      "type": "object",
+      "required": ["objectKey", "width", "height", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "objectKey": { "type": "string" },
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 },
+        "sha256": { "type": "string" }
+      }
+    }
+  }
+}

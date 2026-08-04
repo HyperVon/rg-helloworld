@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rghello.dev/schemas/events/phrase-assembled.v1.schema.json",
+  "title": "PhraseAssembled",
+  "description": "Event published by the Rust assembler with the final UTF-8 phrase (topic rg.phrase-assembled.v1). The assembler only uses accepted OCR-derived symbols (section 7.5)",
+  "type": "object",
+  "required": [
+    "runId",
+    "stepId",
+    "attempt",
+    "inputMaturity",
+    "outputMaturity",
+    "inputArtifacts",
+    "outputArtifacts",
+    "transformation",
+    "assembledText"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "runId": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
+    },
+    "stepId": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
+    },
+    "attempt": { "type": "integer", "minimum": 1 },
+    "inputMaturity": { "type": "integer", "const": 80 },
+    "outputMaturity": { "type": "integer", "const": 90 },
+    "inputArtifacts": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "outputArtifacts": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "transformation": {
+      "type": "object",
+      "required": ["name", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "const": "assemble-phrase" },
+        "version": { "type": "string" }
+      }
+    },
+    "assembledText": {
+      "type": "string",
+      "description": "The assembled UTF-8 phrase. Not present in any downstream event before final validation (section 7.1)"
+    },
+    "sha256": { "type": "string" }
+  }
+}

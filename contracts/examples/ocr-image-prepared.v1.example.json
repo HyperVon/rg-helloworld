@@ -1,0 +1,54 @@
+{
+  "specversion": "1.0",
+  "id": "01H8EXAMPLEOCR0000000000001",
+  "source": "image-pipeline",
+  "type": "rg.ocr-images.v1",
+  "subject": "runs/102b7eee-131c-5179-9436-a7cd1e5bbf61",
+  "time": "2026-08-04T10:45:30.000Z",
+  "datacontenttype": "application/json",
+  "traceparent": "00-0af7651916cd43dd8448eb211c804ad-b7ad6b7169203331-01",
+  "correlationid": "102b7eee-131c-5179-9436-a7cd1e5bbf61",
+  "data": {
+    "runId": "102b7eee-131c-5179-9436-a7cd1e5bbf61",
+    "stepId": "4e7f1676-dcaa-599e-9ebf-3ec204472df6",
+    "attempt": 1,
+    "inputMaturity": 50,
+    "outputMaturity": 60,
+    "inputArtifacts": [
+      "ace8859f-fee1-4d6c-b66c-85a1d968b266"
+    ],
+    "outputArtifacts": [
+      "65cd1bd4-a1e2-48de-a96d-2f47ffa6bc3f",
+      "08d57813-d48c-4777-99b0-3c0aed7a19c8",
+      "1bf0c63e-1b47-4291-a0c1-bd7933267b96"
+    ],
+    "transformation": {
+      "name": "prepare-ocr-image",
+      "version": "1.0"
+    },
+    "ocrImage": {
+      "objectKey": "artifacts/65cd1bd4-a1e2-48de-a96d-2f47ffa6bc3f/ocr-phrase.png",
+      "width": 256,
+      "height": 202,
+      "sha256": "3c4d5e6f7a8b"
+    },
+    "positionCrops": [
+      {
+        "position": 0,
+        "objectKey": "artifacts/08d57813-d48c-4777-99b0-3c0aed7a19c8/crop-0.png",
+        "x": 20,
+        "y": 10,
+        "width": 70,
+        "height": 182
+      },
+      {
+        "position": 1,
+        "objectKey": "artifacts/1bf0c63e-1b47-4291-a0c1-bd7933267b96/crop-1.png",
+        "x": 100,
+        "y": 10,
+        "width": 80,
+        "height": 182
+      }
+    ]
+  }
+}

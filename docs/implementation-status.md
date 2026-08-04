@@ -9,7 +9,7 @@
 | # | Milestone | Status |
 |---:|---|---|
 | 0 | Repository skeleton | **COMPLETE** |
-| 1 | Contracts (OpenAPI, AsyncAPI, JSON Schema, WSDL/XSD, protobuf) | not started |
+| 1 | Contracts (OpenAPI, AsyncAPI, JSON Schema, WSDL/XSD, protobuf) | **COMPLETE** |
 | 2 | Local platform (k3d, Terraform, PostgreSQL, Kafka KRaft, Redis, MinIO) | not started |
 | 3 | Thin vertical slice (CLI → REST → Kafka → SSE) | not started |
 | 4 | SOAP planning (Java glyph catalog, `RUBE_SIMPLEX_V1`) | not started |
@@ -159,3 +159,74 @@ installed.
 Milestone 1 — Contracts: OpenAPI, AsyncAPI, JSON Schemas, WSDL/XSD, protobuf,
 valid examples, the `make contracts` generation target, and prohibited-field
 tests. Not started until Milestone 0 acceptance passes.
+
+---
+
+## Milestone 1 — Contracts
+
+### Scope
+
+- Commit all inter-service contracts before service implementations (per ADR-0003).
+- `contracts/openapi/` — REST API specification for the CLI → gateway → orchestrator interface.
+- `contracts/asyncapi/` — AsyncAPI specification for Kafka event topics.
+- `contracts/events/` — JSON Schemas for every event type (CloudEvents-shaped envelope).
+- `contracts/proto/` — Protobuf definitions for gRPC rasterizer.
+- `contracts/soap/` — WSDL and XSD for SOAP glyph catalog (`urn:rube-goldberg:glyph-catalog:v1`).
+- `contracts/examples/` — Valid example payloads for every event and API request/response.
+- `make contracts` — target that validates all contract files parse correctly and generates documentation/examples.
+- `make contract-test` — target that validates all examples against schemas and enforces prohibited-field tests.
+- `tests/contract/` — test suite that scans schemas for prohibited fields (section 7.4) and validates examples.
+
+### Tasks
+
+- [x] Create OpenAPI 3.0 spec for REST API (section 10).
+- [x] Create AsyncAPI 2.6 spec for Kafka event topics (section 13).
+- [x] Create JSON Schemas for all event types (CloudEvents envelope, glyph blueprint, geometry, rasterized glyph, OCR observations, adjudicated symbols, assembled phrase, run events).
+- [x] Create Protobuf v3 definitions for gRPC rasterizer (section 12).
+- [x] Create WSDL/XSD for SOAP glyph catalog (section 11).
+- [x] Create valid example payloads for every schema.
+- [x] Implement `make contracts` target (validate schema syntax).
+- [x] Implement `make contract-test` target (validate examples against schemas + prohibited-field tests).
+- [x] Add contract validation tests in `tests/contract/` (prohibited-field test event).
+- [x] Add prohibited-field tests that scan schemas and validate examples (section 7.4).
+- [x] Update `Makefile` with `contracts` and `contract-test` targets.
+- [x] Pin contract tooling versions in `versions.env`.
+- [x] Update `docs/implementation-status.md`.
+
+### Acceptance conditions
+
+```bash
+make contracts    # all contract files parse correctly
+make contract-test  # all examples validate against schemas; prohibited-field tests pass
+```
+
+### Verification log
+
+| Date | Check | Result |
+|---|---|---|
+| 2026-08-04 | `make contracts` | PASS (13 schemas, OpenAPI, AsyncAPI, proto, WSDL/XSD parse) |
+| 2026-08-04 | `make contract-test` | PASS (12 examples validate; prohibited-field detection works) |
+| 2026-08-04 | `make format` | PASS |
+| 2026-08-04 | `make lint` | PASS |
+| 2026-08-04 | `make unit` | PASS (includes contract-test) |
+| 2026-08-04 | `make coverage` | PASS (contract-test + all language gates) |
+| 2026-08-04 | `make build` | PASS |
+| 2026-08-04 | `make integration` | PASS (11/11 banners) |
+| 2026-08-04 | `make e2e` | PASS |
+
+### Milestone 1 limitations
+
+- Contract files are committed and validated; client/server stub generation
+  (`openapi-generator`, `protoc`, JAXB) is deferred until each consuming
+  milestone needs generated code (Milestone 3 for REST, 4 for SOAP, 6 for
+  gRPC).
+- The runtime Kafka-event validator that rejects prohibited fields (section
+  7.4) lands with the Kafka platform in Milestone 2; the static schema scan
+  is active now.
+
+### Next milestone
+
+Milestone 2 — Local platform: k3d cluster script, local registry, Terraform
+root module, PostgreSQL, Kafka KRaft, Redis, MinIO, readiness checks.
+Acceptance: all infrastructure pods ready; test message passes through Kafka;
+artifact round trip works; PostgreSQL and Redis checks pass.

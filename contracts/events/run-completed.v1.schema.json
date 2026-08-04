@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rghello.dev/schemas/events/run-completed.v1.schema.json",
+  "title": "RunCompleted",
+  "description": "Terminal run event published by the orchestrator when a run completes (topic rg.run-events.v1)",
+  "type": "object",
+  "required": [
+    "runId",
+    "stepId",
+    "attempt",
+    "inputMaturity",
+    "outputMaturity",
+    "inputArtifacts",
+    "outputArtifacts",
+    "transformation",
+    "status",
+    "assembledText",
+    "sha256"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "runId": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
+    },
+    "stepId": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
+    },
+    "attempt": { "type": "integer", "minimum": 1 },
+    "inputMaturity": { "type": "integer", "const": 90 },
+    "outputMaturity": { "type": "integer", "const": 100 },
+    "inputArtifacts": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "outputArtifacts": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "transformation": {
+      "type": "object",
+      "required": ["name", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "const": "validate-output" },
+        "version": { "type": "string" }
+      }
+    },
+    "status": { "type": "string", "enum": ["SUCCEEDED", "FAILED"] },
+    "assembledText": {
+      "type": "string",
+      "description": "The validated terminal text printed to stdout by the CLI"
+    },
+    "sha256": { "type": "string" }
+  }
+}

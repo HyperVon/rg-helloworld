@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rghello.dev/schemas/events/dead-letter.v1.schema.json",
+  "title": "DeadLetter",
+  "description": "Event published to the dead-letter topic after transient retries are exhausted (topic rg.dead-letter.v1, section 13.6)",
+  "type": "object",
+  "required": [
+    "originalTopic",
+    "originalEventId",
+    "failedService",
+    "failureClass",
+    "message",
+    "attempts",
+    "stackTraceArtifactId",
+    "lastOccurredAt"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "originalTopic": { "type": "string" },
+    "originalEventId": { "type": "string" },
+    "failedService": { "type": "string" },
+    "failureClass": { "type": "string", "enum": ["TRANSIENT_EXHAUSTED", "PERMANENT_ERROR"] },
+    "failureMessage": { "type": "string" },
+    "attempts": { "type": "integer", "minimum": 1 },
+    "stackTraceArtifactId": { "type": "string" },
+    "lastOccurredAt": { "type": "string", "format": "date-time" }
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "specversion": "1.0",
+  "id": "01H8EXAMPLENORM00000000001",
+  "source": "vector-normalizer",
+  "type": "rg.glyph-normalized.v1",
+  "subject": "runs/102b7eee-131c-5179-9436-a7cd1e5bbf61/glyphs/c6075091-af49-4dfe-a2f6-865e76aadd16",
+  "time": "2026-08-04T10:45:18.000Z",
+  "datacontenttype": "application/json",
+  "traceparent": "00-0af7651916cd43dd8448eb211c804ad-b7ad6b7169203331-01",
+  "correlationid": "102b7eee-131c-5179-9436-a7cd1e5bbf61",
+  "data": {
+    "runId": "102b7eee-131c-5179-9436-a7cd1e5bbf61",
+    "stepId": "9024ec29-4ab8-5d48-b27e-7aaa0e0d0b12",
+    "glyphInstanceId": "c6075091-af49-4dfe-a2f6-865e76aadd16",
+    "position": 0,
+    "attempt": 1,
+    "inputMaturity": 20,
+    "outputMaturity": 30,
+    "inputArtifacts": [
+      "0cf55593-5da5-43a1-91b5-cb7452617941"
+    ],
+    "outputArtifacts": [
+      "6de39d64-e7c1-4367-af39-a77d5fc1cec5",
+      "c8bf7f12-62c4-4435-bf47-3d4bdf11d925"
+    ],
+    "transformation": {
+      "name": "normalize-vector",
+      "version": "1.0"
+    },
+    "normalizedGeometry": {
+      "segments": [
+        {
+          "x1": 10.0,
+          "y1": 10.0,
+          "x2": 10.0,
+          "y2": 80.0
+        },
+        {
+          "x1": 10.0,
+          "y1": 45.0,
+          "x2": 45.0,
+          "y2": 45.0
+        }
+      ],
+      "viewBox": {
+        "width": 64.0,
+        "height": 96.0
+      },
+      "baseline": 80.0,
+      "geometrySha256": "f6e5d4c3b2a1"
+    },
+    "svgSha256": "7c8d9e0f1a2b"
+  }
+}

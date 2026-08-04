@@ -1,0 +1,38 @@
+{
+  "specversion": "1.0",
+  "id": "01H8EXAMPLERAST0000000001",
+  "source": "vector-normalizer",
+  "type": "rg.glyph-rasterized.v1",
+  "subject": "runs/102b7eee-131c-5179-9436-a7cd1e5bbf61/glyphs/c6075091-af49-4dfe-a2f6-865e76aadd16",
+  "time": "2026-08-04T10:45:21.000Z",
+  "datacontenttype": "application/json",
+  "traceparent": "00-0af7651916cd43dd8448eb211c804ad-b7ad6b7169203331-01",
+  "correlationid": "102b7eee-131c-5179-9436-a7cd1e5bbf61",
+  "data": {
+    "runId": "102b7eee-131c-5179-9436-a7cd1e5bbf61",
+    "stepId": "c58460bb-a523-5d2e-b7c9-9b2f07d16f5a",
+    "glyphInstanceId": "c6075091-af49-4dfe-a2f6-865e76aadd16",
+    "position": 0,
+    "attempt": 1,
+    "inputMaturity": 30,
+    "outputMaturity": 40,
+    "inputArtifacts": [
+      "6de39d64-e7c1-4367-af39-a77d5fc1cec5"
+    ],
+    "outputArtifacts": [
+      "8a37e488-6e3f-4f82-bdb7-2eaa99d7afaf"
+    ],
+    "transformation": {
+      "name": "rasterize-glyph",
+      "version": "1.0"
+    },
+    "raster": {
+      "objectKey": "artifacts/8a37e488-6e3f-4f82-bdb7-2eaa99d7afaf/raster.png",
+      "width": 64,
+      "height": 96,
+      "sha256": "8f7e6d5c4b3a",
+      "contentType": "image/png",
+      "pixelDensity": 5.66
+    }
+  }
+}

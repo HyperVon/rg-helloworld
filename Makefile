@@ -29,7 +29,7 @@ CARGO   := $(if $(wildcard $(HOME)/.cargo/bin/cargo),$(HOME)/.cargo/bin/cargo,ca
 RUSTFMT := $(if $(wildcard $(HOME)/.cargo/bin/rustfmt),$(HOME)/.cargo/bin/rustfmt,rustfmt)
 DOTNET  := $(if $(wildcard $(HOME)/.dotnet/dotnet),$(HOME)/.dotnet/dotnet,dotnet)
 
-.PHONY: help prerequisites contracts format lint unit coverage build
+.PHONY: help prerequisites contracts contract-test format lint unit coverage build
 .PHONY: integration images cluster infra deploy wait run demo e2e chaos diagnostics down destroy clean
 .PHONY: format-go format-java format-kotlin format-cpp format-dotnet format-python format-node format-ruby format-rust
 .PHONY: lint-go lint-java lint-kotlin lint-cpp lint-dotnet lint-python lint-node lint-ruby lint-rust
@@ -44,7 +44,9 @@ help:
 	@echo "  prerequisites   check toolchains and prepare language dependencies"
 	@echo "  format          format all languages"
 	@echo "  lint            lint all languages"
-	@echo "  unit            run all unit tests"
+	@echo "  contracts       validate contract specs parse correctly"
+	@echo "  contract-test   validate examples + prohibited-field tests"
+	@echo "  unit            run all unit + contract tests"
 	@echo "  coverage        unit tests + 90% coverage gates per language"
 	@echo "  build           compile all skeleton services"
 	@echo "  integration     cross-language artifact integration tests"
@@ -52,7 +54,7 @@ help:
 	@echo "  clean           remove local build outputs"
 	@echo ""
 	@echo "Later milestones (stubs):"
-	@echo "  contracts images cluster infra deploy wait run demo"
+	@echo "  images cluster infra deploy wait run demo"
 	@echo "  chaos diagnostics down destroy"
 
 # ---------------------------------------------------------------------------
@@ -110,7 +112,26 @@ prerequisites:
 	@bash scripts/prerequisites.sh
 
 contracts:
-	@echo "NOT IMPLEMENTED: contracts are defined in Milestone 1 (contract-first)."
+	@echo ">> Validating contract specs parse correctly"
+	$(call guard_tool,python3,Python 3)
+	@if [ -x $(VENV)/bin/python3 ]; then \
+		$(VENV)/bin/python3 scripts/validate_contracts.py --contracts-only; \
+	elif command -v python3 >/dev/null 2>&1; then \
+		PYTHONPATH=scripts python3 scripts/validate_contracts.py --contracts-only; \
+	else \
+		echo "ERROR: python3 not found"; exit 1; \
+	fi
+
+contract-test:
+	@echo ">> Contract tests: schema validation, example validation, prohibited-field tests"
+	$(call guard_tool,python3,Python 3)
+	@if [ -x $(VENV)/bin/python3 ]; then \
+		$(VENV)/bin/python3 scripts/validate_contracts.py; \
+	elif command -v python3 >/dev/null 2>&1; then \
+		PYTHONPATH=scripts python3 scripts/validate_contracts.py; \
+	else \
+		echo "ERROR: python3 not found"; exit 1; \
+	fi
 
 format: format-go format-java format-kotlin format-cpp format-dotnet format-python format-node format-ruby format-rust
 
@@ -218,7 +239,7 @@ lint-rust:
 	@echo ">> cargo clippy -D warnings ($(RUST_DIR))"
 	cd $(RUST_DIR) && $(CARGO) clippy --all-targets -- -D warnings
 
-coverage: coverage-go coverage-java coverage-kotlin coverage-cpp coverage-dotnet coverage-python coverage-node coverage-ruby coverage-rust
+coverage: contract-test coverage-go coverage-java coverage-kotlin coverage-cpp coverage-dotnet coverage-python coverage-node coverage-ruby coverage-rust
 
 coverage-go:
 	@for d in $(GO_CLI_DIR) $(GO_NORM_DIR); do \
@@ -280,7 +301,7 @@ coverage-rust:
 		exit 0; \
 	fi
 
-unit: unit-go unit-java unit-kotlin unit-cpp unit-dotnet unit-python unit-node unit-ruby unit-rust
+unit: contract-test unit-go unit-java unit-kotlin unit-cpp unit-dotnet unit-python unit-node unit-ruby unit-rust
 
 unit-go:
 	@for d in $(GO_CLI_DIR) $(GO_NORM_DIR); do \

@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rghello.dev/schemas/events/quality-retry.v1.schema.json",
+  "title": "QualityRetry",
+  "description": "Event published by the Ruby adjudicator when retry is needed (topic rg.quality-retry.v1)",
+  "type": "object",
+  "required": [
+    "runId",
+    "stepId",
+    "attempt",
+    "inputMaturity",
+    "outputMaturity",
+    "inputArtifacts",
+    "outputArtifacts",
+    "transformation",
+    "reason"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "runId": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
+    },
+    "stepId": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
+    },
+    "attempt": { "type": "integer", "minimum": 1 },
+    "inputMaturity": { "type": "integer", "const": 70 },
+    "outputMaturity": { "type": "integer", "const": 70 },
+    "inputArtifacts": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "outputArtifacts": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "transformation": {
+      "type": "object",
+      "required": ["name", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "const": "request-quality-retry" },
+        "version": { "type": "string" }
+      }
+    },
+    "reason": { "type": "string" },
+    "targetPosition": { "type": "integer", "minimum": 0 }
+  }
+}

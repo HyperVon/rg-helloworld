@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rghello.dev/schemas/events/cloudevents-envelope.json",
+  "title": "CloudEvents Envelope",
+  "description": "CloudEvents-shaped JSON envelope for all rghello Kafka events (section 13.4)",
+  "type": "object",
+  "required": [
+    "specversion",
+    "id",
+    "source",
+    "type",
+    "datacontenttype",
+    "data"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "specversion": {
+      "type": "string",
+      "const": "1.0",
+      "description": "CloudEvents specification version"
+    },
+    "id": {
+      "type": "string",
+      "description": "Unique event identifier",
+      "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
+    },
+    "source": {
+      "type": "string",
+      "description": "Event producer (service name)"
+    },
+    "type": {
+      "type": "string",
+      "description": "Event type matching a Kafka topic pattern",
+      "pattern": "^rg\\.[a-z-]+\\.v1$"
+    },
+    "subject": {
+      "type": "string",
+      "description": "Subject identifying the resource"
+    },
+    "time": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Event timestamp"
+    },
+    "datacontenttype": {
+      "type": "string",
+      "const": "application/json"
+    },
+    "traceparent": {
+      "type": "string",
+      "description": "W3C Trace Context traceparent",
+      "pattern": "^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$"
+    },
+    "tracestate": {
+      "type": "string",
+      "description": "W3C Trace Context tracestate"
+    },
+    "correlationid": {
+      "type": "string",
+      "description": "Correlation ID for the originating run request",
+      "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
+    },
+    "causationid": {
+      "type": "string",
+      "description": "ID of the event that caused this event"
+    },
+    "data": {
+      "type": "object",
+      "description": "Event payload; schema determined by the event type"
+    }
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rghello.dev/schemas/events/ocr-image-prepared.v1.schema.json",
+  "title": "OcrImagePrepared",
+  "description": "Event published by Python image pipeline after OCR preprocessing (topic rg.ocr-images.v1)",
+  "type": "object",
+  "required": [
+    "runId",
+    "stepId",
+    "attempt",
+    "inputMaturity",
+    "outputMaturity",
+    "inputArtifacts",
+    "outputArtifacts",
+    "transformation",
+    "ocrImage",
+    "positionCrops"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "runId": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
+    },
+    "stepId": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
+    },
+    "attempt": { "type": "integer", "minimum": 1 },
+    "inputMaturity": { "type": "integer", "const": 50 },
+    "outputMaturity": { "type": "integer", "const": 60 },
+    "inputArtifacts": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "outputArtifacts": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "transformation": {
+      "type": "object",
+      "required": ["name", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "const": "prepare-ocr-image" },
+        "version": { "type": "string" }
+      }
+    },
+    "ocrImage": {
+      "type": "object",
+      "required": ["objectKey", "width", "height", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "objectKey": { "type": "string" },
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 },
+        "sha256": { "type": "string" }
+      }
+    },
+    "positionCrops": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["position", "objectKey", "x", "y", "width", "height"],
+        "additionalProperties": false,
+        "properties": {
+          "position": { "type": "integer", "minimum": 0 },
+          "objectKey": { "type": "string" },
+          "x": { "type": "integer" },
+          "y": { "type": "integer" },
+          "width": { "type": "integer" },
+          "height": { "type": "integer" }
+        }
+      }
+    }
+  }
+}

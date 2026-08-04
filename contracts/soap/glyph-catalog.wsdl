@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+                  xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+                  xmlns:tns="urn:rube-goldberg:glyph-catalog:v1"
+                  xmlns:xsd="http://schemas.xmlsoap.org/wsdl/soap/encoding/"
+                  targetNamespace="urn:rube-goldberg:glyph-catalog:v1">
+
+  <wsdl:types>
+    <xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                targetNamespace="urn:rube-goldberg:glyph-catalog:v1"
+                xmlns:glyph="urn:rube-goldberg:glyph-catalog:v1"
+                elementFormDefault="qualified">
+      <xsd:include schemaLocation="glyph-catalog.xsd" />
+    </xsd:schema>
+  </wsdl:types>
+
+  <wsdl:message name="PlanPhraseRequest">
+    <wsdl:part name="parameters" element="tns:PlanPhraseRequest" />
+  </wsdl:message>
+  <wsdl:message name="PlanPhraseResponse">
+    <wsdl:part name="parameters" element="tns:PlanPhraseResponse" />
+  </wsdl:message>
+  <wsdl:message name="GetAlternateBlueprintRequest">
+    <wsdl:part name="parameters" element="tns:GetAlternateBlueprintRequest" />
+  </wsdl:message>
+  <wsdl:message name="GetAlternateBlueprintResponse">
+    <wsdl:part name="parameters" element="tns:GetAlternateBlueprintResponse" />
+  </wsdl:message>
+
+  <wsdl:portType name="GlyphCatalogPortType">
+    <wsdl:operation name="PlanPhrase">
+      <wsdl:input message="tns:PlanPhraseRequest" />
+      <wsdl:output message="tns:PlanPhraseResponse" />
+    </wsdl:operation>
+    <wsdl:operation name="GetAlternateBlueprint">
+      <wsdl:input message="tns:GetAlternateBlueprintRequest" />
+      <wsdl:output message="tns:GetAlternateBlueprintResponse" />
+    </wsdl:operation>
+  </wsdl:portType>
+
+  <wsdl:binding name="GlyphCatalogBinding" type="tns:GlyphCatalogPortType">
+    <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http" />
+    <wsdl:operation name="PlanPhrase">
+      <soap:operation soapAction="urn:rube-goldberg:glyph-catalog:v1/PlanPhrase" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetAlternateBlueprint">
+      <soap:operation soapAction="urn:rube-goldberg:glyph-catalog:v1/GetAlternateBlueprint" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+
+  <wsdl:service name="GlyphCatalogService">
+    <wsdl:documentation>Rube Goldberg Hello World glyph catalog SOAP service</wsdl:documentation>
+    <wsdl:port name="GlyphCatalogPort" binding="tns:GlyphCatalogBinding">
+      <soap:address location="http://localhost:8080/ws/glyph-catalog" />
+    </wsdl:port>
+  </wsdl:service>
+
+</wsdl:definitions>

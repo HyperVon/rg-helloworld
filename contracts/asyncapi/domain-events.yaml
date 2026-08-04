@@ -1,0 +1,129 @@
+asyncapi: 2.6.0
+info:
+  title: Rube Goldberg Hello World Domain Events
+  version: 1.0.0
+  description: |
+    AsyncAPI specification for all Kafka domain events in the rghello pipeline.
+    All events use the CloudEvents-shaped JSON envelope from section 13.4.
+    Prohibited fields (targetText, expectedCharacter, unicodeCodePoint, characterName, glyphLabel, message)
+    must never appear after glyph planning.
+channels:
+  rg.glyph-blueprints.v1:
+    description: Glyph blueprint events produced by the orchestrator
+    subscribe:
+      message:
+        $ref: '#/components/messages/GlyphBlueprintProduced'
+  rg.geometry-expanded.v1:
+    description: Geometry expansion events produced by the C++ geometry engine
+    subscribe:
+      message:
+        $ref: '#/components/messages/GeometryExpanded'
+  rg.glyph-normalized.v1:
+    description: Vector normalization events produced by the Go normalizer
+    subscribe:
+      message:
+        $ref: '#/components/messages/VectorNormalized'
+  rg.glyph-rasterized.v1:
+    description: Rasterization events produced after gRPC to C# rasterizer
+    subscribe:
+      message:
+        $ref: '#/components/messages/GlyphRasterized'
+  rg.phrase-composition.v1:
+    description: Phrase composition scheduling events from orchestrator
+    subscribe:
+      message:
+        $ref: '#/components/messages/PhraseCompositionScheduled'
+  rg.phrase-composed.v1:
+    description: Phrase composition results from Python image pipeline
+    subscribe:
+      message:
+        $ref: '#/components/messages/PhraseComposed'
+  rg.ocr-images.v1:
+    description: OCR-prepared image events from Python image pipeline
+    subscribe:
+      message:
+        $ref: '#/components/messages/OcrImagePrepared'
+  rg.ocr-observations.v1:
+    description: Raw OCR observations from Node.js OCR worker
+    subscribe:
+      message:
+        $ref: '#/components/messages/OcrObservationsProduced'
+  rg.symbols-adjudicated.v1:
+    description: Adjudicated symbol events from Ruby adjudicator
+    subscribe:
+      message:
+        $ref: '#/components/messages/SymbolAdjudicated'
+  rg.quality-retry.v1:
+    description: Quality retry requests from Ruby adjudicator
+    subscribe:
+      message:
+        $ref: '#/components/messages/QualityRetry'
+  rg.phrase-assembled.v1:
+    description: Final assembled phrase from Rust assembler
+    subscribe:
+      message:
+        $ref: '#/components/messages/PhraseAssembled'
+  rg.run-events.v1:
+    description: Terminal run lifecycle events from orchestrator
+    subscribe:
+      message:
+        $ref: '#/components/messages/RunCompleted'
+  rg.dead-letter.v1:
+    description: Dead-letter events after retry exhaustion
+    subscribe:
+      message:
+        $ref: '#/components/messages/DeadLetter'
+components:
+  messages:
+    GlyphBlueprintProduced:
+      summary: Glyph blueprint event
+      payload:
+        $ref: 'events/glyph-blueprint-produced.v1.schema.json'
+    GeometryExpanded:
+      summary: Geometry expansion event
+      payload:
+        $ref: 'events/geometry-expanded.v1.schema.json'
+    VectorNormalized:
+      summary: Vector normalization event
+      payload:
+        $ref: 'events/vector-normalized.v1.schema.json'
+    GlyphRasterized:
+      summary: Glyph rasterization event
+      payload:
+        $ref: 'events/glyph-rasterized.v1.schema.json'
+    PhraseCompositionScheduled:
+      summary: Phrase composition scheduled
+      payload:
+        $ref: 'events/phrase-composition-scheduled.v1.schema.json'
+    PhraseComposed:
+      summary: Phrase composed event
+      payload:
+        $ref: 'events/phrase-composed.v1.schema.json'
+    OcrImagePrepared:
+      summary: OCR image prepared
+      payload:
+        $ref: 'events/ocr-image-prepared.v1.schema.json'
+    OcrObservationsProduced:
+      summary: OCR observations produced
+      payload:
+        $ref: 'events/ocr-observations-produced.v1.schema.json'
+    SymbolAdjudicated:
+      summary: Symbol adjudicated
+      payload:
+        $ref: 'events/symbol-adjudicated.v1.schema.json'
+    QualityRetry:
+      summary: Quality retry request
+      payload:
+        $ref: 'events/quality-retry.v1.schema.json'
+    PhraseAssembled:
+      summary: Phrase assembled
+      payload:
+        $ref: 'events/phrase-assembled.v1.schema.json'
+    RunCompleted:
+      summary: Run completed
+      payload:
+        $ref: 'events/run-completed.v1.schema.json'
+    DeadLetter:
+      summary: Dead-letter event
+      payload:
+        $ref: 'events/dead-letter.v1.schema.json'

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schema xmlns="http://www.w3.org/2001/XMLSchema"
+        targetNamespace="urn:rube-goldberg:glyph-catalog:v1"
+        xmlns:glyph="urn:rube-goldberg:glyph-catalog:v1"
+        elementFormDefault="qualified"
+        attributeFormDefault="unqualified">
+
+  <complexType name="PlanPhraseRequest">
+    <sequence>
+      <element name="message" type="string" />
+      <element name="alphabet" type="string" />
+      <element name="variant" type="string" default="PRIMARY" />
+    </sequence>
+  </complexType>
+
+  <complexType name="Point">
+    <sequence>
+      <element name="x" type="double" />
+      <element name="y" type="double" />
+    </sequence>
+  </complexType>
+
+  <complexType name="Primitive">
+    <sequence>
+      <element name="type" type="string" />
+      <element name="points" type="glyph:Point" minOccurs="0" maxOccurs="unbounded" />
+    </sequence>
+  </complexType>
+
+  <complexType name="Glyph">
+    <sequence>
+      <element name="glyphInstanceId" type="string" />
+      <element name="position" type="int" />
+      <element name="kind" type="string" />
+      <element name="advanceWidth" type="double" />
+      <element name="primitives" type="glyph:Primitive" minOccurs="0" maxOccurs="unbounded" />
+    </sequence>
+  </complexType>
+
+  <complexType name="PlanPhraseResponse">
+    <sequence>
+      <element name="planId" type="string" />
+      <element name="glyphs" type="glyph:Glyph" minOccurs="0" maxOccurs="unbounded" />
+    </sequence>
+  </complexType>
+
+  <complexType name="GetAlternateBlueprintRequest">
+    <sequence>
+      <element name="planId" type="string" />
+      <element name="glyphInstanceId" type="string" />
+      <element name="excludedVariant" type="string" />
+    </sequence>
+  </complexType>
+
+  <element name="PlanPhraseRequest" type="glyph:PlanPhraseRequest" />
+  <element name="PlanPhraseResponse" type="glyph:PlanPhraseResponse" />
+  <element name="GetAlternateBlueprintRequest" type="glyph:GetAlternateBlueprintRequest" />
+  <element name="GetAlternateBlueprintResponse" type="glyph:PlanPhraseResponse" />
+
+</schema>

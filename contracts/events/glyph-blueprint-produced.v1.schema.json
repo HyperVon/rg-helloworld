@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rghello.dev/schemas/events/glyph-blueprint-produced.v1.schema.json",
+  "title": "GlyphBlueprintProduced",
+  "description": "Event published by the orchestrator when the SOAP glyph catalog returns a glyph blueprint (section 9, topic rg.glyph-blueprints.v1)",
+  "type": "object",
+  "required": [
+    "runId",
+    "planId",
+    "stepId",
+    "attempt",
+    "inputArtifacts",
+    "outputArtifacts",
+    "transformation",
+    "glyphs"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "runId": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
+    },
+    "planId": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
+    },
+    "stepId": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
+    },
+    "attempt": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "inputArtifacts": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "outputArtifacts": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "transformation": {
+      "type": "object",
+      "required": ["name", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" }
+      }
+    },
+    "glyphs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "glyphInstanceId",
+          "position",
+          "kind",
+          "advanceWidth",
+          "primitives"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "glyphInstanceId": {
+            "type": "string",
+            "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
+          },
+          "position": { "type": "integer", "minimum": 0 },
+          "kind": { "type": "string", "enum": ["DRAWABLE", "GAP"] },
+          "advanceWidth": { "type": "number", "minimum": 0 },
+          "primitives": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["type", "points"],
+              "additionalProperties": false,
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["POLYLINE", "POINT", "ARC"]
+                },
+                "points": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["x", "y"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "x": { "type": "number" },
+                      "y": { "type": "number" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rghello.dev/schemas/events/glyph-rasterized.v1.schema.json",
+  "title": "GlyphRasterized",
+  "description": "Event published by the Go normalizer after gRPC rasterization to the C# rasterizer (topic rg.glyph-rasterized.v1)",
+  "type": "object",
+  "required": [
+    "runId",
+    "stepId",
+    "glyphInstanceId",
+    "position",
+    "attempt",
+    "inputMaturity",
+    "outputMaturity",
+    "inputArtifacts",
+    "outputArtifacts",
+    "transformation",
+    "raster"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "runId": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
+    },
+    "stepId": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
+    },
+    "glyphInstanceId": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
+    },
+    "position": { "type": "integer", "minimum": 0 },
+    "attempt": { "type": "integer", "minimum": 1 },
+    "inputMaturity": { "type": "integer", "const": 30 },
+    "outputMaturity": { "type": "integer", "const": 40 },
+    "inputArtifacts": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "outputArtifacts": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "transformation": {
+      "type": "object",
+      "required": ["name", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "const": "rasterize-glyph" },
+        "version": { "type": "string" }
+      }
+    },
+    "raster": {
+      "type": "object",
+      "required": ["objectKey", "width", "height", "sha256", "contentType"],
+      "additionalProperties": false,
+      "properties": {
+        "objectKey": { "type": "string" },
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 },
+        "sha256": { "type": "string" },
+        "contentType": { "type": "string", "enum": ["image/png", "image/bmp", "image/tiff"] },
+        "pixelDensity": { "type": "number" }
+      }
+    }
+  }
+}

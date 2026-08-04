@@ -1,0 +1,31 @@
+{
+  "specversion": "1.0",
+  "id": "04419140-bdf3-403b-b0c4-568acd1906df",
+  "source": "run-orchestrator",
+  "type": "rg.run-events.v1",
+  "subject": "runs/102b7eee-131c-5179-9436-a7cd1e5bbf61",
+  "time": "2026-08-04T10:45:45.000Z",
+  "datacontenttype": "application/json",
+  "traceparent": "00-0af7651916cd43dd8448eb211c804ad-b7ad6b7169203331-01",
+  "correlationid": "102b7eee-131c-5179-9436-a7cd1e5bbf61",
+  "data": {
+    "runId": "102b7eee-131c-5179-9436-a7cd1e5bbf61",
+    "stepId": "1e0c53d1-7de5-5e31-a0c4-9adede8fdc29",
+    "attempt": 1,
+    "inputMaturity": 90,
+    "outputMaturity": 100,
+    "inputArtifacts": [
+      "342b8f7a-f5a0-4cdd-8e54-3bd68d2f504d"
+    ],
+    "outputArtifacts": [
+      "4d24ae9a-456b-49db-b99d-ac7176961faa"
+    ],
+    "transformation": {
+      "name": "validate-output",
+      "version": "1.0"
+    },
+    "status": "SUCCEEDED",
+    "assembledText": "H1 W0r1d",
+    "sha256": "d4e5f6a7b8c9"
+  }
+}

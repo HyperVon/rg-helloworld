@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rghello.dev/schemas/events/vector-normalized.v1.schema.json",
+  "title": "VectorNormalized",
+  "description": "Event published by the Go vector-normalizer after normalizing geometry and generating SVG (topic rg.glyph-normalized.v1 — note: architecture lists rg.glyph-rasterized.v1 as next topic but vector-normalized is the intermediate step)",
+  "type": "object",
+  "required": [
+    "runId",
+    "stepId",
+    "glyphInstanceId",
+    "position",
+    "attempt",
+    "inputMaturity",
+    "outputMaturity",
+    "inputArtifacts",
+    "outputArtifacts",
+    "transformation",
+    "normalizedGeometry",
+    "svgSha256"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "runId": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
+    },
+    "stepId": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
+    },
+    "glyphInstanceId": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
+    },
+    "position": { "type": "integer", "minimum": 0 },
+    "attempt": { "type": "integer", "minimum": 1 },
+    "inputMaturity": { "type": "integer", "const": 20 },
+    "outputMaturity": { "type": "integer", "const": 30 },
+    "inputArtifacts": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "outputArtifacts": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "transformation": {
+      "type": "object",
+      "required": ["name", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "const": "normalize-vector" },
+        "version": { "type": "string" }
+      }
+    },
+    "normalizedGeometry": {
+      "type": "object",
+      "required": ["segments", "viewBox", "baseline"],
+      "additionalProperties": false,
+      "properties": {
+        "segments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["x1", "y1", "x2", "y2"],
+            "additionalProperties": false,
+            "properties": {
+              "x1": { "type": "number" },
+              "y1": { "type": "number" },
+              "x2": { "type": "number" },
+              "y2": { "type": "number" }
+            }
+          }
+        },
+        "viewBox": {
+          "type": "object",
+          "required": ["width", "height"],
+          "additionalProperties": false,
+          "properties": {
+            "width": { "type": "number" },
+            "height": { "type": "number" }
+          }
+        },
+        "baseline": { "type": "number" },
+        "geometrySha256": { "type": "string" }
+      }
+    },
+    "svgSha256": { "type": "string" }
+  }
+}

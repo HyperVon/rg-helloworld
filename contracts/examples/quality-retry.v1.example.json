@@ -1,0 +1,28 @@
+{
+  "specversion": "1.0",
+  "id": "01H8EXAMPLERETRY00000000001",
+  "source": "adjudicator",
+  "type": "rg.quality-retry.v1",
+  "subject": "runs/102b7eee-131c-5179-9436-a7cd1e5bbf61/glyphs/c6075091-af49-4dfe-a2f6-865e76aadd16",
+  "time": "2026-08-04T10:45:39.000Z",
+  "datacontenttype": "application/json",
+  "traceparent": "00-0af7651916cd43dd8448eb211c804ad-b7ad6b7169203331-01",
+  "correlationid": "102b7eee-131c-5179-9436-a7cd1e5bbf61",
+  "data": {
+    "runId": "102b7eee-131c-5179-9436-a7cd1e5bbf61",
+    "stepId": "e9a93dd6-ecb8-4653-bebc-71dea10976fa",
+    "attempt": 1,
+    "inputMaturity": 70,
+    "outputMaturity": 70,
+    "inputArtifacts": [
+      "615a5265-04ae-47d2-b418-b5423143e6f8"
+    ],
+    "outputArtifacts": [],
+    "transformation": {
+      "name": "request-quality-retry",
+      "version": "1.0"
+    },
+    "reason": "Low confidence, both modes disagree",
+    "targetPosition": 1
+  }
+}

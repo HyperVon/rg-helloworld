@@ -1,0 +1,57 @@
+{
+  "specversion": "1.0",
+  "id": "01H8EXAMPLEOCROBS0000000001",
+  "source": "ocr-worker",
+  "type": "rg.ocr-observations.v1",
+  "subject": "runs/102b7eee-131c-5179-9436-a7cd1e5bbf61",
+  "time": "2026-08-04T10:45:33.000Z",
+  "datacontenttype": "application/json",
+  "traceparent": "00-0af7651916cd43dd8448eb211c804ad-b7ad6b7169203331-01",
+  "correlationid": "102b7eee-131c-5179-9436-a7cd1e5bbf61",
+  "data": {
+    "runId": "102b7eee-131c-5179-9436-a7cd1e5bbf61",
+    "stepId": "c73d9aff-3ec7-5e4e-84ba-ff93c6649396",
+    "attempt": 1,
+    "inputMaturity": 60,
+    "outputMaturity": 70,
+    "inputArtifacts": [
+      "65cd1bd4-a1e2-48de-a96d-2f47ffa6bc3f",
+      "08d57813-d48c-4777-99b0-3c0aed7a19c8",
+      "1bf0c63e-1b47-4291-a0c1-bd7933267b96"
+    ],
+    "outputArtifacts": [
+      "615a5265-04ae-47d2-b418-b5423143e6f8"
+    ],
+    "transformation": {
+      "name": "perform-ocr",
+      "version": "1.0"
+    },
+    "observations": {
+      "fullPhrase": {
+        "rawText": "H1 W0r1d",
+        "confidence": 93.2,
+        "symbols": []
+      },
+      "positionObservations": [
+        {
+          "position": 0,
+          "candidate": "H",
+          "confidence": 0.961,
+          "alternatives": [
+            "H",
+            "N"
+          ]
+        },
+        {
+          "position": 1,
+          "candidate": "1",
+          "confidence": 0.89,
+          "alternatives": [
+            "1",
+            "l"
+          ]
+        }
+      ]
+    }
+  }
+}

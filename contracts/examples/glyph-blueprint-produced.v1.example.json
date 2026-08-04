@@ -1,0 +1,81 @@
+{
+  "specversion": "1.0",
+  "id": "501a9aae-4a8a-5f6c-811c-229db6317da6",
+  "source": "run-orchestrator",
+  "type": "rg.glyph-blueprints.v1",
+  "subject": "runs/01H8EXAMPLE0000000000001/glyphs/501a9aae-4a8a-5f6c-811c-229db6317da6",
+  "time": "2026-08-04T10:45:12.345Z",
+  "datacontenttype": "application/json",
+  "traceparent": "00-0af7651916cd43dd8448eb211c804ad-b7ad6b7169203331-01",
+  "correlationid": "102b7eee-131c-5179-9436-a7cd1e5bbf61",
+  "data": {
+    "runId": "102b7eee-131c-5179-9436-a7cd1e5bbf61",
+    "planId": "e581a902-ff92-5cc8-995d-aef1fa1eecea",
+    "stepId": "53665a48-22ea-5171-83a0-0fa95e53ccda",
+    "attempt": 1,
+    "inputArtifacts": [],
+    "outputArtifacts": [
+      "26c2c152-c9ed-4361-8337-a1fbab1512ac"
+    ],
+    "transformation": {
+      "name": "plan-glyphs",
+      "version": "1.0"
+    },
+    "glyphs": [
+      {
+        "glyphInstanceId": "c6075091-af49-4dfe-a2f6-865e76aadd16",
+        "position": 0,
+        "kind": "DRAWABLE",
+        "advanceWidth": 0.5,
+        "primitives": [
+          {
+            "type": "POLYLINE",
+            "points": [
+              {
+                "x": 0,
+                "y": 0
+              },
+              {
+                "x": 0,
+                "y": 7
+              },
+              {
+                "x": 3.5,
+                "y": 3.5
+              },
+              {
+                "x": 0,
+                "y": 0
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "glyphInstanceId": "c6075091-af49-4dfe-a2f6-865e76aadd16",
+        "position": 1,
+        "kind": "DRAWABLE",
+        "advanceWidth": 0.5,
+        "primitives": [
+          {
+            "type": "POLYLINE",
+            "points": [
+              {
+                "x": 0.5,
+                "y": 7
+              },
+              {
+                "x": 0.5,
+                "y": 0
+              },
+              {
+                "x": 4,
+                "y": 7
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

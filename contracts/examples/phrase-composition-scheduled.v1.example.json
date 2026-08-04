@@ -1,0 +1,45 @@
+{
+  "specversion": "1.0",
+  "id": "01H8EXAMPLECOMP00000000001",
+  "source": "vector-normalizer",
+  "type": "rg.phrase-composition.v1",
+  "subject": "runs/102b7eee-131c-5179-9436-a7cd1e5bbf61",
+  "time": "2026-08-04T10:45:24.000Z",
+  "datacontenttype": "application/json",
+  "traceparent": "00-0af7651916cd43dd8448eb211c804ad-b7ad6b7169203331-01",
+  "correlationid": "102b7eee-131c-5179-9436-a7cd1e5bbf61",
+  "data": {
+    "runId": "102b7eee-131c-5179-9436-a7cd1e5bbf61",
+    "stepId": "02a4e745-01c0-5c76-b62a-9bcbf263bd8d",
+    "attempt": 1,
+    "inputMaturity": 40,
+    "outputMaturity": 50,
+    "inputArtifacts": [
+      "8a37e488-6e3f-4f82-bdb7-2eaa99d7afaf"
+    ],
+    "outputArtifacts": [],
+    "transformation": {
+      "name": "schedule-composition",
+      "version": "1.0"
+    },
+    "compositionPlan": {
+      "positions": [
+        {
+          "position": 0,
+          "glyphInstanceId": "c6075091-af49-4dfe-a2f6-865e76aadd16",
+          "artifactRef": "8a37e488-6e3f-4f82-bdb7-2eaa99d7afaf",
+          "advanceWidth": 0.5
+        },
+        {
+          "position": 1,
+          "glyphInstanceId": "c6075091-af49-4dfe-a2f6-865e76aadd16",
+          "artifactRef": "dad91ce4-45bb-452e-97ba-141aaf2d8643",
+          "advanceWidth": 0.5
+        }
+      ],
+      "baseline": 80.0,
+      "canvasWidth": 128,
+      "canvasHeight": 96
+    }
+  }
+}

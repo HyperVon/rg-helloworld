@@ -1,0 +1,39 @@
+{
+  "specversion": "1.0",
+  "id": "01H8EXAMPLEBAD000000000001",
+  "source": "geometry-engine",
+  "type": "rg.geometry-expanded.v1",
+  "subject": "runs/01H8EXAMPLE00000000000001/glyphs/01H8EXAMPLE00000000000002",
+  "time": "2026-08-04T10:45:15.000Z",
+  "datacontenttype": "application/json",
+  "traceparent": "00-0af7651916cd43dd8448eb211c804ad-b7ad6b7169203331-01",
+  "correlationid": "01H8EXAMPLE00000000000001",
+  "data": {
+    "runId": "01H8EXAMPLE00000000000001",
+    "stepId": "01H8EXAMPLE0000000000STEP02",
+    "glyphInstanceId": "01H8EXAMPLE00000000000002",
+    "position": 0,
+    "attempt": 1,
+    "inputMaturity": 10,
+    "outputMaturity": 20,
+    "inputArtifacts": ["01H8EXAMPLE0000000000ART001"],
+    "outputArtifacts": ["01H8EXAMPLE0000000000ART002"],
+    "transformation": {
+      "name": "expand-geometry",
+      "version": "1.0"
+    },
+    "geometry": {
+      "kind": "DRAWABLE_GEOMETRY",
+      "segments": [
+        {"x1": 0.0, "y1": 0.0, "x2": 0.0, "y2": 7.0}
+      ],
+      "boundingBox": {"xMin": 0.0, "yMin": 0.0, "xMax": 0.0, "yMax": 7.0},
+      "advanceWidth": 0.5,
+      "totalLength": 7.0,
+      "segmentCount": 1,
+      "geometrySha256": "a1b2c3d4e5f6"
+    },
+    "expectedCharacter": "H",
+    "unicodeCodePoint": 72
+  }
+}

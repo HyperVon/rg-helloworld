@@ -1,0 +1,58 @@
+{
+  "specversion": "1.0",
+  "id": "01H8EXAMPLECOMPO0000000001",
+  "source": "image-pipeline",
+  "type": "rg.phrase-composed.v1",
+  "subject": "runs/102b7eee-131c-5179-9436-a7cd1e5bbf61",
+  "time": "2026-08-04T10:45:27.000Z",
+  "datacontenttype": "application/json",
+  "traceparent": "00-0af7651916cd43dd8448eb211c804ad-b7ad6b7169203331-01",
+  "correlationid": "102b7eee-131c-5179-9436-a7cd1e5bbf61",
+  "data": {
+    "runId": "102b7eee-131c-5179-9436-a7cd1e5bbf61",
+    "stepId": "670b14fc-66dc-5a95-98bc-bcd59b0ad613",
+    "attempt": 1,
+    "inputMaturity": 40,
+    "outputMaturity": 50,
+    "inputArtifacts": [
+      "8a37e488-6e3f-4f82-bdb7-2eaa99d7afaf",
+      "dad91ce4-45bb-452e-97ba-141aaf2d8643"
+    ],
+    "outputArtifacts": [
+      "ace8859f-fee1-4d6c-b66c-85a1d968b266",
+      "7135c383-968f-438c-9143-f15f88bec4a9"
+    ],
+    "transformation": {
+      "name": "compose-phrase",
+      "version": "1.0"
+    },
+    "compositionManifest": {
+      "layout": [
+        {
+          "position": 0,
+          "bbox": {
+            "x": 10,
+            "y": 5,
+            "width": 35,
+            "height": 91
+          }
+        },
+        {
+          "position": 1,
+          "bbox": {
+            "x": 50,
+            "y": 5,
+            "width": 40,
+            "height": 91
+          }
+        }
+      ]
+    },
+    "phraseImage": {
+      "objectKey": "artifacts/ace8859f-fee1-4d6c-b66c-85a1d968b266/phrase.png",
+      "width": 128,
+      "height": 101,
+      "sha256": "5a6b7c8d9e0f"
+    }
+  }
+}

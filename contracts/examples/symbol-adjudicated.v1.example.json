@@ -1,0 +1,40 @@
+{
+  "specversion": "1.0",
+  "id": "01H8EXAMPLEADJ0000000000001",
+  "source": "adjudicator",
+  "type": "rg.symbols-adjudicated.v1",
+  "subject": "runs/102b7eee-131c-5179-9436-a7cd1e5bbf61/glyphs/c6075091-af49-4dfe-a2f6-865e76aadd16",
+  "time": "2026-08-04T10:45:36.000Z",
+  "datacontenttype": "application/json",
+  "traceparent": "00-0af7651916cd43dd8448eb211c804ad-b7ad6b7169203331-01",
+  "correlationid": "102b7eee-131c-5179-9436-a7cd1e5bbf61",
+  "data": {
+    "runId": "102b7eee-131c-5179-9436-a7cd1e5bbf61",
+    "stepId": "e9a93dd6-ecb8-4653-bebc-71dea10976fa",
+    "glyphInstanceId": "c6075091-af49-4dfe-a2f6-865e76aadd16",
+    "position": 0,
+    "attempt": 1,
+    "inputMaturity": 70,
+    "outputMaturity": 80,
+    "inputArtifacts": [
+      "615a5265-04ae-47d2-b418-b5423143e6f8"
+    ],
+    "outputArtifacts": [
+      "96fac3e8-53bd-49d5-a65e-7882efe1c43f"
+    ],
+    "transformation": {
+      "name": "adjudicate-symbol",
+      "version": "1.0"
+    },
+    "symbol": {
+      "tokenType": "SYMBOL",
+      "utf8": "H",
+      "confidence": 0.961,
+      "evidence": {
+        "fullPhraseCandidate": "H",
+        "cropCandidate": "H",
+        "agreement": true
+      }
+    }
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rghello.dev/schemas/events/symbol-adjudicated.v1.schema.json",
+  "title": "SymbolAdjudicated",
+  "description": "Event published by the Ruby adjudicator after consensus analysis (topic rg.symbols-adjudicated.v1). Must never substitute expected characters (section 5.4)",
+  "type": "object",
+  "required": [
+    "runId",
+    "stepId",
+    "glyphInstanceId",
+    "position",
+    "attempt",
+    "inputMaturity",
+    "outputMaturity",
+    "inputArtifacts",
+    "outputArtifacts",
+    "transformation",
+    "symbol"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "runId": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
+    },
+    "stepId": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
+    },
+    "glyphInstanceId": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
+    },
+    "position": { "type": "integer", "minimum": 0 },
+    "attempt": { "type": "integer", "minimum": 1 },
+    "inputMaturity": { "type": "integer", "const": 70 },
+    "outputMaturity": { "type": "integer", "const": 80 },
+    "inputArtifacts": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "outputArtifacts": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "transformation": {
+      "type": "object",
+      "required": ["name", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "const": "adjudicate-symbol" },
+        "version": { "type": "string" }
+      }
+    },
+    "symbol": {
+      "type": "object",
+      "required": ["tokenType", "utf8", "confidence", "evidence"],
+      "additionalProperties": false,
+      "properties": {
+        "tokenType": { "type": "string", "enum": ["SYMBOL", "GAP"] },
+        "utf8": { "type": "string" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "evidence": {
+          "type": "object",
+          "required": ["agreement"],
+          "additionalProperties": false,
+          "properties": {
+            "fullPhraseCandidate": { "type": "string" },
+            "cropCandidate": { "type": "string" },
+            "agreement": { "type": "boolean" }
+          }
+        }
+      }
+    }
+  }
+}
