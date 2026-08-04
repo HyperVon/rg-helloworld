@@ -1,0 +1,46 @@
+=== Platform Smoke Tests ===
+pod/kafka-controller-0 condition met
+pod/kafka-controller-1 condition met
+pod/kafka-controller-2 condition met
+pod/minio-6f75c7d885-8bffm condition met
+pod/minio-console-54f8d7cf7c-wrqtv condition met
+pod/postgres-postgresql-0 condition met
+pod/redis-master-0 condition met
+
+--- Test 1: Kafka produce + consume ---
+Creating topic rg.smoke-test.v1
+WARNING: Due to limitations in metric names, topics with a period ('.') or underscore ('_') could collide. To avoid issues it is best to use either, but not both.
+Producing message: Hello World from Kafka
+Consuming message...
+PASS: Kafka message round-tripped correctly
+
+--- Test 2: MinIO artifact round trip ---
+Added `local` successfully.
+Bucket created successfully `local/rube-goldberg-artifacts`.
+`/tmp/rghello-test-artifact.txt` -> `local/rube-goldberg-artifacts/test-artifact.txt`
+┌───────┬─────────────┬──────────┬────────────┐
+│ Total │ Transferred │ Duration │ Speed      │
+│ 23 B  │ 23 B        │ 00m00s   │ 2.06 KiB/s │
+└───────┴─────────────┴──────────┴────────────┘
+`local/rube-goldberg-artifacts/test-artifact.txt` -> `/tmp/rghello-test-artifact-downloaded.txt`
+┌───────┬─────────────┬──────────┬────────────┐
+│ Total │ Transferred │ Duration │ Speed      │
+│ 23 B  │ 23 B        │ 00m00s   │ 2.61 KiB/s │
+└───────┴─────────────┴──────────┴────────────┘
+Removed `local` successfully.
+scripts/smoke-test.sh: line 95: 72312 Terminated: 15          kubectl port-forward -n $NAMESPACE svc/minio 9000:9000 >&/dev/null
+PASS: MinIO artifact round-tripped with matching hash (25dd2e8c1f464b6433a8c4aed702d153590f95c8b3182cad2e9a91f156768203)
+
+--- Test 3: PostgreSQL connectivity ---
+          result          
+--------------------------
+ PostgreSQL connection OK
+(1 row)
+
+PASS: PostgreSQL is accepting connections
+
+--- Test 4: Redis connectivity ---
+scripts/smoke-test.sh: line 123: 72331 Terminated: 15          kubectl port-forward -n $NAMESPACE svc/postgres-postgresql 5432:5432 >&/dev/null
+PASS: Redis responded with PONG
+
+=== All smoke tests passed! ===

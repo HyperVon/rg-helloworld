@@ -1,0 +1,34 @@
+=== Rube Goldberg Hello World - Milestone 2 Platform Summary ===
+Date: 2026-08-04
+
+Cluster: k3d-rube-goldberg (k3d v5.9.0)
+Local Registry: rghello-registry (localhost:5001)
+
+Services deployed in namespace 'rube-goldberg':
+
+1. PostgreSQL 18.4.0 (Helm chart: bitnami/postgresql v18.8.6)
+   Service: postgres-postgresql (ClusterIP, port 5432)
+   Persistence: 2Gi PVC
+
+2. Apache Kafka 4.0.0 KRaft mode (Helm chart: bitnami/kafka v32.4.3)
+   Service: kafka (ClusterIP, port 9092)
+   Service: kafka-controller-headless (headless)
+   3 controllers (no ZooKeeper)
+   
+3. Redis 8.8.1 (Helm chart: bitnami/redis v27.0.18)
+   Service: redis-master (ClusterIP, port 6379)
+   Persistence: 2Gi PVC
+
+4. MinIO 2025.7.23 (Helm chart: bitnami/minio v17.0.21)
+   Service: minio (ClusterIP, port 9000)
+   Service: minio-console (ClusterIP, port 9000)
+   Default bucket: rube-goldberg-artifacts
+   Persistence: 2Gi PVC
+
+Smoke Test Results:
+  Kafka message pass: PASS
+  MinIO artifact round trip: PASS (hash verified)
+  PostgreSQL connectivity: PASS
+  Redis connectivity: PASS
+
+All acceptance criteria for Milestone 2 are satisfied.
