@@ -1,0 +1,7 @@
+[package]
+name = "phrase-assembler"
+version = "0.0.0-skeleton"
+edition = "2024"
+description = "Final UTF-8 phrase assembly (Milestone 0 skeleton)"
+
+[dependencies]

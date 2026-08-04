@@ -1,0 +1,39 @@
+# Local state
+.local/
+.DS_Store
+*.log
+
+# Editors and IDEs
+.idea/
+.vscode/
+*.iml
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Node.js
+node_modules/
+out/
+dist/
+
+# Java / Kotlin / Gradle
+target/
+build/
+.gradle/
+.kotlin/
+*.class
+
+# .NET
+bin/
+obj/
+coverage/
+
+# Rust
+target/debug/
+target/release/
+
+# Environment
+.env

@@ -1,0 +1,14 @@
+.git
+.local
+.venv
+node_modules
+out
+dist
+target
+build
+.gradle
+.kotlin
+.idea
+.vscode
+__pycache__
+*.log

@@ -1,0 +1,25 @@
+---
+description: Rube Goldberg Hello World project rules for Cursor
+globs:
+  - "**/*"
+alwaysApply: true
+---
+
+Read `AGENTS.md` at the repository root before making changes and follow it.
+
+- Milestone-driven development: one milestone at a time per
+  `docs/architecture.md` section 29; track scope and acceptance in
+  `docs/implementation-status.md`.
+- Required gates (must all pass): `make format`, `make lint`, `make unit`,
+  `make coverage`, `make build`. Missing toolchains are skipped unless
+  `STRICT=1`.
+- Non-negotiable integrity rules: only the CLI, orchestrator, and glyph
+  catalog may see the requested plaintext; downstream events must never
+  contain `targetText`, `expectedCharacter`, `unicodeCodePoint`, or
+  equivalent fields (`docs/architecture.md` section 7).
+- Pin all dependency and container versions; never use `latest` tags.
+- Do not combine service languages; do not bypass required protocols
+  (REST, SOAP, gRPC, Kafka, SSE).
+- Do not add explanatory comments; write idiomatic code and keep it
+  readable.
+- Never commit unless explicitly authorized.
