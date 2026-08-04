@@ -31,5 +31,22 @@ fi
 echo ">> integration"
 bash tests/integration/run_integration.sh || exit 1
 
+if [ "${E2E_SKIP_PLATFORM:-0}" != "1" ]; then
+  if command -v k3d >/dev/null 2>&1 && command -v terraform >/dev/null 2>&1; then
+    echo ">> cluster"
+    make cluster || exit 1
+    echo ">> infra"
+    make infra || exit 1
+    echo ">> wait"
+    make wait || exit 1
+    echo ">> smoke-test"
+    bash scripts/smoke-test.sh || exit 1
+  else
+    echo ">> platform tools not installed, skipping cluster/infra/wait/smoke-test"
+  fi
+else
+  echo ">> platform tests skipped (E2E_SKIP_PLATFORM=1)"
+fi
+
 echo ""
 echo "E2E acceptance: PASS"

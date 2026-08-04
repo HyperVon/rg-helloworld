@@ -410,22 +410,19 @@ images:
 	@echo "NOT IMPLEMENTED: container images land in Milestone 2."
 
 cluster:
-	@echo "NOT IMPLEMENTED: k3d cluster creation lands in Milestone 2."
+	@bash scripts/k3d-create.sh
 
 infra:
-	@echo "NOT IMPLEMENTED: Terraform infrastructure lands in Milestone 2."
-
-deploy:
-	@echo "NOT IMPLEMENTED: deployment lands in Milestone 2."
+	cd infra/terraform/environments/local && terraform init && terraform apply -auto-approve
 
 wait:
-	@echo "NOT IMPLEMENTED: readiness waits land in Milestone 2."
+	@bash scripts/wait-ready.sh
 
 run:
 	@echo "NOT IMPLEMENTED: 'rghello run' lands in Milestone 3."
 
-demo:
-	@echo "NOT IMPLEMENTED: the full demonstration lands in Milestone 12."
+demo: wait
+	@bash scripts/smoke-test.sh
 
 e2e:
 	@bash tests/end-to-end/run_e2e.sh
@@ -437,7 +434,7 @@ diagnostics:
 	@echo "NOT IMPLEMENTED: diagnostics collection lands in Milestone 12."
 
 down:
-	@echo "NOT IMPLEMENTED: scale-down lands in Milestone 12."
+	@bash scripts/k3d-delete.sh
 
 destroy:
-	@echo "NOT IMPLEMENTED: environment teardown lands in Milestone 12."
+	cd infra/terraform/environments/local && terraform destroy -auto-approve

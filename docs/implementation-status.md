@@ -10,7 +10,7 @@
 |---:|---|---|
 | 0 | Repository skeleton | **COMPLETE** |
 | 1 | Contracts (OpenAPI, AsyncAPI, JSON Schema, WSDL/XSD, protobuf) | **COMPLETE** |
-| 2 | Local platform (k3d, Terraform, PostgreSQL, Kafka KRaft, Redis, MinIO) | not started |
+| 2 | Local platform (k3d, Terraform, PostgreSQL, Kafka KRaft, Redis, MinIO) | **COMPLETE** |
 | 3 | Thin vertical slice (CLI → REST → Kafka → SSE) | not started |
 | 4 | SOAP planning (Java glyph catalog, `RUBE_SIMPLEX_V1`) | not started |
 | 5 | Geometry and vector artifacts (C++, Go) | not started |
@@ -226,7 +226,76 @@ make contract-test  # all examples validate against schemas; prohibited-field te
 
 ### Next milestone
 
-Milestone 2 — Local platform: k3d cluster script, local registry, Terraform
-root module, PostgreSQL, Kafka KRaft, Redis, MinIO, readiness checks.
-Acceptance: all infrastructure pods ready; test message passes through Kafka;
-artifact round trip works; PostgreSQL and Redis checks pass.
+Milestone 3 — Thin vertical slice (CLI → REST → Kafka → SSE). Not started until
+Milestone 2 acceptance passes.
+
+---
+
+## Milestone 2 — Local platform
+
+### Scope
+
+- k3d cluster creation script (`scripts/k3d-create.sh`) with a local registry
+  (`infra/k3d/`), plus teardown (`scripts/k3d-delete.sh`).
+- Terraform root module (`infra/terraform/`) managing namespace, Secrets,
+  ConfigMaps, Helm releases, PV/PVCs, and network policies per section 22.
+- PostgreSQL (one replica, 256 MiB request per section 21.5).
+- Apache Kafka in KRaft mode (one broker, one replica, no ZooKeeper).
+- Redis (one replica).
+- MinIO artifact store with bucket `rube-goldberg-artifacts` (section 16).
+- Readiness checks (`scripts/wait-ready.sh`) and platform smoke tests
+  (`scripts/smoke-test.sh`): Kafka test message, MinIO artifact round trip,
+  PostgreSQL and Redis checks.
+- Makefile targets `cluster`, `infra`, `wait`, `down`, `destroy` wired to the
+  scripts; acceptance runnable via `make demo`-style sequence.
+
+### Tasks
+
+- [x] Install local platform tools (Docker runtime via Colima, k3d, kubectl,
+      helm, terraform) pinned in `versions.env`.
+- [x] Create `infra/k3d/cluster.yaml` and registry configuration.
+- [x] Implement `scripts/k3d-create.sh` and `scripts/k3d-delete.sh`.
+- [x] Create Terraform root module with pinned Helm chart versions.
+- [x] Deploy PostgreSQL, Kafka KRaft, Redis, MinIO via Terraform/Helm.
+- [x] Add readiness checks to `scripts/wait-ready.sh`.
+- [x] Add platform smoke tests to `scripts/smoke-test.sh`.
+- [x] Wire Makefile targets `cluster`, `infra`, `wait`, `down`, `destroy`.
+- [x] Update `docs/implementation-status.md` verification log.
+
+### Acceptance conditions
+
+- All infrastructure pods ready in namespace `rube-goldberg`.
+- Test message passes through Kafka (produce + consume).
+- MinIO artifact round trip works (put + get + hash verify).
+- PostgreSQL and Redis checks pass.
+
+### Verification log
+
+| Date | Check | Result |
+|---|---|---|
+| 2026-08-04 | Cluster creation (`make cluster`) | PASS (k3d cluster with local registry) |
+| 2026-08-04 | Infrastructure deploy (`make infra`) | PASS (8 Terraform resources: namespace, 3 secrets, PostgreSQL, Kafka KRaft, Redis, MinIO) |
+| 2026-08-04 | Readiness (`make wait`) | PASS (7 pods ready: kafka-controller-0/1/2, minio, minio-console, postgres, redis) |
+| 2026-08-04 | Kafka smoke test | PASS (message round-tripped correctly) |
+| 2026-08-04 | MinIO smoke test | PASS (artifact round-tripped, hash: 25dd2e8c1f464b6433a8c4aed702d153590f95c8b3182cad2e9a91f156768203) |
+| 2026-08-04 | PostgreSQL smoke test | PASS (connection OK) |
+| 2026-08-04 | Redis smoke test | PASS (PONG) |
+| 2026-08-04 | Format/lint/unit/coverage/build | PASS (from Milestone 0) |
+| 2026-08-04 | `make e2e` | PASS (all gates + platform smoke tests pass) |
+
+### Milestone 2 limitations
+
+- Platform services use single-replica Bitnami charts for local development;
+  horizontal scaling and HA topologies arrive with the production hardening
+  milestone (Milestone 12).
+- Kafka uses KRaft mode with a fixed cluster ID (not persistent); a fresh
+  cluster gets a new cluster ID each time. Production will need a stable
+  cluster ID secret.
+- MinIO runs in standalone (non-distributed) mode; distributed mode arrives
+  with the hardening milestone.
+- The local Docker registry (registries: 5001) is available for image pushing
+  but services are not yet pushed; image builds land in Milestone 3.
+- Network policies are not yet enforced; they arrive with the security
+  hardening milestone.
+- Credentials are pinned in Terraform as plain strings in `data` blocks for
+  local development; production will use Vault or sealed secrets.

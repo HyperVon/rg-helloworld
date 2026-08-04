@@ -1,3 +1,12 @@
 #!/usr/bin/env bash
-echo "k3d-delete.sh: not implemented until Milestone 2 (Local platform)"
-exit 1
+set -euo pipefail
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Delete k3d cluster
+echo "Deleting k3d cluster 'rube-goldberg'..."
+k3d cluster delete rube-goldberg
+
+echo "K3s cluster deleted successfully."
