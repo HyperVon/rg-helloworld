@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: run-orchestrator
+  namespace: rube-goldberg
+  labels:
+    app: run-orchestrator
+    milestone: "3"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: run-orchestrator
+  template:
+    metadata:
+      labels:
+        app: run-orchestrator
+    spec:
+      containers:
+        - name: orchestrator
+          image: rghello-registry:5001/run-orchestrator:milestone3
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: KAFKA_BOOTSTRAP
+              value: kafka.rube-goldberg.svc.cluster.local:9092
+            - name: REDIS_URL
+              value: redis://:RedisPassw0rd!@redis-master.rube-goldberg.svc.cluster.local:6379
+            - name: ORCHESTRATOR_PORT
+              value: "8080"
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: run-orchestrator
+  namespace: rube-goldberg
+spec:
+  selector:
+    app: run-orchestrator
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080

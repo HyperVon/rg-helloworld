@@ -3,7 +3,7 @@
 Contract, integration, end-to-end, chaos, and anti-cheating test suites.
 
 | Directory | Purpose | Milestone |
-|---|---|---|
+| --- | --- | --- |
 | `contract/` | Schema, SOAP XSD, gRPC, and REST contract tests | 1 |
 | `integration/` | `run_integration.sh`: cross-language artifact harness; later Kafka/PostgreSQL/Redis/MinIO/SOAP/gRPC/SSE suites | 0 (harness), 2+ (platform) |
 | `end-to-end/` | `run_e2e.sh`: full milestone acceptance; later `rghello run` -> "Hello World" | 0 (gates), 9 (pipeline) |

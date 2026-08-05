@@ -86,7 +86,7 @@ Do not combine service implementations into one language, and do not bypass a
 protocol the architecture requires:
 
 | Language | Owns |
-|---|---|
+| --- | --- |
 | Go | `cmd/rghello` (CLI), `services/vector-normalizer-go` |
 | Kotlin | `services/run-orchestrator-kotlin` (orchestrator) |
 | Java | `services/glyph-catalog-java` (SOAP glyph catalog) |
@@ -124,7 +124,7 @@ process. Skills live in `.agents/skills/` (registered in `kilo.json`); Kilo
 commands and agents live in `.kilo/command/` and `.kilo/agent/`.
 
 | User intent | Skill / command |
-|---|---|
+| --- | --- |
 | Implement / resume a milestone | `rghello-milestone` (`.kilo/skills/`) |
 | Run gates / evidence before changes | `/quality-gate` |
 | Review working-tree changes before commit | `/review-diff` |
@@ -156,6 +156,23 @@ commands and agents live in `.kilo/command/` and `.kilo/agent/`.
   full Kubernetes manifests.
 - Use `kubectl logs --tail`, bounded `grep`/`head`.
 - Summarize command results instead of repeating thousands of lines.
+
+## Kilo session hygiene (prevent output-limit failures)
+
+This repo's sessions are long and context-heavy, which can trigger "model hit
+its output limit while reasoning and produced no actionable output":
+
+- Work in small increments; verify each piece before the next, doing the same
+  for long-lived sessions by compacting them (`/compact`) before large code
+  generation steps; context growth increases reasoning, which consumes
+  output budget.
+- If the output-limit error still occurs, re-run the message unchanged
+  (retries usually succeed), switch models (`/models`) to one with a higher
+  output cap, or toggle reasoning (`/thinking`) before retrying.
+- On resume after context compression, rely on `docs/implementation-status.md`
+  and the rghello-milestone skill instead of pasting large transcripts.
+- Never dump full file contents, dependency trees, or command output into a
+  prompt; keep queries pointed at the files that changed.
 
 ## Code style
 

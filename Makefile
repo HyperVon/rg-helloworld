@@ -17,7 +17,7 @@ JAVA_DIR    := services/glyph-catalog-java
 CPP_DIR     := services/geometry-engine-cpp
 DOTNET_DIR  := services/rasterizer-dotnet
 PYTHON_DIR  := services/image-pipeline-python
-NODE_DIRS   := services/ocr-worker-node services/event-gateway-node
+NODE_DIRS   := services/ocr-worker-node services/event-gateway-node services/temp-worker-node
 RUBY_DIR    := services/adjudicator-ruby
 RUST_DIR    := services/phrase-assembler-rust
 
@@ -407,7 +407,7 @@ integration:
 	@bash tests/integration/run_integration.sh
 
 images:
-	@echo "NOT IMPLEMENTED: container images land in Milestone 2."
+	@bash scripts/build-images.sh
 
 cluster:
 	@bash scripts/k3d-create.sh
@@ -419,7 +419,7 @@ wait:
 	@bash scripts/wait-ready.sh
 
 run:
-	@echo "NOT IMPLEMENTED: 'rghello run' lands in Milestone 3."
+	@cd cmd/rghello && go run . run --api-url "http://localhost:8080"
 
 demo: wait
 	@bash scripts/smoke-test.sh

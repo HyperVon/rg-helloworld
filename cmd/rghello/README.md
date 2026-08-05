@@ -2,9 +2,8 @@
 
 Go command-line client for Rube Goldberg Hello World.
 
-Milestone 0 skeleton: prints its version and a "not implemented" notice.
-The real CLI (`rghello run`, SSE result streaming, `--message`, exit codes)
-arrives in Milestones 3 and 9.
+Milestone 3: `rghello run` submits a phrase to the orchestrator over REST,
+streams SSE updates, and prints the final assembled text to stdout.
 
 ## Commands
 
@@ -14,6 +13,19 @@ go test ./...       # unit tests (stdlib only)
 go vet ./...        # static analysis
 gofmt -l .          # format check
 ```
+
+## Usage
+
+```bash
+rghello run
+rghello run --message "Hello World"
+rghello run --api-url http://localhost:8080 --timeout 3m
+rghello run --quiet
+```
+
+`rghello run` writes progress to stderr and prints only the resulting phrase
+to stdout. Exit codes: 0 success, 2 invalid request, 3 timeout, 1 system
+failure.
 
 ## Coverage
 

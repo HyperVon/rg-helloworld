@@ -60,7 +60,7 @@ All implemented gates (`format`, `lint`, `unit`, `coverage`, `build`,
 ## Language ownership
 
 | Language | Responsibility | Skeleton |
-|---|---|---|
+| --- | --- | --- |
 | Go | CLI, vector normalizer | `cmd/rghello`, `services/vector-normalizer-go` |
 | Kotlin | run orchestrator | `services/run-orchestrator-kotlin` |
 | Java | SOAP glyph catalog | `services/glyph-catalog-java` |
@@ -98,12 +98,12 @@ make unit            run all unit tests
 make coverage        unit tests + 90% coverage gates
 make build           compile everything
 make integration     cross-language integration tests
-make images          build container images (later milestone)
-make cluster         create the k3d cluster (later milestone)
-make infra           apply Terraform (later milestone)
+make images          build container images and push to the local registry
+make cluster         create the k3d cluster
+make infra           apply Terraform
 make deploy          deploy applications (later milestone)
-make wait            wait for readiness (later milestone)
-make run             start a run via the CLI (later milestone)
+make wait            wait for readiness
+make run             start a run via the CLI
 make demo            full demonstration (later milestone)
 make e2e             full milestone acceptance
 make chaos           chaos tests (later milestone)

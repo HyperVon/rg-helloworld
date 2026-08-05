@@ -1,0 +1,6 @@
+{
+  "include": ["out/src/**"],
+  "exclude": ["out/tests/**"],
+  "check-coverage": true,
+  "lines": 90
+}

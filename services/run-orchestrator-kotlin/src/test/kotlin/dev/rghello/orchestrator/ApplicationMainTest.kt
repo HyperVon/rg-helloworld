@@ -2,7 +2,6 @@ package dev.rghello.orchestrator
 
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.io.ByteArrayOutputStream
@@ -37,18 +36,15 @@ class ApplicationMainTest {
         exit = { captured.set(it) }
         main(arrayOf("version"))
         assertEquals(0, captured.get())
-        assertEquals("run-orchestrator 0.0.0-skeleton\n", outBuf.toString(StandardCharsets.UTF_8))
+        assertEquals("run-orchestrator 0.1.0-milestone3\n", outBuf.toString(StandardCharsets.UTF_8))
     }
 
     @Test
-    fun mainUnknownCommandWritesUsageToStderr() {
+    fun mainVersionWithExtraArgsExitsZero() {
         val captured = AtomicInteger(-1)
         exit = { captured.set(it) }
-        main(arrayOf("run"))
+        main(arrayOf("version", "extra"))
         assertEquals(0, captured.get())
-        assertEquals("", outBuf.toString(StandardCharsets.UTF_8))
-        val stderr = errBuf.toString(StandardCharsets.UTF_8)
-        assertTrue(stderr.contains("Milestone 0"), "stderr: $stderr")
-        assertTrue(stderr.contains("usage:"), "stderr: $stderr")
+        assertEquals("run-orchestrator 0.1.0-milestone3\n", outBuf.toString(StandardCharsets.UTF_8))
     }
 }

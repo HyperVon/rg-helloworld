@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 NAMESPACE="rube-goldberg"
 export PATH="/opt/homebrew/opt/libpq/bin:$PATH"
 
@@ -17,16 +18,17 @@ retry() {
     local max=5
     local delay=5
     while true; do
-        "$@" && break || {
-            if [[ $n -lt $max ]]; then
-                ((n++))
-                echo "Command failed. Attempt $n/$max:"
-                sleep $delay
-            else
-                echo "Command failed after $max attempts."
-                return 1
-            fi
-        }
+        if "$@"; then
+            break
+        fi
+        if [[ $n -lt $max ]]; then
+            ((n++))
+            echo "Command failed. Attempt $n/$max:"
+            sleep $delay
+        else
+            echo "Command failed after $max attempts."
+            return 1
+        fi
     done
 }
 
@@ -131,6 +133,43 @@ else
 fi
 kill "${PORTFORWARD_PIDS[0]}" 2>/dev/null || true
 PORTFORWARD_PIDS=()
+echo ""
+
+# --- Test 5: Milestone 3 vertical slice (CLI -> orchestrator -> Kafka -> SSE) ---
+echo "--- Test 5: Milestone 3 vertical slice ---"
+
+if command -v docker >/dev/null 2>&1; then
+    echo "Building and deploying orchestrator + temp worker"
+    bash "$PROJECT_ROOT/scripts/build-images.sh" || exit 1
+    retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone3/orchestrator.yaml"
+    retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone3/temp-worker.yaml"
+    retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=run-orchestrator --timeout=180s
+    retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=temp-worker --timeout=180s
+
+    kubectl port-forward -n $NAMESPACE svc/run-orchestrator 8080:8080 &>/dev/null &
+    PORTFORWARD_PIDS+=($!)
+    sleep 3
+
+    if ! command -v go >/dev/null 2>&1; then
+        echo "SKIP: go not installed, skipping rghello run acceptance"
+    else
+        RESULT=$(cd "$PROJECT_ROOT/cmd/rghello" && go run . run --api-url "http://localhost:8080" --quiet --timeout 90s 2>/dev/null)
+        if [[ "$RESULT" == "Hello World" ]]; then
+            echo "PASS: rghello run printed 'Hello World'"
+        else
+            echo "FAIL: rghello run printed '$RESULT'"
+            kubectl logs -n $NAMESPACE deploy/run-orchestrator --tail=20 || true
+            kubectl logs -n $NAMESPACE deploy/temp-worker --tail=20 || true
+            exit 1
+        fi
+    fi
+    if [[ ${#PORTFORWARD_PIDS[@]} -gt 0 ]]; then
+        kill "${PORTFORWARD_PIDS[0]}" 2>/dev/null || true
+        PORTFORWARD_PIDS=()
+    fi
+else
+    echo "SKIP: docker not installed, skipping Milestone 3 vertical slice"
+fi
 echo ""
 
 echo "=== All smoke tests passed! ==="

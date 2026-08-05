@@ -31,6 +31,9 @@ bin/
 obj/
 coverage/
 
+# Python coverage data files
+.coverage
+
 # Rust
 target/debug/
 target/release/

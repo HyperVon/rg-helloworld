@@ -109,12 +109,8 @@ Server-Sent Events
 ## Non-negotiable integrity requirements
 
 1. Only the CLI, orchestrator, and glyph catalog may see the complete requested plaintext before final validation.
-2. No downstream event may contain:
-  - `targetText`
-  - `expectedCharacter`
-  - `unicodeCodePoint`
-  - `characterName`
-  - equivalent fields
+2. No downstream event may contain `targetText`, `expectedCharacter`,
+   `unicodeCodePoint`, `characterName`, or equivalent fields.
 3. The OCR worker and Ruby adjudicator must not have access to the expected output.
 4. The Rust assembler must assemble only accepted OCR-derived symbols.
 5. The CLI must print only the orchestrator’s terminal `assembledText`.
@@ -148,10 +144,7 @@ Implement one milestone at a time in the exact order described in `docs/architec
 For each milestone:
 
 1. Read the relevant architecture sections.
-2. Update `docs/implementation-status.md` with:
-  - Scope.
-  - Tasks.
-  - Acceptance conditions.
+2. Update `docs/implementation-status.md` with scope, tasks, and acceptance conditions.
 3. Implement the smallest complete milestone.
 4. Add tests before proceeding.
 5. Run only targeted checks during iteration.

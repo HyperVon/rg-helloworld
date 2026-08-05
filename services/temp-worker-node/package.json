@@ -1,0 +1,27 @@
+{
+  "name": "rghello-temp-worker",
+  "version": "0.1.0-milestone3",
+  "description": "Temporary Milestone 3 echo worker (removed in Milestone 4)",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && tsc -p tsconfig.test.json && node --test \"out/tests/*.test.js\"",
+    "coverage": "npm run build && tsc -p tsconfig.test.json && c8 node --test \"out/tests/*.test.js\"",
+    "lint": "prettier --check . && npm run typecheck",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "kafkajs": "2.2.4"
+  },
+  "devDependencies": {
+    "@types/node": "26.1.2",
+    "c8": "12.0.0",
+    "prettier": "3.9.6",
+    "typescript": "5.9.3"
+  }
+}

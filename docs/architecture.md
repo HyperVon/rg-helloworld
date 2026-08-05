@@ -63,7 +63,7 @@ Observability, infrastructure, UI projection, and logging are not considered tra
 Every primary artifact has a maturity rank:
 
 | Rank | Artifact |
-|---:|---|
+| ---: | --- |
 | 0 | Run request |
 | 10 | Glyph blueprint |
 | 20 | Raw geometric segments |
@@ -191,7 +191,7 @@ stdout: Hello World
 Exit codes:
 
 | Code | Meaning |
-|---:|---|
+| ---: | --- |
 | 0 | Successful output |
 | 1 | Unexpected system failure |
 | 2 | Invalid request |
@@ -625,7 +625,7 @@ A rejected position causes the orchestrator to schedule a genuine improvement cy
 Retry profiles:
 
 | Attempt | Change |
-|---:|---|
+| ---: | --- |
 | 1 | Default glyph geometry and render profile |
 | 2 | Increase render resolution and stroke width |
 | 3 | Use alternate blueprint geometry and larger phrase spacing |
@@ -783,7 +783,7 @@ The only successful print path must use the terminal response’s `assembledText
 # 8. Service Catalog
 
 | Service | Language and framework | Primary responsibility | Inputs | Outputs |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `rghello-cli` | Go, Cobra | Start a run, follow progress, print result | REST/SSE | Console |
 | `run-orchestrator` | Kotlin, Spring Boot, Spring Kafka, Flyway | Run state machine, scheduling, validation, persistence | REST, SOAP, Kafka | Kafka, SSE, Redis |
 | `glyph-catalog` | Java, Spring Boot, Spring Web Services | Phrase planning and vector glyph blueprints | SOAP | SOAP |
@@ -1113,7 +1113,7 @@ Use:
 ## 13.2 Topics
 
 | Topic | Producer | Consumer |
-|---|---|---|
+| --- | --- | --- |
 | `rg.glyph-blueprints.v1` | Orchestrator | C++ geometry engine |
 | `rg.geometry-expanded.v1` | C++ geometry engine | Go normalizer |
 | `rg.glyph-rasterized.v1` | Go normalizer | Python image pipeline |
@@ -2080,7 +2080,7 @@ http://rghello.localhost/api
 These are design budgets, not guaranteed measurements.
 
 | Component | Memory request | Memory limit |
-|---|---:|---:|
+| --- | ---: | ---: |
 | Kafka | 512 MiB | 1 GiB |
 | PostgreSQL | 256 MiB | 512 MiB |
 | Redis | 64 MiB | 192 MiB |
@@ -2924,9 +2924,9 @@ causes a local Kubernetes cluster containing a distributed, event-driven, polygl
 10. Stream the result to a Go command-line client.
 11. Print:
 
-```text
-Hello World
-```
+    ```text
+    Hello World
+    ```
 
 12. Exit.
 

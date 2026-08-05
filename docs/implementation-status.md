@@ -7,11 +7,11 @@
 ## Milestone overview
 
 | # | Milestone | Status |
-|---:|---|---|
+| ---: | --- | --- |
 | 0 | Repository skeleton | **COMPLETE** |
 | 1 | Contracts (OpenAPI, AsyncAPI, JSON Schema, WSDL/XSD, protobuf) | **COMPLETE** |
 | 2 | Local platform (k3d, Terraform, PostgreSQL, Kafka KRaft, Redis, MinIO) | **COMPLETE** |
-| 3 | Thin vertical slice (CLI → REST → Kafka → SSE) | not started |
+| 3 | Thin vertical slice (CLI → REST → Kafka → SSE) | **IN PROGRESS** |
 | 4 | SOAP planning (Java glyph catalog, `RUBE_SIMPLEX_V1`) | not started |
 | 5 | Geometry and vector artifacts (C++, Go) | not started |
 | 6 | gRPC rasterization (C#, SkiaSharp) | not started |
@@ -71,7 +71,7 @@ any business functionality.
 ### Skeleton services
 
 | Directory | Language | Version gate | Unit test |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `cmd/rghello` | Go | `go build` | `go test` |
 | `services/vector-normalizer-go` | Go | `go build` | `go test` |
 | `services/glyph-catalog-java` | Java 21 | Maven `package` | JUnit Jupiter |
@@ -123,7 +123,7 @@ installed.
 ### Verification log
 
 | Date | Check | Result |
-|---|---|---|
+| --- | --- | --- |
 | 2026-08-04 | `make format` | PASS |
 | 2026-08-04 | `make lint` | PASS |
 | 2026-08-04 | `make unit` | PASS |
@@ -203,7 +203,7 @@ make contract-test  # all examples validate against schemas; prohibited-field te
 ### Verification log
 
 | Date | Check | Result |
-|---|---|---|
+| --- | --- | --- |
 | 2026-08-04 | `make contracts` | PASS (13 schemas, OpenAPI, AsyncAPI, proto, WSDL/XSD parse) |
 | 2026-08-04 | `make contract-test` | PASS (12 examples validate; prohibited-field detection works) |
 | 2026-08-04 | `make format` | PASS |
@@ -272,7 +272,7 @@ Milestone 2 acceptance passes.
 ### Verification log
 
 | Date | Check | Result |
-|---|---|---|
+| --- | --- | --- |
 | 2026-08-04 | Cluster creation (`make cluster`) | PASS (k3d cluster with local registry) |
 | 2026-08-04 | Infrastructure deploy (`make infra`) | PASS (8 Terraform resources: namespace, 3 secrets, PostgreSQL, Kafka KRaft, Redis, MinIO) |
 | 2026-08-04 | Readiness (`make wait`) | PASS (7 pods ready: kafka-controller-0/1/2, minio, minio-console, postgres, redis) |
@@ -299,3 +299,53 @@ Milestone 2 acceptance passes.
   hardening milestone.
 - Credentials are pinned in Terraform as plain strings in `data` blocks for
   local development; production will use Vault or sealed secrets.
+
+---
+
+## Milestone 3 — Thin vertical slice
+
+### Scope
+
+- [x] Implement the orchestrator (Kotlin) as a Ktor web server with:
+  - [x] REST endpoint `POST /api/v1/runs` accepting a `CreateRunRequest`
+  - [x] Kafka producer that publishes a CloudEvents envelope to the planning topic
+  - [x] SSE endpoint `GET /api/v1/runs/{runId}/stream` for live updates
+  - [x] Redis cache for run state
+  - [x] Kafka consumer that listens for the temp worker's response and publishes
+    the final `run-events.v1` event
+- [x] Implement a temporary worker (Node.js) that:
+  - [x] Consumes the planning event from Kafka
+  - [x] Echoes the requested message back as a "glyph blueprint" event
+  - [x] Is clearly marked as temporary (removed in Milestone 4)
+- [x] Update the CLI (Go) to:
+  - [x] Submit a run via HTTP POST
+  - [x] Stream SSE updates from the orchestrator
+  - [x] Print the final assembled text to stdout
+- [x] Add integration tests that verify the full control route
+- [x] Update Makefile with `make run` target for local development
+- [x] Deploy orchestrator and temp worker to Kubernetes
+
+### Acceptance conditions
+
+- CLI starts a run via `rghello run` (HTTP POST to orchestrator).
+- SSE updates arrive during processing.
+- Terminal result prints to stdout (the requested plaintext).
+- Idempotency works (same idempotency key returns same run).
+- `make e2e` passes with the new vertical slice.
+
+### Verification log
+
+| Date | Check | Result |
+| --- | --- | --- |
+| 2026-08-04 | Orchestrator unit tests (`./gradlew test`) | PASS (33 tests, jacoco line coverage >= 90%) |
+| 2026-08-04 | Orchestrator ktlint | PASS |
+| 2026-08-04 | Temp worker unit tests (`npm test`) | PASS (17 tests) |
+| 2026-08-04 | Temp worker coverage (`npm run coverage`) | PASS (94.7% lines >= 90%) |
+| 2026-08-04 | Temp worker lint (`npm run lint`) | PASS |
+| 2026-08-04 | CLI tests (`go test ./...`) | PASS (coverage 90.8%) |
+| 2026-08-04 | CLI vet + build | PASS |
+| 2026-08-04 | Integration tests | PASS (0 failures) |
+| 2026-08-04 | Image build + push (`localhost:5001`) | PASS (run-orchestrator:milestone3, temp-worker:milestone3) |
+| 2026-08-04 | Deploy to k3d (`rube-goldberg` namespace) | PASS (both deployments ready) |
+| 2026-08-04 | Vertical slice smoke test | PASS (`rghello run` printed `Hello World`, exit 0) |
+| 2026-08-04 | `make e2e` | PASS (all gates + integration + platform smoke tests + vertical slice) |

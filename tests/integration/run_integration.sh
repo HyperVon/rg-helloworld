@@ -126,7 +126,7 @@ echo "Verifying service banners:"
 check "rghello" "rghello 0.0.0-skeleton" "$BIN/rghello" version
 check "vector-normalizer" "vector-normalizer 0.0.0-skeleton" "$BIN/vector-normalizer" version
 check "glyph-catalog" "glyph-catalog 0.0.0-skeleton" java -jar "$ROOT/services/glyph-catalog-java/target/glyph-catalog-java-0.0.0-skeleton.jar" version
-check "run-orchestrator" "run-orchestrator 0.0.0-skeleton" "$ROOT/services/run-orchestrator-kotlin/build/install/run-orchestrator/bin/run-orchestrator" version
+check "run-orchestrator" "run-orchestrator 0.1.0-milestone3" "$ROOT/services/run-orchestrator-kotlin/build/install/run-orchestrator/bin/run-orchestrator" version
 check "geometry-engine" "geometry-engine 0.0.0-skeleton (Milestone 0 skeleton)" "$ROOT/.local/build/geometry-engine-cpp/geometry_engine"
 check "rasterizer" "rasterizer 0.0.0-skeleton (Milestone 0 skeleton)" "$DOTNET" "$ROOT/services/rasterizer-dotnet/cli/bin/Debug/net10.0/rasterizer.Cli.dll"
 check_eval "image-pipeline" "image-pipeline 0.0.0-skeleton (Milestone 0 skeleton)" "PYTHONPATH=$ROOT/services/image-pipeline-python/src python3 -c 'import rg_image_pipeline as m; print(m.banner())'"
