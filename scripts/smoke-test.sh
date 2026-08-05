@@ -139,12 +139,16 @@ echo ""
 echo "--- Test 5: Milestone 4 SOAP planning + vertical slice ---"
 
 if command -v docker >/dev/null 2>&1; then
-    echo "Building and deploying orchestrator + glyph catalog"
+    echo "Building and deploying orchestrator, glyph catalog, and Milestone 5 workers"
     bash "$PROJECT_ROOT/scripts/build-images.sh" || exit 1
-    retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone4/orchestrator.yaml"
-    retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone4/glyph-catalog.yaml"
+    retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone5/orchestrator.yaml"
+    retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone5/glyph-catalog.yaml"
+    retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone5/geometry-engine.yaml"
+    retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone5/vector-normalizer.yaml"
     retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=run-orchestrator --timeout=180s
     retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=glyph-catalog --timeout=180s
+    retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=geometry-engine --timeout=180s
+    retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=vector-normalizer --timeout=180s
 
     kubectl port-forward -n $NAMESPACE svc/run-orchestrator 8080:8080 &>/dev/null &
     PORTFORWARD_PIDS+=($!)
@@ -203,6 +207,167 @@ if command -v docker >/dev/null 2>&1; then
     fi
 else
     echo "SKIP: docker not installed, skipping Milestone 4 vertical slice"
+fi
+echo ""
+
+# --- Test 6: Milestone 5 geometry + vector artifacts ---
+echo "--- Test 6: Milestone 5 geometry + vector artifacts ---"
+
+if command -v docker >/dev/null 2>&1; then
+    echo "Verifying geometry records on rg.geometry-expanded.v1"
+    GEOMETRY=$(kubectl exec -n $NAMESPACE kafka-controller-0 -c kafka -- \
+        timeout 20 kafka-console-consumer.sh --topic rg.geometry-expanded.v1 \
+        --bootstrap-server $KAFKA_BROKER --from-beginning --max-messages 50 --timeout-ms 5000 2>/dev/null \
+        | grep '"glyphInstanceId"' | tail -11 || true)
+    GEOMETRY_COUNT=$(printf '%s\n' "$GEOMETRY" | grep -c '"glyphInstanceId"')
+    if [[ "$GEOMETRY_COUNT" -eq 11 ]]; then
+        echo "PASS: eleven geometry-expanded records observed"
+    else
+        echo "FAIL: expected 11 geometry records, saw $GEOMETRY_COUNT"
+        exit 1
+    fi
+    for POSITION in 0 1 2 3 4 5 6 7 8 9 10; do
+        printf '%s\n' "$GEOMETRY" | grep -q "\"position\":$POSITION," || {
+            echo "FAIL: missing geometry record at position $POSITION"
+            exit 1
+        }
+    done
+    if printf '%s\n' "$GEOMETRY" | grep -q '"kind":"GAP_GEOMETRY"'; then
+        echo "PASS: gap geometry record exists"
+    else
+        echo "FAIL: no gap geometry record"
+        exit 1
+    fi
+    if printf '%s\n' "$GEOMETRY" | grep -qE '"inputMaturity":10,.*"outputMaturity":20'; then
+        echo "PASS: geometry records mature 10 -> 20"
+    else
+        echo "FAIL: geometry maturity not 10 -> 20"
+        exit 1
+    fi
+    if printf '%s\n' "$GEOMETRY" | grep -qE '"(message|targetText|expectedCharacter|unicodeCodePoint|characterName|glyphLabel)"'; then
+        echo "FAIL: geometry events contain prohibited fields"
+        exit 1
+    else
+        echo "PASS: geometry events exclude plaintext and code points"
+    fi
+
+    echo "Verifying normalized records on rg.glyph-normalized.v1"
+    NORMALIZED=$(kubectl exec -n $NAMESPACE kafka-controller-0 -c kafka -- \
+        timeout 20 kafka-console-consumer.sh --topic rg.glyph-normalized.v1 \
+        --bootstrap-server $KAFKA_BROKER --from-beginning --max-messages 50 --timeout-ms 5000 2>/dev/null \
+        | grep '"glyphInstanceId"' | tail -11 || true)
+    NORMALIZED_COUNT=$(printf '%s\n' "$NORMALIZED" | grep -c '"glyphInstanceId"')
+    if [[ "$NORMALIZED_COUNT" -eq 11 ]]; then
+        echo "PASS: eleven glyph-normalized records observed"
+    else
+        echo "FAIL: expected 11 normalized records, saw $NORMALIZED_COUNT"
+        exit 1
+    fi
+    for POSITION in 0 1 2 3 4 5 6 7 8 9 10; do
+        printf '%s\n' "$NORMALIZED" | grep -q "\"position\":$POSITION," || {
+            echo "FAIL: missing normalized record at position $POSITION"
+            exit 1
+        }
+    done
+    if printf '%s\n' "$NORMALIZED" | grep -qE '"inputMaturity":20,.*"outputMaturity":30'; then
+        echo "PASS: normalized records mature 20 -> 30"
+    else
+        echo "FAIL: normalized maturity not 20 -> 30"
+        exit 1
+    fi
+    if printf '%s\n' "$NORMALIZED" | grep -qE '"(message|targetText|expectedCharacter|unicodeCodePoint|characterName|glyphLabel)"'; then
+        echo "FAIL: normalized events contain prohibited fields"
+        exit 1
+    else
+        echo "PASS: normalized events exclude plaintext and code points"
+    fi
+
+    echo "Verifying MinIO artifacts"
+    kubectl port-forward -n $NAMESPACE svc/minio 9000:9000 &>/dev/null &
+    PORTFORWARD_PIDS+=($!)
+    sleep 3
+    mc alias set local http://localhost:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD --quiet
+
+    GEOMETRY_FILES=$(mc find local/$MINIO_BUCKET --name 'geometry-attempt-*.json' 2>/dev/null | wc -l | tr -d ' ')
+    NORMALIZED_FILES=$(mc find local/$MINIO_BUCKET --name 'normalized-attempt-*.json' 2>/dev/null | wc -l | tr -d ' ')
+    SVG_FILES=$(mc find local/$MINIO_BUCKET --name '*.svg' 2>/dev/null | wc -l | tr -d ' ')
+    if [[ "$GEOMETRY_FILES" -ge 11 ]]; then
+        echo "PASS: $GEOMETRY_FILES geometry artifacts in MinIO"
+    else
+        echo "FAIL: expected >= 11 geometry artifacts, saw $GEOMETRY_FILES"
+        exit 1
+    fi
+    if [[ "$NORMALIZED_FILES" -ge 11 ]]; then
+        echo "PASS: $NORMALIZED_FILES normalized artifacts in MinIO"
+    else
+        echo "FAIL: expected >= 11 normalized artifacts, saw $NORMALIZED_FILES"
+        exit 1
+    fi
+    if [[ "$SVG_FILES" -ge 11 ]]; then
+        echo "PASS: $SVG_FILES SVG artifacts in MinIO"
+    else
+        echo "FAIL: expected >= 11 SVG artifacts, saw $SVG_FILES"
+        exit 1
+    fi
+
+    printf '%s\n' "$NORMALIZED" > /tmp/rghello-normalized-records.txt
+    if python3 - "$MINIO_BUCKET" /tmp/rghello-normalized-records.txt <<'PYEOF'
+import hashlib
+import json
+import subprocess
+import sys
+
+bucket, records_file = sys.argv[1], sys.argv[2]
+bad = 0
+checked = 0
+with open(records_file, encoding="utf-8") as handle:
+    for line in handle:
+        line = line.strip()
+        if not line:
+            continue
+        event = json.loads(line)
+        data = event["data"]
+        svg_keys = [a for a in data.get("outputArtifacts", []) if a.endswith(".svg")]
+        if not svg_keys:
+            continue
+        svg_key = svg_keys[0]
+        expected = data["svgSha256"]
+        target = "/tmp/rghello-svg-check.svg"
+        subprocess.run(
+            ["mc", "cp", f"local/{bucket}/{svg_key}", target, "--quiet"],
+            check=True,
+            capture_output=True,
+        )
+        with open(target, "rb") as svg:
+            content = svg.read()
+        if b"<text" in content or b"<font" in content:
+            print(f"FAIL: svg {svg_key} contains text elements")
+            bad = 1
+            break
+        actual = hashlib.sha256(content).hexdigest()
+        if actual != expected:
+            print(f"FAIL: svg {svg_key} sha256 {actual} != event {expected}")
+            bad = 1
+            break
+        checked += 1
+print(f"checked {checked} SVG artifacts against their svgSha256")
+sys.exit(bad)
+PYEOF
+    then
+        echo "PASS: SVG artifacts contain no text elements and match their event sha256"
+    else
+        echo "FAIL: SVG artifact verification failed"
+        exit 1
+    fi
+    rm -f /tmp/rghello-normalized-records.txt /tmp/rghello-svg-check.svg
+    mc alias rm local 2>/dev/null || true
+
+    if [[ ${#PORTFORWARD_PIDS[@]} -gt 0 ]]; then
+        kill "${PORTFORWARD_PIDS[0]}" 2>/dev/null || true
+        PORTFORWARD_PIDS=()
+    fi
+else
+    echo "SKIP: docker not installed, skipping Milestone 5 artifact checks"
 fi
 echo ""
 

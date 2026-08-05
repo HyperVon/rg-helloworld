@@ -8,8 +8,8 @@ func TestVersionNonEmpty(t *testing.T) {
 	}
 }
 
-func TestVersionSkeleton(t *testing.T) {
-	if Version != "0.0.0-skeleton" {
-		t.Fatalf("Version = %q, want %q", Version, "0.0.0-skeleton")
+func TestVersionMilestone5(t *testing.T) {
+	if Version != "0.1.0-milestone5" {
+		t.Fatalf("Version = %q, want %q", Version, "0.1.0-milestone5")
 	}
 }

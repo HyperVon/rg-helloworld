@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: glyph-catalog
+  namespace: rube-goldberg
+  labels:
+    app: glyph-catalog
+    milestone: "4"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: glyph-catalog
+  template:
+    metadata:
+      labels:
+        app: glyph-catalog
+    spec:
+      containers:
+        - name: glyph-catalog
+          image: rghello-registry:5001/glyph-catalog:milestone5
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: GLYPH_CATALOG_PORT
+              value: "8080"
+            - name: GLYPH_CATALOG_DB_URL
+              value: jdbc:h2:file:/app/data/glyph-catalog
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: glyph-catalog
+  namespace: rube-goldberg
+spec:
+  selector:
+    app: glyph-catalog
+  ports:
+    - name: soap
+      port: 8080
+      targetPort: 8080

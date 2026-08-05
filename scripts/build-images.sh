@@ -1,16 +1,21 @@
-# Build and push Milestone 4 container images to the k3d local registry.
+# Build and push Milestone 5 container images to the k3d local registry.
 set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REGISTRY="localhost:5001"
-TAG="milestone4"
+TAG="milestone5"
 
-echo ">> Building orchestrator image (${REGISTRY}/run-orchestrator:${TAG})"
-docker build -f "${PROJECT_ROOT}/services/run-orchestrator-kotlin/Dockerfile" -t "${REGISTRY}/run-orchestrator:${TAG}" "${PROJECT_ROOT}"
-docker push "${REGISTRY}/run-orchestrator:${TAG}"
+build_and_push() {
+    local name="$1"
+    local dockerfile="$2"
+    echo ">> Building ${name} image (${REGISTRY}/${name}:${TAG})"
+    docker build -f "${PROJECT_ROOT}/${dockerfile}" -t "${REGISTRY}/${name}:${TAG}" "${PROJECT_ROOT}"
+    docker push "${REGISTRY}/${name}:${TAG}"
+}
 
-echo ">> Building glyph-catalog image (${REGISTRY}/glyph-catalog:${TAG})"
-docker build -f "${PROJECT_ROOT}/services/glyph-catalog-java/Dockerfile" -t "${REGISTRY}/glyph-catalog:${TAG}" "${PROJECT_ROOT}"
-docker push "${REGISTRY}/glyph-catalog:${TAG}"
+build_and_push run-orchestrator services/run-orchestrator-kotlin/Dockerfile
+build_and_push glyph-catalog services/glyph-catalog-java/Dockerfile
+build_and_push geometry-engine services/geometry-engine-cpp/Dockerfile
+build_and_push vector-normalizer services/vector-normalizer-go/Dockerfile
 
-echo ">> Images pushed to ${REGISTRY}"
+echo ">> Images pushed to ${REGISTRY} (${TAG})"

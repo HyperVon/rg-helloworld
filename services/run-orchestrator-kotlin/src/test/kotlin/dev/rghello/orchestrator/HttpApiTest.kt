@@ -14,6 +14,9 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
+import io.ktor.server.routing.get
+import io.ktor.server.routing.post
+import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
 import io.ktor.utils.io.readUTF8Line
 import kotlinx.coroutines.runBlocking
@@ -41,6 +44,7 @@ class HttpApiTest {
         Services.eventProducer = null
         Services.runStateStore = null
         Services.planner = FakeGlyphPlanner()
+        Services.stageMonitor = StageMonitor(StageProgressTracker(), StageEventValidator())
     }
 
     @AfterEach
@@ -48,6 +52,19 @@ class HttpApiTest {
         Services.eventProducer = null
         Services.runStateStore = null
         Services.planner = null
+        Services.stageMonitor = null
+    }
+
+    // Drives the stage fan-in for a "Hello World" run (11 positions) so the
+    // run completes through the real state machine.
+    private fun driveRunToCompletion(runId: String) {
+        val monitor = Services.stageMonitor ?: error("stageMonitor not wired")
+        for (index in 0..10) {
+            monitor.handle(Services.GEOMETRY_TOPIC, stageEvent(Services.GEOMETRY_TOPIC, runId, "glyph-$index", 10, 20))
+        }
+        for (index in 0..10) {
+            monitor.handle(Services.NORMALIZED_TOPIC, stageEvent(Services.NORMALIZED_TOPIC, runId, "glyph-$index", 20, 30))
+        }
     }
 
     private suspend fun io.ktor.client.HttpClient.createRun(
@@ -83,13 +100,19 @@ class HttpApiTest {
     fun createRunReturnsAcceptedWithLinks() =
         testApplication {
             application { module() }
+            Services.eventProducer = FakeEventProducer()
             val client = createClient {}
             val runId = client.createRun("Hello World")
 
             val response = client.get("/api/v1/runs/$runId")
             assertEquals(HttpStatusCode.OK, response.status)
             val statusBody = response.bodyAsText()
-            assertTrue(statusBody.contains("\"status\":\"SUCCEEDED\""), "body: $statusBody")
+            assertTrue(statusBody.contains("\"status\":\"GENERATING_GEOMETRY\""), "body: $statusBody")
+
+            driveRunToCompletion(runId)
+
+            val completed = client.get("/api/v1/runs/$runId")
+            assertTrue(completed.bodyAsText().contains("\"status\":\"SUCCEEDED\""), "body: ${completed.bodyAsText()}")
 
             val links = client.post("/api/v1/runs/$runId/cancel")
             assertEquals(HttpStatusCode.OK, links.status)
@@ -127,7 +150,7 @@ class HttpApiTest {
             val client = createClient {}
             val runId = client.createRun("Hello World")
 
-            assertEquals(RunStatus.SUCCEEDED, runs[runId]?.status)
+            assertEquals(RunStatus.GENERATING_GEOMETRY, runs[runId]?.status)
             assertEquals("Hello World", expectedTexts[runId])
             val blueprints = producer.sent.filter { it.first == Services.PLANNING_TOPIC }
             assertEquals(11, blueprints.size, "expected 11 blueprint events")
@@ -137,7 +160,16 @@ class HttpApiTest {
                 assertTrue(sent.third.contains("\"position\":$index"), "event $index: ${sent.third}")
             }
             assertEquals(0, blueprints.filter { it.third.contains("\"message\"") }.size)
+            assertEquals(
+                0,
+                producer.sent.filter { it.first == Services.RUN_EVENTS_TOPIC }.size,
+                "no final event before the normalized fan-in",
+            )
+
+            driveRunToCompletion(runId)
+
             assertTrue(producer.sent.any { it.first == Services.RUN_EVENTS_TOPIC })
+            assertEquals(RunStatus.SUCCEEDED, runs[runId]?.status)
         }
 
     @Test
@@ -252,6 +284,8 @@ class HttpApiTest {
                 val parsed = Json.parseToJsonElement(response.bodyAsText()).jsonObject
                 val runId = parsed.getValue("runId").jsonPrimitive.content
 
+                driveRunToCompletion(runId)
+
                 withTimeout(10_000) {
                     client.prepareRequest("$base/api/v1/runs/$runId/stream").execute { stream ->
                         val channel = stream.bodyAsChannel()
@@ -301,7 +335,7 @@ class HttpApiTest {
             assertEquals(HttpStatusCode.Accepted, response.status)
             val parsed = Json.parseToJsonElement(response.bodyAsText()).jsonObject
             val runId = parsed.getValue("runId").jsonPrimitive.content
-            assertEquals(RunStatus.SUCCEEDED, runs[runId]?.status)
+            assertEquals(RunStatus.GENERATING_GEOMETRY, runs[runId]?.status)
         }
 
     @Test
@@ -316,6 +350,23 @@ class HttpApiTest {
                     setBody("{invalid json")
                 }
             assertEquals(HttpStatusCode.InternalServerError, response.status)
+        }
+
+    @Test
+    fun handlersWithoutRunIdReturnBadRequest() =
+        testApplication {
+            application {
+                module()
+                routing {
+                    get("/noid/get") { handleGetRun(call) }
+                    get("/noid/stream") { handleSseStream(call) }
+                    post("/noid/cancel") { handleCancelRun(call) }
+                }
+            }
+            val client = createClient {}
+            assertEquals(HttpStatusCode.BadRequest, client.get("/noid/get").status)
+            assertEquals(HttpStatusCode.BadRequest, client.get("/noid/stream").status)
+            assertEquals(HttpStatusCode.BadRequest, client.post("/noid/cancel").status)
         }
 
     @Test

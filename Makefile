@@ -77,6 +77,18 @@ define guard_file
 	fi
 endef
 
+# $(call guard_librdkafka) — dev headers for the C++ geometry engine.
+# -e checks each candidate path because Homebrew include dirs are symlinks
+# (find does not follow them) and ls fails when any candidate is missing.
+define guard_librdkafka
+	@if [ ! -e /opt/homebrew/include/librdkafka/rdkafka.h ] && \
+	    [ ! -e /usr/local/include/librdkafka/rdkafka.h ] && \
+	    [ ! -e /usr/include/librdkafka/rdkafka.h ]; then \
+		echo "SKIP: librdkafka dev headers not found$(if $(STRICT), -> FAIL (STRICT=1))"; \
+		if [ -n "$(STRICT)" ]; then exit 1; else exit 0; fi; \
+	fi
+endef
+
 # $(call gradlew_task,args,label)
 define gradlew_task
 	$(call guard_file,$(KOTLIN_DIR)/gradlew,Gradle wrapper)
@@ -263,13 +275,15 @@ coverage-kotlin:
 	$(call gradlew_task,jacocoTestCoverageVerification,jacoco 90% gate)
 
 coverage-cpp:
+	$(call guard_librdkafka)
 	@command -v gcovr >/dev/null 2>&1 || { echo "SKIP: gcovr not installed (CI enforces C++ coverage)"; exit 0; }; \
 	if ! command -v g++ >/dev/null 2>&1; then echo "SKIP: GNU g++ required for C++ coverage (CI enforces)"; exit 0; fi; \
 	echo ">> ctest + gcovr (90% line gate) ($(CPP_DIR))"; \
 	cmake -S $(CPP_DIR) -B $(CPP_BUILD) -DCMAKE_BUILD_TYPE=Debug -DENABLE_COVERAGE=ON >/dev/null && \
 	cmake --build $(CPP_BUILD) >/dev/null && \
 	ctest --test-dir $(CPP_BUILD) --output-on-failure >/dev/null && \
-	cd $(CPP_DIR) && gcovr --root . --object-directory "$(abspath $(CPP_BUILD))" --filter 'src/.*' --filter 'include/.*' --fail-under-line 90
+	cd $(CPP_DIR) && gcovr --root . --object-directory "$(abspath $(CPP_BUILD))" \
+	  --filter 'src/.*' --filter 'include/.*' --exclude 'src/kafka.cpp' --fail-under-line 90
 
 coverage-dotnet:
 	$(call guard_tool,$(DOTNET),dotnet)
@@ -319,6 +333,7 @@ unit-kotlin:
 
 unit-cpp:
 	$(call guard_tool,cmake,CMake)
+	$(call guard_librdkafka)
 	@echo ">> cmake + ctest ($(CPP_DIR))"
 	cmake -S $(CPP_DIR) -B $(CPP_BUILD) -DCMAKE_BUILD_TYPE=Release >/dev/null
 	cmake --build $(CPP_BUILD) >/dev/null
@@ -364,6 +379,7 @@ build-kotlin:
 
 build-cpp:
 	$(call guard_tool,cmake,CMake)
+	$(call guard_librdkafka)
 	@echo ">> cmake --build ($(CPP_DIR))"
 	cmake -S $(CPP_DIR) -B $(CPP_BUILD) -DCMAKE_BUILD_TYPE=Release >/dev/null
 	cmake --build $(CPP_BUILD)

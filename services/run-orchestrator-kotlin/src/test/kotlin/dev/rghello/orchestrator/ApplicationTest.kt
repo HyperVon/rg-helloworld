@@ -53,7 +53,7 @@ class ApplicationTest {
         val code = run(PrintStream(out, true, StandardCharsets.UTF_8), PrintStream(err, true, StandardCharsets.UTF_8), arrayOf("version"))
 
         assertEquals(0, code)
-        assertEquals("run-orchestrator 0.2.0-milestone4\n", out.toString(StandardCharsets.UTF_8))
+        assertEquals("run-orchestrator 0.3.0-milestone5\n", out.toString(StandardCharsets.UTF_8))
         assertEquals("", err.toString(StandardCharsets.UTF_8))
     }
 
@@ -64,19 +64,32 @@ class ApplicationTest {
             run(PrintStream(out, true, StandardCharsets.UTF_8), PrintStream(err, true, StandardCharsets.UTF_8), arrayOf("version", "extra"))
 
         assertEquals(0, code)
-        assertEquals("run-orchestrator 0.2.0-milestone4\n", out.toString(StandardCharsets.UTF_8))
+        assertEquals("run-orchestrator 0.3.0-milestone5\n", out.toString(StandardCharsets.UTF_8))
         assertEquals("", err.toString(StandardCharsets.UTF_8))
     }
 
     @Test
-    fun runStateMachineTransitionsOnPlannedAndFailure() {
+    fun runStateMachineTransitionsThroughStages() {
         assertEquals(
-            RunStatus.SUCCEEDED,
+            RunStatus.GENERATING_GEOMETRY,
             RunStateMachine.transition(RunStatus.PLANNING, RunEvent.PLANNED),
         )
         assertEquals(
+            RunStatus.NORMALIZING,
+            RunStateMachine.transition(RunStatus.GENERATING_GEOMETRY, RunEvent.GEOMETRY_COMPLETE),
+        )
+        assertEquals(
             RunStatus.SUCCEEDED,
-            RunStateMachine.transition(RunStatus.SUCCEEDED, RunEvent.PLANNED),
+            RunStateMachine.transition(RunStatus.NORMALIZING, RunEvent.NORMALIZED_COMPLETE),
+        )
+        // Events out of order are ignored (no backward transitions).
+        assertEquals(
+            RunStatus.NORMALIZING,
+            RunStateMachine.transition(RunStatus.NORMALIZING, RunEvent.PLANNED),
+        )
+        assertEquals(
+            RunStatus.SUCCEEDED,
+            RunStateMachine.transition(RunStatus.SUCCEEDED, RunEvent.NORMALIZED_COMPLETE),
         )
         assertEquals(
             RunStatus.FAILED,
@@ -109,7 +122,7 @@ class ApplicationTest {
         val runState =
             RunState(
                 runId = runId,
-                status = RunStatus.PLANNING,
+                status = RunStatus.NORMALIZING,
                 message = "Hello World",
                 idempotencyKey = "key",
                 createdAt = java.time.Instant.now(),
@@ -137,6 +150,51 @@ class ApplicationTest {
 
         val broadcast = sseChannel.tryReceive().getOrNull()
         assertTrue(broadcast != null && broadcast.contains("SUCCEEDED"))
+    }
+
+    @Test
+    fun completeRunOnlySucceedsFromNormalizing() {
+        val runId = UUID.randomUUID().toString()
+        runs[runId] =
+            RunState(
+                runId = runId,
+                status = RunStatus.GENERATING_GEOMETRY,
+                message = "Hello World",
+                idempotencyKey = "key",
+                createdAt = java.time.Instant.now(),
+            )
+        val producer = FakeEventProducer()
+        Services.eventProducer = producer
+
+        completeRun(runId, "Hello World")
+
+        assertEquals(RunStatus.GENERATING_GEOMETRY, runs[runId]?.status)
+        assertTrue(producer.sent.isEmpty(), "no final event before the normalized fan-in completes")
+    }
+
+    @Test
+    fun transitionRunMovesThroughStagesAndBroadcasts() {
+        val runId = UUID.randomUUID().toString()
+        runs[runId] =
+            RunState(
+                runId = runId,
+                status = RunStatus.PLANNING,
+                message = "Hello World",
+                idempotencyKey = "key",
+                createdAt = java.time.Instant.now(),
+            )
+        val store = FakeRunStateStore()
+        Services.runStateStore = store
+        val sseChannel = Channel<String>(1)
+        sseClients[runId] = CopyOnWriteArrayList(listOf(SseClient(sseChannel)))
+
+        transitionRun(runId, RunEvent.PLANNED)
+        assertEquals(RunStatus.GENERATING_GEOMETRY, runs[runId]?.status)
+        assertEquals("GENERATING_GEOMETRY", store.status)
+        assertTrue(sseChannel.tryReceive().getOrNull()?.contains("GENERATING_GEOMETRY") == true)
+
+        transitionRun(runId, RunEvent.PLANNED)
+        assertEquals(RunStatus.GENERATING_GEOMETRY, runs[runId]?.status, "redundant events are ignored")
     }
 
     @Test
@@ -344,6 +402,74 @@ class ApplicationTest {
         assertTrue(isValidUtf8(""))
         assertFalse(isValidUtf8("\uD800"))
     }
+
+    @Test
+    fun consumerPropertiesConfigureKafkaConsumer() {
+        val props = consumerProperties("kafka:9092")
+        assertEquals("kafka:9092", props.getProperty("bootstrap.servers"))
+        assertEquals("run-orchestrator", props.getProperty("group.id"))
+        assertEquals("earliest", props.getProperty("auto.offset.reset"))
+        assertEquals("true", props.getProperty("enable.auto.commit"))
+        assertTrue(props.getProperty("key.deserializer").contains("StringDeserializer"))
+        assertTrue(props.getProperty("value.deserializer").contains("StringDeserializer"))
+    }
+
+    @Test
+    fun servicesInitWiresStageMonitorAndFactories() {
+        try {
+            Services.initKafka { FakeEventProducer() }
+            Services.initRedis { FakeRunStateStore() }
+            Services.initStageMonitor()
+            assertTrue(Services.eventProducer is FakeEventProducer)
+            assertTrue(Services.runStateStore is FakeRunStateStore)
+            assertTrue(Services.stageMonitor != null)
+        } finally {
+            Services.eventProducer = null
+            Services.runStateStore = null
+            Services.stageMonitor = null
+        }
+    }
+
+    @Test
+    fun startStageConsumerIsNoopWithoutMonitor() {
+        Services.stageMonitor = null
+        startStageConsumer()
+        assertTrue(Services.stageMonitor == null)
+    }
+
+    @Test
+    fun createRunRequestDefaultsOptions() {
+        val request = CreateRunRequest(message = "Hello World")
+        assertEquals(RunOptions(), request.options)
+    }
+
+    @Test
+    fun writeSseLoopWithoutReplayEmitsHeartbeatOnly() =
+        runBlocking {
+            val out = ByteChannel()
+            val events = Channel<String>(Channel.BUFFERED)
+            val job =
+                launch {
+                    try {
+                        out.writeSseLoop(events)
+                    } catch (_: CancellationException) {
+                    } finally {
+                        out.close()
+                    }
+                }
+            events.cancel()
+            job.join()
+
+            val text =
+                buildString {
+                    while (true) {
+                        val line = out.readUTF8Line() ?: break
+                        append(line).append('\n')
+                    }
+                }
+            assertTrue(text.contains(": connected"), "text: $text")
+            assertFalse(text.contains("data: "), "no replay expected: $text")
+        }
 }
 
 class FakeEventProducer : EventProducer {

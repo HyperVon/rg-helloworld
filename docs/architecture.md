@@ -1116,6 +1116,7 @@ Use:
 | --- | --- | --- |
 | `rg.glyph-blueprints.v1` | Orchestrator | C++ geometry engine |
 | `rg.geometry-expanded.v1` | C++ geometry engine | Go normalizer |
+| `rg.glyph-normalized.v1` | Go normalizer | Orchestrator (fan-in) |
 | `rg.glyph-rasterized.v1` | Go normalizer | Python image pipeline |
 | `rg.phrase-composition.v1` | Orchestrator | Python image pipeline |
 | `rg.phrase-composed.v1` | Python image pipeline | Python preprocessing consumer |

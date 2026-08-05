@@ -8,8 +8,12 @@ int main() {
     std::cerr << "version must not be empty\n";
     return 1;
   }
-  if (geometry_engine::kVersion != std::string_view{"0.0.0-skeleton"}) {
+  if (geometry_engine::kVersion != std::string_view{"0.1.0-milestone5"}) {
     std::cerr << "unexpected version: " << geometry_engine::kVersion << '\n';
+    return 1;
+  }
+  if (geometry_engine::kBanner != std::string_view{"geometry-engine 0.1.0-milestone5"}) {
+    std::cerr << "unexpected banner: " << geometry_engine::kBanner << '\n';
     return 1;
   }
   return 0;

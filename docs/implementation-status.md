@@ -12,8 +12,8 @@
 | 1 | Contracts (OpenAPI, AsyncAPI, JSON Schema, WSDL/XSD, protobuf) | **COMPLETE** |
 | 2 | Local platform (k3d, Terraform, PostgreSQL, Kafka KRaft, Redis, MinIO) | **COMPLETE** |
 | 3 | Thin vertical slice (CLI → REST → Kafka → SSE) | **COMPLETE** |
-| 4 | SOAP planning (Java glyph catalog, `RUBE_SIMPLEX_V1`) | **IN PROGRESS** |
-| 5 | Geometry and vector artifacts (C++, Go) | not started |
+| 4 | SOAP planning (Java glyph catalog, `RUBE_SIMPLEX_V1`) | **COMPLETE** |
+| 5 | Geometry and vector artifacts (C++, Go) | **COMPLETE** |
 | 6 | gRPC rasterization (C#, SkiaSharp) | not started |
 | 7 | Composition and preprocessing (Python) | not started |
 | 8 | OCR and adjudication (Node.js, Ruby) | not started |
@@ -435,3 +435,142 @@ assertions surface real PASS/FAIL output.
 - The section 7.4 runtime Kafka-event validator is deferred to the milestone
   that adds downstream consumers; the static schema scan and orchestrator
   unit tests already enforce the prohibited-field boundary.
+
+---
+
+## Milestone 5 — Geometry and vector artifacts
+
+### Scope
+
+- Implement the C++ geometry engine (`services/geometry-engine-cpp`) as a
+  librdkafka consumer of `rg.glyph-blueprints.v1` (section 29, Stage 2):
+  - Convert abstract primitives (POLYLINE, POINT, ARC) into explicit line
+    segments; approximate arcs with configurable subdivisions
+  - Validate finite coordinates; remove zero-length segments; merge exactly
+    collinear adjacent segments
+  - Calculate bounding box, segment count, total path length, intersection
+    count, and a deterministic geometry SHA-256
+  - Emit `GAP_GEOMETRY` layout records for gap blueprints (advance width,
+    left/right bearing — not skipped)
+  - Write blueprint snapshot + JSON geometry artifact to MinIO with
+    deterministic object keys (operation ID embedded per section 13.5)
+  - Publish `GeometryExpanded` CloudEvents to `rg.geometry-expanded.v1`
+    (partition key `runId:glyphInstanceId`, idempotent operation ID)
+- Implement the Go vector-normalizer (`services/vector-normalizer-go`) as a
+  franz-go consumer of `rg.geometry-expanded.v1` (Stage 3):
+  - Translate into positive canvas space, scale into a standard em-square
+    preserving aspect ratio, align to a common baseline, apply side bearings
+  - Quantize to fixed precision; generate deterministic SVG (polyline only,
+    no text elements) and its SHA-256
+  - Normalize gap geometry into layout metadata (no rasterizer involvement)
+  - Store normalized JSON geometry + SVG + layout metadata in MinIO
+  - Publish `VectorNormalized` CloudEvents to `rg.glyph-normalized.v1`
+    (partition key `runId:glyphInstanceId`, idempotent operation ID)
+- Orchestrator (Kotlin) stage progression:
+  - Runs move PLANNING → GENERATING_GEOMETRY → NORMALIZING → SUCCEEDED;
+    `handleCreateRun` publishes blueprints and enters GENERATING_GEOMETRY
+    instead of completing immediately
+  - Kafka consumer on `rg.geometry-expanded.v1` + `rg.glyph-normalized.v1`
+    with per-run fan-in counting (idempotent sets), maturity validation
+    (10→20, 20→30; backward/equal-rank events fail the run, section 2.1),
+    and the section 7.4 runtime prohibited-field validator (rejects
+    `message`, `targetText`, `expectedCharacter`, `unicodeCodePoint`,
+    `characterName`, `glyphLabel`)
+  - Run completes from the private expected-text store only after all
+    positions are normalized (fan-in), preserving `rghello run` output
+- Deploy geometry-engine and vector-normalizer to Kubernetes
+  (`infra/k8s/milestone5/`), extend `scripts/build-images.sh` (milestone5
+  tag), and extend `scripts/smoke-test.sh` with milestone-5 acceptance
+  checks
+- Host-level integration tests: one-shot (`--once`) modes that transform a
+  blueprint CloudEvent into geometry and normalized events without Kafka or
+  MinIO, so `make integration` can verify the artifact pipeline, schema
+  conformance, determinism, and maturity increases in CI
+- Pin new dependencies in `versions.env` (librdkafka, franz-go, minio-go) and
+  update CI to install `librdkafka-dev` for the C++ job
+
+### Tasks
+
+- [x] Implement C++ JSON parser/serializer (canonical key ordering) with tests
+- [x] Implement C++ SHA-256 (FIPS 180-4) with NIST known-answer tests
+- [x] Implement geometry expansion (POLYLINE/POINT/ARC, zero-length removal,
+      collinear merge, finite validation, bbox/length/intersections/checksum)
+- [x] Implement MinIO S3 client (AWS SigV4 + POSIX-socket HTTP PUT) with tests
+- [x] Implement librdkafka consumer/producer wrapper and worker loop
+- [x] Add `--once` one-shot mode and version banner; CMake library layout with
+      90% coverage gate support
+- [x] Implement Go normalization (em-square, baseline, bearings, quantization)
+- [x] Implement deterministic SVG generation + SHA-256 (no text elements)
+- [x] Implement Go MinIO store (minio-go), franz-go transport, worker loop
+- [x] Add Go `--once` mode; pin franz-go and minio-go in go.mod/go.sum
+- [x] Orchestrator: stage tracker + runtime validator + Kafka consumer with
+      fan-in; update HttpApiTest to the new state flow
+- [x] Add orchestrator tests: maturity violation fails run; prohibited-field
+      event (e.g. `{"expectedCharacter":"H"}`) fails validation
+- [x] Dockerfiles for both workers; `infra/k8s/milestone5/` manifests
+- [x] Extend build-images.sh (milestone5 tag) and smoke-test.sh (geometry +
+      normalized event counts, maturity, SVG no-text, MinIO artifacts)
+- [x] Integration harness: blueprint fixture + `--once` pipeline validation
+      against the event schemas
+- [x] Pin librdkafka (and libcurl/OpenSSL equivalents) in versions.env and CI
+- [x] Update docs: ADR-0007 (topics + artifact keys), service READMEs,
+      verification log
+
+### Acceptance conditions
+
+- Every drawable glyph blueprint produces a deterministic SVG (identical
+  input → byte-identical SVG; verified by unit, integration, and cluster
+  smoke tests).
+- Generated SVG contains no text elements (unit tests assert the generator
+  emits only polyline; smoke test greps a stored SVG artifact).
+- Every geometry artifact increases maturity: blueprint 10 → geometry 20 →
+  normalized 30, with the orchestrator rejecting backward/equal-rank events.
+- Eleven ordered `rg.geometry-expanded.v1` records (positions 0..10, gap at
+  position 5) and eleven `rg.glyph-normalized.v1` records are produced for
+  `"Hello World"` in the cluster; events contain no prohibited fields.
+- `rghello run` still prints `Hello World` (run completes after the
+  normalized fan-in, from the private expected-text store).
+- `make format`, `make lint`, `make unit`, `make coverage`, `make build`
+  (STRICT=1), `make integration`, and `make e2e` all pass.
+
+### Verification log
+
+| Date | Check | Result |
+| --- | --- | --- |
+| 2026-08-05 | C++ `make unit-cpp` | PASS (ctest 7/7: json, sha256, geometry, s3, service, version, banner) |
+| 2026-08-05 | C++ `make format-cpp` / `make lint-cpp` | PASS (clang-format --dry-run --Werror clean) |
+| 2026-08-05 | C++ Docker build (`geometry-engine:milestone5`) | PASS (gcc:13.2-bookworm builder + runtime; librdkafka-dev 2.0.2-1 arm64 pin; gcovr excludes src/kafka.cpp) |
+| 2026-08-05 | Go `make unit-go` | PASS (all 7 packages; kfake + kadm + minio-go; kfake has no auto-create, explicit CreateTopics) |
+| 2026-08-05 | Go `make coverage-go` | PASS (module total 90.9% >= 90%) |
+| 2026-08-05 | Kotlin `make unit-kotlin` | PASS (stage tracker PLANNING -> GENERATING_GEOMETRY -> NORMALIZING -> SUCCEEDED; maturity violation fails run; prohibited-field validator) |
+| 2026-08-05 | `make format` / `make lint STRICT=1` | PASS (all languages; `-Werror` clean) |
+| 2026-08-05 | `make unit` / `make coverage` / `make build` (STRICT=1) | PASS (cmd/rghello 91.5%, vector-normalizer 90.9%; Java/Kotlin/dotnet/python/node/ruby gates >= 90%; C++ gcovr + Rust llvm-cov skipped locally, CI enforces) |
+| 2026-08-05 | `make contracts` / `make contract-test` | PASS (schemas unchanged; prohibited-field scans green) |
+| 2026-08-05 | `make integration` | PASS (geometry-engine --once deterministic; maturity 10 -> 20; vector-normalizer --once deterministic; maturity 20 -> 30; events validate against schemas; no prohibited fields; SVG has no text elements; SVG sha256 matches event svgSha256; 11 banners) |
+| 2026-08-05 | `make e2e` (cluster rube-goldberg) | PASS (all gates + integration; smoke Tests 1-6: Kafka/MinIO/PostgreSQL/Redis round trips, `rghello run` printed Hello World with 11 ordered blueprints + gap, eleven geometry-expanded + gap records mature 10 -> 20, eleven glyph-normalized records mature 20 -> 30, 88 geometry + 88 normalized + 88 SVG artifacts in MinIO, SVG no text elements and sha256 match) |
+
+E2E debugging notes (2026-08-05): the geometry-engine image initially pinned
+`librdkafka-dev=2.2.0-1`, which Debian bookworm arm64 does not ship (candidate
+2.0.2-1); the pin moved to versions.env as `LIBRDKAFKA_DEBIAN_VERSION`. A
+second issue: the builder image was GCC 13 but the runtime stage was
+`debian:bookworm-slim` (GCC 12 libstdc++), so the binary failed at startup
+with `GLIBCXX_3.4.32 not found`; the runtime stage now reuses
+`gcc:13.2-bookworm`. The smoke test's maturity checks originally used
+adjacency greps (`"inputMaturity":10,"outputMaturity":20`) but live events are
+compact single-line JSON with non-adjacent fields; both greps now use
+`grep -qE '"inputMaturity":10,.*"outputMaturity":20'` (and 20 -> 30 for
+normalized). The k3d node hit DiskPressure during image builds (Docker VM disk
+94% full), evicting workloads; `docker image prune -af` plus
+`docker restart k3d-rube-goldberg-server-0` recovered the cluster, and stale
+evicted pods were force-deleted so `wait-ready.sh` sees only live pods.
+
+### Milestone 5 limitations
+
+- Runs still complete from the orchestrator's private expected-text store;
+  OCR-derived assembly replaces this in Milestone 9.
+- PostgreSQL-backed step rows and the outbox (sections 17.4/17.5) are not yet
+  implemented; fan-in uses in-memory idempotent sets in the orchestrator.
+- The orchestrator does not yet invoke the C# rasterizer;
+  `rg.glyph-rasterized.v1` arrives in Milestone 6.
+- Retry/timeout policy for stuck stages lands with the failure-policy
+  milestone; a run whose worker events never arrive stays in stage.

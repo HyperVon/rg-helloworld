@@ -36,7 +36,7 @@ class ApplicationMainTest {
         exit = { captured.set(it) }
         main(arrayOf("version"))
         assertEquals(0, captured.get())
-        assertEquals("run-orchestrator 0.2.0-milestone4\n", outBuf.toString(StandardCharsets.UTF_8))
+        assertEquals("run-orchestrator 0.3.0-milestone5\n", outBuf.toString(StandardCharsets.UTF_8))
     }
 
     @Test
@@ -45,6 +45,6 @@ class ApplicationMainTest {
         exit = { captured.set(it) }
         main(arrayOf("version", "extra"))
         assertEquals(0, captured.get())
-        assertEquals("run-orchestrator 0.2.0-milestone4\n", outBuf.toString(StandardCharsets.UTF_8))
+        assertEquals("run-orchestrator 0.3.0-milestone5\n", outBuf.toString(StandardCharsets.UTF_8))
     }
 }

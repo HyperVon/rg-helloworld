@@ -36,8 +36,10 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
+import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
 import java.io.PrintStream
 import java.nio.CharBuffer
@@ -92,12 +94,16 @@ data class CloudEvent(
 
 enum class RunStatus {
     PLANNING,
+    GENERATING_GEOMETRY,
+    NORMALIZING,
     SUCCEEDED,
     FAILED,
 }
 
 enum class RunEvent {
     PLANNED,
+    GEOMETRY_COMPLETE,
+    NORMALIZED_COMPLETE,
     FAILURE_REPORTED,
 }
 
@@ -107,8 +113,21 @@ object RunStateMachine {
         event: RunEvent,
     ): RunStatus =
         when (event) {
-            RunEvent.PLANNED -> if (status == RunStatus.PLANNING) RunStatus.SUCCEEDED else status
-            RunEvent.FAILURE_REPORTED -> RunStatus.FAILED
+            RunEvent.PLANNED -> {
+                if (status == RunStatus.PLANNING) RunStatus.GENERATING_GEOMETRY else status
+            }
+
+            RunEvent.GEOMETRY_COMPLETE -> {
+                if (status == RunStatus.GENERATING_GEOMETRY) RunStatus.NORMALIZING else status
+            }
+
+            RunEvent.NORMALIZED_COMPLETE -> {
+                if (status == RunStatus.NORMALIZING) RunStatus.SUCCEEDED else status
+            }
+
+            RunEvent.FAILURE_REPORTED -> {
+                RunStatus.FAILED
+            }
         }
 }
 
@@ -188,6 +207,8 @@ fun producerProperties(bootstrap: String): Properties =
 
 object Services {
     const val PLANNING_TOPIC = "rg.glyph-blueprints.v1"
+    const val GEOMETRY_TOPIC = "rg.geometry-expanded.v1"
+    const val NORMALIZED_TOPIC = "rg.glyph-normalized.v1"
     const val RUN_EVENTS_TOPIC = "rg.run-events.v1"
     const val ALPHABET = "RUBE_SIMPLEX_V1"
 
@@ -202,6 +223,7 @@ object Services {
     var eventProducer: EventProducer? = null
     var runStateStore: RunStateStore? = null
     var planner: GlyphPlanner? = null
+    var stageMonitor: StageMonitor? = null
 
     fun initKafka(
         producerFactory: (String) -> EventProducer = { bootstrap ->
@@ -218,6 +240,10 @@ object Services {
         },
     ) {
         runStateStore = storeFactory(redisUrl())
+    }
+
+    fun initStageMonitor(monitorFactory: () -> StageMonitor = { StageMonitor(StageProgressTracker(), StageEventValidator()) }) {
+        stageMonitor = monitorFactory()
     }
 }
 
@@ -257,11 +283,40 @@ fun runServer(
     System.setErr(stderr)
     Services.initKafka()
     Services.initRedis()
+    Services.initStageMonitor()
     Services.planner = GlyphCatalogClient(Services.glyphCatalogUrl())
+
+    startStageConsumer()
 
     buildServer(Services.port()).start(wait = true)
     return 0
 }
+
+fun startStageConsumer() {
+    val monitor = Services.stageMonitor ?: return
+    val consumer =
+        try {
+            KafkaConsumer<String, String>(consumerProperties(Services.kafkaBootstrap()))
+        } catch (e: Exception) {
+            System.err.println("stage consumer init failed: ${e.message}")
+            return
+        }
+    consumer.subscribe(listOf(Services.GEOMETRY_TOPIC, Services.NORMALIZED_TOPIC))
+    val thread = Thread { StageConsumer(consumer, monitor).runForever() }
+    thread.isDaemon = true
+    thread.name = "stage-consumer"
+    thread.start()
+}
+
+fun consumerProperties(bootstrap: String): Properties =
+    Properties().apply {
+        setProperty("bootstrap.servers", bootstrap)
+        setProperty("key.deserializer", StringDeserializer::class.java.name)
+        setProperty("value.deserializer", StringDeserializer::class.java.name)
+        setProperty("group.id", "run-orchestrator")
+        setProperty("auto.offset.reset", "earliest")
+        setProperty("enable.auto.commit", "true")
+    }
 
 fun buildServer(port: Int): EmbeddedServer<*, *> =
     embeddedServer(Netty, port = port, host = "0.0.0.0") {
@@ -397,19 +452,33 @@ suspend fun handleCreateRun(call: ApplicationCall) {
             )
         }
         broadcastEvent(runId, eventMap("PLANNED", "SOAP plan produced ${plan.glyphs.size} glyph blueprints"))
+        Services.stageMonitor?.registerRun(runId, plan.glyphs.size)
+        transitionRun(runId, RunEvent.PLANNED)
     }
-
-    completeRun(runId, expectedTexts[runId] ?: "")
 
     call.respond(
         HttpStatusCode.Accepted,
         RunResponse(
             runId = runId,
-            status = RunStatus.SUCCEEDED.name,
+            status = runs[runId]?.status?.name ?: RunStatus.GENERATING_GEOMETRY.name,
             createdAt = runState.createdAt.toString(),
             links = buildLinks(runId),
         ),
     )
+}
+
+fun transitionRun(
+    runId: String,
+    event: RunEvent,
+) {
+    val state = runs[runId] ?: return
+    val next = RunStateMachine.transition(state.status, event)
+    if (next == state.status) {
+        return
+    }
+    runs[runId] = state.copy(status = next)
+    Services.runStateStore?.setRunStatus(runId, next)
+    broadcastEvent(runId, eventMap(next.name, "Run moved to ${next.name}"))
 }
 
 fun completeRun(
@@ -417,7 +486,10 @@ fun completeRun(
     assembledText: String,
 ) {
     val state = runs[runId] ?: return
-    val succeeded = state.copy(status = RunStateMachine.transition(state.status, RunEvent.PLANNED))
+    val succeeded = state.copy(status = RunStateMachine.transition(state.status, RunEvent.NORMALIZED_COMPLETE))
+    if (succeeded.status == state.status) {
+        return
+    }
     runs[runId] = succeeded
     Services.runStateStore?.setRunResult(runId, assembledText)
     Services.runStateStore?.setRunStatus(runId, succeeded.status)

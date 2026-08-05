@@ -1,0 +1,127 @@
+#include <iostream>
+#include <string>
+
+#include "geometry_engine/json.hpp"
+
+namespace {
+
+int failures = 0;
+
+void expect(bool condition, const std::string& message) {
+  if (!condition) {
+    std::cerr << "FAIL: " << message << '\n';
+    ++failures;
+  }
+}
+
+void expectEq(const std::string& actual, const std::string& expected, const std::string& message) {
+  if (actual != expected) {
+    std::cerr << "FAIL: " << message << "\n  expected: " << expected << "\n  actual:   " << actual
+              << '\n';
+    ++failures;
+  }
+}
+
+void expectThrows(const std::string& text) {
+  try {
+    rghello::Json::parse(text);
+    std::cerr << "FAIL: expected parse error for: " << text << '\n';
+    ++failures;
+  } catch (const rghello::JsonError&) {
+  }
+}
+
+}  // namespace
+
+int main() {
+  // Round trip of a nested document.
+  rghello::Json doc = rghello::Json::object();
+  doc.objectItems()["name"] = rghello::Json::str("H");
+  doc.objectItems()["count"] = rghello::Json::number(11.0);
+  doc.objectItems()["ratio"] = rghello::Json::number(0.5);
+  doc.objectItems()["enabled"] = rghello::Json::boolean(true);
+  doc.objectItems()["missing"] = rghello::Json::null();
+  rghello::Json items = rghello::Json::array();
+  items.arrayItems().push_back(rghello::Json::number(1.0));
+  items.arrayItems().push_back(rghello::Json::str("two"));
+  doc.objectItems()["items"] = items;
+
+  std::string serialized = doc.serialize();
+  expectEq(serialized,
+           "{\"count\":11,\"enabled\":true,\"items\":[1,\"two\"],\"missing\":null,\"name\":\"H\","
+           "\"ratio\":0.5}",
+           "canonical serialization with sorted keys");
+
+  rghello::Json reparsed = rghello::Json::parse(serialized);
+  expectEq(reparsed.serialize(), serialized, "parse round trip");
+  expect(reparsed.at("name").isString() && reparsed.at("name").asString() == "H", "string value");
+  expect(reparsed.at("count").asInt64() == 11, "integer value");
+  expect(reparsed.at("ratio").asNumber() == 0.5, "fractional value");
+  expect(reparsed.at("enabled").asBool(), "boolean value");
+  expect(reparsed.at("missing").isNull(), "null value");
+  expect(reparsed.at("absent").isNull(), "missing key reads as null");
+  expect(reparsed.at("items").arrayItems().size() == 2, "array size");
+
+  // Key ordering is canonical regardless of input order.
+  std::string reordered = "{\"z\":1,\"a\":{\"y\":2,\"b\":3},\"m\":[1,2]}";
+  expectEq(rghello::Json::parse(reordered).serialize(),
+           "{\"a\":{\"b\":3,\"y\":2},\"m\":[1,2],\"z\":1}", "nested canonical ordering");
+
+  // String escaping round trip.
+  rghello::Json escaped = rghello::Json::str("a\"b\\c\nd\te\u0001f");
+  rghello::Json escapedBack = rghello::Json::parse(escaped.serialize());
+  expectEq(escapedBack.asString(), "a\"b\\c\nd\te\u0001f", "escape round trip");
+
+  // Unicode escape parsing.
+  rghello::Json unicode = rghello::Json::parse("\"\\u0041\\u00e9\"");
+  expectEq(unicode.asString(), "A\u00e9", "unicode escapes");
+
+  // Negative and exponent numbers.
+  expectEq(rghello::Json::parse("-2.5").serialize(), "-2.5", "negative number");
+  expectEq(rghello::Json::parse("1e3").serialize(), "1000", "exponent number");
+
+  // Empty containers.
+  expectEq(rghello::Json::parse("[]").serialize(), "[]", "empty array");
+  expectEq(rghello::Json::parse("{}").serialize(), "{}", "empty object");
+
+  // Malformed input.
+  expectThrows("{");
+  expectThrows("[1,]");
+  expectThrows("{\"a\":}");
+  expectThrows("{\"a\" 1}");
+  expectThrows("nul");
+  expectThrows("{\"a\":1} trailing");
+  expectThrows("\"unterminated");
+  expectThrows("{\"a\":\"\\x\"}");
+
+  // Serialization errors: NaN must not serialize.
+  rghello::Json nan = rghello::Json::number(0.0);
+  nan.objectItems()["x"] = rghello::Json::number(0.0 / 0.0);
+  nan = rghello::Json::object();
+  nan.objectItems()["x"] = rghello::Json::number(0.0 / 0.0);
+  try {
+    nan.serialize();
+    std::cerr << "FAIL: expected NaN serialization error\n";
+    ++failures;
+  } catch (const rghello::JsonError&) {
+  }
+
+  // Pretty output.
+  std::string pretty = doc.pretty();
+  expect(pretty.find('\n') != std::string::npos, "pretty output is multiline");
+
+  // Type accessor errors.
+  try {
+    doc.at("name").asNumber();
+    std::cerr << "FAIL: expected type error reading string as number\n";
+    ++failures;
+  } catch (const rghello::JsonError&) {
+  }
+
+  if (failures == 0) {
+    std::cout << "json tests passed\n";
+    return 0;
+  }
+  std::cerr << failures << " json test(s) failed\n";
+  return 1;
+}

@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: geometry-engine
+  namespace: rube-goldberg
+  labels:
+    app: geometry-engine
+    milestone: "5"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: geometry-engine
+  template:
+    metadata:
+      labels:
+        app: geometry-engine
+    spec:
+      containers:
+        - name: geometry-engine
+          image: rghello-registry:5001/geometry-engine:milestone5
+          imagePullPolicy: Always
+          env:
+            - name: KAFKA_BOOTSTRAP
+              value: kafka.rube-goldberg.svc.cluster.local:9092
+            - name: KAFKA_GROUP_ID
+              value: geometry-engine
+            - name: GEOMETRY_INPUT_TOPIC
+              value: rg.glyph-blueprints.v1
+            - name: GEOMETRY_OUTPUT_TOPIC
+              value: rg.geometry-expanded.v1
+            - name: MINIO_ENDPOINT
+              value: http://minio.rube-goldberg.svc.cluster.local:9000
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: root-user
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: root-password
+            - name: MINIO_BUCKET
+              value: rube-goldberg-artifacts
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
