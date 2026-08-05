@@ -4,11 +4,25 @@ mode: subagent
 steps: 60
 color: "#4F46E5"
 permission:
-  bash:
-    "make *": allow
-    "*": ask
-  edit: allow
   read: allow
+  edit: allow
+  glob: allow
+  grep: allow
+  list: allow
+  bash: allow
+  task: allow
+  webfetch: allow
+  websearch: allow
+  semantic_search: allow
+  kilo_memory_save: allow
+  kilo_memory_recall: allow
+  lsp: allow
+  skill: allow
+  external_directory: allow
+  todowrite: allow
+  todoread: allow
+  question: allow
+  doom_loop: allow
 ---
 You implement exactly one milestone of the Rube Goldberg Hello World
 repository, in strict order, without starting the next one.

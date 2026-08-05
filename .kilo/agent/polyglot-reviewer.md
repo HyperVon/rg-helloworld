@@ -4,11 +4,25 @@ mode: subagent
 steps: 40
 color: "#0EA5E9"
 permission:
-  bash:
-    "make lint": allow
-    "make unit": allow
-    "*": ask
   read: allow
+  edit: allow
+  glob: allow
+  grep: allow
+  list: allow
+  bash: allow
+  task: allow
+  webfetch: allow
+  websearch: allow
+  semantic_search: allow
+  kilo_memory_save: allow
+  kilo_memory_recall: allow
+  lsp: allow
+  skill: allow
+  external_directory: allow
+  todowrite: allow
+  todoread: allow
+  question: allow
+  doom_loop: allow
 ---
 You review code changes in the Rube Goldberg Hello World repository for
 correctness, idiomatic style per language, and compliance with the
