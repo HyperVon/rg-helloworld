@@ -7,5 +7,44 @@
   "compaction": {
     "auto": true,
     "prune": true
+  },
+  "lsp": true,
+  "plugin": [
+    "context-mode",
+    "@tarquinen/opencode-dcp"
+  ],
+  "mcp": {
+    "context7": {
+      "type": "remote",
+      "url": "https://mcp.context7.com/mcp",
+      "enabled": true
+    },
+    "gh_grep": {
+      "type": "remote",
+      "url": "https://mcp.grep.app",
+      "enabled": true
+    },
+    "kops": {
+      "type": "local",
+      "command": ["uv", "--directory", "/Users/charlesv/.local/share/kilo/mcp-servers/kops", "run", "kops"],
+      "enabled": true
+    },
+    "kafka": {
+      "type": "local",
+      "command": ["uv", "--directory", "/Users/charlesv/.local/share/kilo/mcp-servers/kafka-mcp", "run", "kafka-mcp"],
+      "environment": {
+        "KAFKA_BOOTSTRAP_SERVERS": "localhost:9092"
+      },
+      "enabled": false
+    }
+  },
+  "permission": {
+    "kafka_create_topic": "deny",
+    "kafka_delete_topic": "deny",
+    "kafka_create_partitions": "deny",
+    "kafka_alter_configs": "deny",
+    "kafka_produce_message": "deny",
+    "kafka_reset_consumer_group_offset": "deny",
+    "kafka_rewind_consumer_group_offset_by_timestamp": "deny"
   }
 }

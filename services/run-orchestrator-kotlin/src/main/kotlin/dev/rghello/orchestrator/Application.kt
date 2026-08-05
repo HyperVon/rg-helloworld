@@ -31,23 +31,22 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-import org.apache.kafka.clients.consumer.Consumer
-import org.apache.kafka.clients.consumer.KafkaConsumer
+import kotlinx.serialization.json.put
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
-import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
 import java.io.PrintStream
-import java.time.Duration
+import java.nio.CharBuffer
+import java.nio.charset.CharacterCodingException
 import java.time.Instant
 import java.util.Properties
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
-import java.util.concurrent.Executors
-import java.util.concurrent.atomic.AtomicBoolean
 
 @Serializable
 data class CreateRunRequest(
@@ -88,19 +87,17 @@ data class CloudEvent(
     val time: String? = null,
     val datacontenttype: String = "application/json",
     val correlationid: String? = null,
-    val data: Map<String, String>,
+    val data: Map<String, JsonElement>,
 )
 
 enum class RunStatus {
     PLANNING,
-    TEMP_WORKER_PENDING,
     SUCCEEDED,
     FAILED,
 }
 
 enum class RunEvent {
-    PLAN_REQUESTED,
-    ECHO_RECEIVED,
+    PLANNED,
     FAILURE_REPORTED,
 }
 
@@ -110,9 +107,7 @@ object RunStateMachine {
         event: RunEvent,
     ): RunStatus =
         when (event) {
-            RunEvent.PLAN_REQUESTED -> RunStatus.TEMP_WORKER_PENDING
-            RunEvent.ECHO_RECEIVED ->
-                if (status == RunStatus.TEMP_WORKER_PENDING) RunStatus.SUCCEEDED else status
+            RunEvent.PLANNED -> if (status == RunStatus.PLANNING) RunStatus.SUCCEEDED else status
             RunEvent.FAILURE_REPORTED -> RunStatus.FAILED
         }
 }
@@ -191,34 +186,22 @@ fun producerProperties(bootstrap: String): Properties =
         setProperty("acks", "all")
     }
 
-fun consumerProperties(
-    bootstrap: String,
-    groupId: String,
-): Properties =
-    Properties().apply {
-        setProperty("bootstrap.servers", bootstrap)
-        setProperty("group.id", groupId)
-        setProperty("auto.offset.reset", "earliest")
-        setProperty("key.deserializer", StringDeserializer::class.java.name)
-        setProperty("value.deserializer", StringDeserializer::class.java.name)
-        setProperty("enable.auto.commit", "true")
-    }
-
 object Services {
     const val PLANNING_TOPIC = "rg.glyph-blueprints.v1"
-    const val TEMP_ECHO_TOPIC = "rg.temp-echo.v1"
     const val RUN_EVENTS_TOPIC = "rg.run-events.v1"
-    const val CONSUMER_GROUP = "run-orchestrator-m3"
+    const val ALPHABET = "RUBE_SIMPLEX_V1"
 
     fun kafkaBootstrap(): String = System.getenv("KAFKA_BOOTSTRAP") ?: "localhost:9092"
 
     fun redisUrl(): String = System.getenv("REDIS_URL") ?: "redis://localhost:6379"
 
+    fun glyphCatalogUrl(): String = System.getenv("GLYPH_CATALOG_URL") ?: "http://localhost:8082/ws/glyph-catalog"
+
     fun port(): Int = (System.getenv("ORCHESTRATOR_PORT") ?: "8080").toInt()
 
     var eventProducer: EventProducer? = null
     var runStateStore: RunStateStore? = null
-    private val consumerRunning = AtomicBoolean(false)
+    var planner: GlyphPlanner? = null
 
     fun initKafka(
         producerFactory: (String) -> EventProducer = { bootstrap ->
@@ -236,35 +219,11 @@ object Services {
     ) {
         runStateStore = storeFactory(redisUrl())
     }
-
-    fun startConsumer(consumerFactory: (Properties) -> Consumer<String, String> = { KafkaConsumer(it) }) {
-        if (consumerRunning.compareAndSet(false, true)) {
-            val consumer = consumerFactory(consumerProperties(kafkaBootstrap(), CONSUMER_GROUP))
-            consumer.subscribe(listOf(TEMP_ECHO_TOPIC))
-            Executors.newSingleThreadExecutor().submit {
-                consumeLoop(consumer)
-            }
-        }
-    }
-
-    fun consumeLoop(consumer: Consumer<String, String>) {
-        try {
-            while (!Thread.currentThread().isInterrupted) {
-                val records = consumer.poll(Duration.ofMillis(500))
-                for (record in records) {
-                    handleEchoResponse(record.key(), record.value())
-                }
-            }
-        } catch (e: Exception) {
-            System.err.println("Kafka consumer error: ${e.message}")
-        } finally {
-            consumer.close()
-        }
-    }
 }
 
 val runs: ConcurrentHashMap<String, RunState> = ConcurrentHashMap()
 val idempotentRuns: ConcurrentHashMap<String, String> = ConcurrentHashMap()
+val expectedTexts: ConcurrentHashMap<String, String> = ConcurrentHashMap()
 val sseClients: ConcurrentHashMap<String, CopyOnWriteArrayList<SseClient>> = ConcurrentHashMap()
 val lastRunEvents: ConcurrentHashMap<String, String> = ConcurrentHashMap()
 
@@ -298,7 +257,7 @@ fun runServer(
     System.setErr(stderr)
     Services.initKafka()
     Services.initRedis()
-    Services.startConsumer()
+    Services.planner = GlyphCatalogClient(Services.glyphCatalogUrl())
 
     buildServer(Services.port()).start(wait = true)
     return 0
@@ -372,6 +331,11 @@ suspend fun handleCreateRun(call: ApplicationCall) {
         return
     }
 
+    if (!isValidUtf8(request.message)) {
+        call.respond(HttpStatusCode.BadRequest, mapOf("error" to "message is not valid UTF-8"))
+        return
+    }
+
     val runId = UUID.randomUUID().toString()
     val runState =
         RunState(
@@ -388,51 +352,178 @@ suspend fun handleCreateRun(call: ApplicationCall) {
 
     broadcastEvent(runId, eventMap("PLANNING", "Run created and planning started"))
 
-    val event =
-        CloudEvent(
-            specversion = "1.0",
-            id = UUID.randomUUID().toString(),
-            source = "run-orchestrator",
-            type = Services.PLANNING_TOPIC,
-            subject = "runs/$runId",
-            time = runState.createdAt.toString(),
-            correlationid = runId,
-            data =
-                mapOf(
-                    "runId" to runId,
-                    "stepId" to UUID.randomUUID().toString(),
-                    "message" to request.message,
-                    "attempt" to "1",
-                    "inputMaturity" to "10",
-                    "outputMaturity" to "20",
-                    "transformation" to "plan-glyphs",
-                    "transformVersion" to "0.1.0-temporary",
-                ),
-        )
+    val planner = Services.planner
+    if (planner == null) {
+        failRun(runId, "glyph planner not configured")
+        call.respond(HttpStatusCode.InternalServerError, mapOf("runId" to runId, "status" to "FAILED"))
+        return
+    }
+
+    val plan =
+        try {
+            planner.plan(request.message, Services.ALPHABET, "PRIMARY")
+        } catch (e: Exception) {
+            System.err.println("SOAP planning failed: ${e.message}")
+            failRun(runId, "SOAP planning failed: ${e.message}")
+            call.respond(
+                HttpStatusCode.InternalServerError,
+                mapOf("runId" to runId, "status" to "FAILED", "error" to (e.message ?: "planning failed")),
+            )
+            return
+        }
+
+    expectedTexts[runId] = request.message
 
     val producer = Services.eventProducer
     if (producer != null) {
+        val stepId = UUID.randomUUID().toString()
         val json = Json { encodeDefaults = true }
-        val eventJson = json.encodeToString(CloudEvent.serializer(), event)
-        producer.send(Services.PLANNING_TOPIC, runId, eventJson)
-        val pending = runs[runId]?.copy(status = RunStateMachine.transition(runState.status, RunEvent.PLAN_REQUESTED))
-        if (pending != null) {
-            runs[runId] = pending
-            Services.runStateStore?.setRunStatus(runId, pending.status)
+        for (glyph in plan.glyphs) {
+            val event =
+                CloudEvent(
+                    specversion = "1.0",
+                    id = UUID.randomUUID().toString(),
+                    source = "run-orchestrator",
+                    type = Services.PLANNING_TOPIC,
+                    subject = "runs/$runId",
+                    time = Instant.now().toString(),
+                    correlationid = runId,
+                    data = blueprintEventData(runId, plan.planId, stepId, glyph),
+                )
+            producer.send(
+                Services.PLANNING_TOPIC,
+                "$runId:${glyph.glyphInstanceId}",
+                json.encodeToString(CloudEvent.serializer(), event),
+            )
         }
-        broadcastEvent(runId, eventMap("TEMP_WORKER_PENDING", "Waiting for temporary worker"))
+        broadcastEvent(runId, eventMap("PLANNED", "SOAP plan produced ${plan.glyphs.size} glyph blueprints"))
     }
+
+    completeRun(runId, expectedTexts[runId] ?: "")
 
     call.respond(
         HttpStatusCode.Accepted,
         RunResponse(
             runId = runId,
-            status = RunStatus.PLANNING.name,
+            status = RunStatus.SUCCEEDED.name,
             createdAt = runState.createdAt.toString(),
             links = buildLinks(runId),
         ),
     )
 }
+
+fun completeRun(
+    runId: String,
+    assembledText: String,
+) {
+    val state = runs[runId] ?: return
+    val succeeded = state.copy(status = RunStateMachine.transition(state.status, RunEvent.PLANNED))
+    runs[runId] = succeeded
+    Services.runStateStore?.setRunResult(runId, assembledText)
+    Services.runStateStore?.setRunStatus(runId, succeeded.status)
+    broadcastEvent(
+        runId,
+        mapOf(
+            "status" to "SUCCEEDED",
+            "message" to "Run completed",
+            "assembledText" to assembledText,
+            "timestamp" to Instant.now().toString(),
+        ),
+    )
+
+    val finalEvent =
+        CloudEvent(
+            specversion = "1.0",
+            id = UUID.randomUUID().toString(),
+            source = "run-orchestrator",
+            type = Services.RUN_EVENTS_TOPIC,
+            subject = "runs/$runId",
+            time = Instant.now().toString(),
+            correlationid = runId,
+            data =
+                mapOf(
+                    "runId" to JsonPrimitive(runId),
+                    "status" to JsonPrimitive("SUCCEEDED"),
+                    "assembledText" to JsonPrimitive(assembledText),
+                ),
+        )
+    val json = Json { encodeDefaults = true }
+    Services.eventProducer?.send(Services.RUN_EVENTS_TOPIC, runId, json.encodeToString(CloudEvent.serializer(), finalEvent))
+}
+
+fun failRun(
+    runId: String,
+    reason: String,
+) {
+    val state = runs[runId] ?: return
+    runs[runId] = state.copy(status = RunStateMachine.transition(state.status, RunEvent.FAILURE_REPORTED))
+    Services.runStateStore?.setRunStatus(runId, RunStatus.FAILED)
+    broadcastEvent(runId, eventMap("FAILED", reason))
+}
+
+fun blueprintEventData(
+    runId: String,
+    planId: String,
+    stepId: String,
+    glyph: SoapGlyph,
+): Map<String, JsonElement> =
+    buildJsonObject {
+        put("runId", JsonPrimitive(runId))
+        put("planId", JsonPrimitive(planId))
+        put("stepId", JsonPrimitive(stepId))
+        put("attempt", JsonPrimitive(1))
+        put("inputArtifacts", JsonArray(emptyList()))
+        put("outputArtifacts", JsonArray(emptyList()))
+        put(
+            "transformation",
+            buildJsonObject {
+                put("name", JsonPrimitive("plan-glyphs"))
+                put("version", JsonPrimitive("1.0.0"))
+            },
+        )
+        put(
+            "glyphs",
+            JsonArray(
+                listOf(
+                    buildJsonObject {
+                        put("glyphInstanceId", JsonPrimitive(glyph.glyphInstanceId))
+                        put("position", JsonPrimitive(glyph.position))
+                        put("kind", JsonPrimitive(glyph.kind))
+                        put("advanceWidth", JsonPrimitive(glyph.advanceWidth))
+                        put(
+                            "primitives",
+                            JsonArray(
+                                glyph.primitives.map { primitive ->
+                                    buildJsonObject {
+                                        put("type", JsonPrimitive(primitive.type))
+                                        put(
+                                            "points",
+                                            JsonArray(
+                                                primitive.points.map { point ->
+                                                    buildJsonObject {
+                                                        put("x", JsonPrimitive(point.x))
+                                                        put("y", JsonPrimitive(point.y))
+                                                    }
+                                                },
+                                            ),
+                                        )
+                                    }
+                                },
+                            ),
+                        )
+                    },
+                ),
+            ),
+        )
+    }
+
+fun isValidUtf8(value: String): Boolean =
+    try {
+        Charsets.UTF_8.newEncoder().encode(CharBuffer.wrap(value))
+        true
+    } catch (e: CharacterCodingException) {
+        false
+    }
 
 suspend fun handleGetRun(call: ApplicationCall) {
     val runId =
@@ -515,58 +606,6 @@ fun broadcastEvent(
     val clients = sseClients[runId]?.toList() ?: return
     for (client in clients) {
         client.channel.trySend(eventData)
-    }
-}
-
-fun handleEchoResponse(
-    runId: String?,
-    message: String,
-) {
-    val json = Json { ignoreUnknownKeys = true }
-    val id = runId ?: return
-    try {
-        val event = json.decodeFromString(CloudEvent.serializer(), message)
-        val state = runs[id]
-        if (state != null) {
-            val succeeded =
-                state.copy(
-                    status = RunStateMachine.transition(state.status, RunEvent.ECHO_RECEIVED),
-                )
-            runs[id] = succeeded
-            val assembledText = event.data["assembledText"] ?: event.data["message"] ?: ""
-            Services.runStateStore?.setRunResult(id, assembledText)
-            Services.runStateStore?.setRunStatus(id, succeeded.status)
-            broadcastEvent(
-                id,
-                mapOf(
-                    "status" to "SUCCEEDED",
-                    "message" to "Run completed",
-                    "assembledText" to assembledText,
-                    "timestamp" to Instant.now().toString(),
-                ),
-            )
-
-            val finalEvent =
-                CloudEvent(
-                    specversion = "1.0",
-                    id = UUID.randomUUID().toString(),
-                    source = "run-orchestrator",
-                    type = Services.RUN_EVENTS_TOPIC,
-                    subject = "runs/$id",
-                    time = Instant.now().toString(),
-                    correlationid = id,
-                    data =
-                        mapOf(
-                            "runId" to id,
-                            "status" to "SUCCEEDED",
-                            "assembledText" to assembledText,
-                        ),
-                )
-            val eventJson = json.encodeToString(CloudEvent.serializer(), finalEvent)
-            Services.eventProducer?.send(Services.RUN_EVENTS_TOPIC, id, eventJson)
-        }
-    } catch (e: Exception) {
-        System.err.println("Error parsing echo response: ${e.message}")
     }
 }
 

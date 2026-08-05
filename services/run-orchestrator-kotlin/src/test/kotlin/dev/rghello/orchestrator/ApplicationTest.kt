@@ -9,6 +9,8 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.yield
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -16,7 +18,7 @@ import java.io.ByteArrayOutputStream
 import java.io.PrintStream
 import java.nio.charset.StandardCharsets
 import java.util.UUID
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.CopyOnWriteArrayList
 
 class ApplicationTest {
     private lateinit var outBuf: ByteArrayOutputStream
@@ -28,16 +30,19 @@ class ApplicationTest {
         errBuf = ByteArrayOutputStream()
         runs.clear()
         idempotentRuns.clear()
+        expectedTexts.clear()
         sseClients.clear()
         lastRunEvents.clear()
         Services.eventProducer = null
         Services.runStateStore = null
+        Services.planner = null
     }
 
     @AfterEach
     fun tearDown() {
         Services.eventProducer = null
         Services.runStateStore = null
+        Services.planner = null
     }
 
     private fun streams(): Pair<ByteArrayOutputStream, ByteArrayOutputStream> = outBuf to errBuf
@@ -48,7 +53,7 @@ class ApplicationTest {
         val code = run(PrintStream(out, true, StandardCharsets.UTF_8), PrintStream(err, true, StandardCharsets.UTF_8), arrayOf("version"))
 
         assertEquals(0, code)
-        assertEquals("run-orchestrator 0.1.0-milestone3\n", out.toString(StandardCharsets.UTF_8))
+        assertEquals("run-orchestrator 0.2.0-milestone4\n", out.toString(StandardCharsets.UTF_8))
         assertEquals("", err.toString(StandardCharsets.UTF_8))
     }
 
@@ -59,27 +64,23 @@ class ApplicationTest {
             run(PrintStream(out, true, StandardCharsets.UTF_8), PrintStream(err, true, StandardCharsets.UTF_8), arrayOf("version", "extra"))
 
         assertEquals(0, code)
-        assertEquals("run-orchestrator 0.1.0-milestone3\n", out.toString(StandardCharsets.UTF_8))
+        assertEquals("run-orchestrator 0.2.0-milestone4\n", out.toString(StandardCharsets.UTF_8))
         assertEquals("", err.toString(StandardCharsets.UTF_8))
     }
 
     @Test
-    fun runStateMachineRejectsSucceededTransitions() {
+    fun runStateMachineTransitionsOnPlannedAndFailure() {
         assertEquals(
-            RunStatus.TEMP_WORKER_PENDING,
-            RunStateMachine.transition(RunStatus.PLANNING, RunEvent.PLAN_REQUESTED),
+            RunStatus.SUCCEEDED,
+            RunStateMachine.transition(RunStatus.PLANNING, RunEvent.PLANNED),
         )
         assertEquals(
             RunStatus.SUCCEEDED,
-            RunStateMachine.transition(RunStatus.TEMP_WORKER_PENDING, RunEvent.ECHO_RECEIVED),
+            RunStateMachine.transition(RunStatus.SUCCEEDED, RunEvent.PLANNED),
         )
         assertEquals(
             RunStatus.FAILED,
-            RunStateMachine.transition(RunStatus.TEMP_WORKER_PENDING, RunEvent.FAILURE_REPORTED),
-        )
-        assertEquals(
-            RunStatus.SUCCEEDED,
-            RunStateMachine.transition(RunStatus.SUCCEEDED, RunEvent.ECHO_RECEIVED),
+            RunStateMachine.transition(RunStatus.PLANNING, RunEvent.FAILURE_REPORTED),
         )
     }
 
@@ -103,44 +104,12 @@ class ApplicationTest {
     }
 
     @Test
-    fun handleEchoResponseUpdatesRunStateToSucceeded() {
+    fun completeRunUpdatesStateStoresAndPublishesFinalEvent() {
         val runId = UUID.randomUUID().toString()
         val runState =
             RunState(
                 runId = runId,
-                status = RunStatus.TEMP_WORKER_PENDING,
-                message = "Hello World",
-                idempotencyKey = "key",
-                createdAt = java.time.Instant.now(),
-            )
-        runs[runId] = runState
-
-        val echo =
-            """
-            {
-              "specversion": "1.0",
-              "id": "${UUID.randomUUID()}",
-              "source": "temp-worker",
-              "type": "rg.temp-echo.v1",
-              "subject": "runs/$runId",
-              "datacontenttype": "application/json",
-              "correlationid": "$runId",
-              "data": {"assembledText": "Hello World"}
-            }
-            """.trimIndent()
-
-        handleEchoResponse(runId, echo)
-
-        assertEquals(RunStatus.SUCCEEDED, runs[runId]?.status)
-    }
-
-    @Test
-    fun handleEchoResponseStoresResultAndBroadcasts() {
-        val runId = UUID.randomUUID().toString()
-        val runState =
-            RunState(
-                runId = runId,
-                status = RunStatus.TEMP_WORKER_PENDING,
+                status = RunStatus.PLANNING,
                 message = "Hello World",
                 idempotencyKey = "key",
                 createdAt = java.time.Instant.now(),
@@ -152,66 +121,103 @@ class ApplicationTest {
         val producer = FakeEventProducer()
         Services.eventProducer = producer
 
-        val sseChannel = kotlinx.coroutines.channels.Channel<String>(1)
-        sseClients[runId] = java.util.concurrent.CopyOnWriteArrayList(listOf(SseClient(sseChannel)))
+        val sseChannel = Channel<String>(1)
+        sseClients[runId] = CopyOnWriteArrayList(listOf(SseClient(sseChannel)))
 
-        val echo =
-            """
-            {
-              "specversion": "1.0",
-              "id": "${UUID.randomUUID()}",
-              "source": "temp-worker",
-              "type": "rg.temp-echo.v1",
-              "subject": "runs/$runId",
-              "datacontenttype": "application/json",
-              "correlationid": "$runId",
-              "data": {"assembledText": "Hello World"}
-            }
-            """.trimIndent()
-
-        handleEchoResponse(runId, echo)
+        completeRun(runId, "Hello World")
 
         assertEquals("Hello World", store.result)
         assertEquals("SUCCEEDED", store.status)
+        assertEquals(RunStatus.SUCCEEDED, runs[runId]?.status)
         val sent = producer.sent.single()
         assertEquals(Services.RUN_EVENTS_TOPIC, sent.first)
         assertEquals(runId, sent.second)
         assertTrue(sent.third.contains("assembledText"))
         assertTrue(sent.third.contains("Hello World"))
-        assertEquals(RunStatus.SUCCEEDED, runs[runId]?.status)
 
         val broadcast = sseChannel.tryReceive().getOrNull()
         assertTrue(broadcast != null && broadcast.contains("SUCCEEDED"))
     }
 
     @Test
-    fun handleEchoResponseIgnoresUnknownRun() {
-        val echo =
-            """
-            {
-              "specversion": "1.0",
-              "id": "${UUID.randomUUID()}",
-              "source": "temp-worker",
-              "type": "rg.temp-echo.v1",
-              "data": {"assembledText": "Hello World"}
-            }
-            """.trimIndent()
-
-        handleEchoResponse(UUID.randomUUID().toString(), echo)
-
+    fun completeRunIgnoresUnknownRun() {
+        completeRun(UUID.randomUUID().toString(), "ignored")
         assertTrue(runs.isEmpty())
     }
 
     @Test
-    fun handleEchoResponseToleratesMalformedJson() {
-        handleEchoResponse("some-run", "not-json{")
-        assertTrue(runs.isEmpty())
+    fun failRunMarksFailedAndBroadcasts() {
+        val runId = UUID.randomUUID().toString()
+        runs[runId] =
+            RunState(
+                runId = runId,
+                status = RunStatus.PLANNING,
+                message = "Hello World",
+                idempotencyKey = "key",
+                createdAt = java.time.Instant.now(),
+            )
+        val store = FakeRunStateStore()
+        Services.runStateStore = store
+        val sseChannel = Channel<String>(1)
+        sseClients[runId] = CopyOnWriteArrayList(listOf(SseClient(sseChannel)))
+
+        failRun(runId, "SOAP planning failed: boom")
+
+        assertEquals(RunStatus.FAILED, runs[runId]?.status)
+        assertEquals("FAILED", store.status)
+        val broadcast = sseChannel.tryReceive().getOrNull()
+        assertTrue(broadcast != null && broadcast.contains("FAILED"), "broadcast: $broadcast")
     }
 
     @Test
-    fun handleEchoResponseToleratesNullRunId() {
-        handleEchoResponse(null, "ignored")
-        assertTrue(runs.isEmpty())
+    fun blueprintEventDataContainsOnlyAllowedFields() {
+        val glyph =
+            SoapGlyph(
+                glyphInstanceId = "g-1",
+                position = 0,
+                kind = "DRAWABLE",
+                advanceWidth = 1.0,
+                primitives = listOf(SoapPrimitive("POLYLINE", listOf(SoapPoint(0.1, 0.0), SoapPoint(0.9, 1.0)))),
+            )
+
+        val data = blueprintEventData("run-1", "plan-1", "step-1", glyph)
+
+        assertEquals("run-1", data.getValue("runId").toString().trim('"'))
+        assertEquals("plan-1", data.getValue("planId").toString().trim('"'))
+        assertEquals("1", data.getValue("attempt").toString())
+        assertEquals(
+            "plan-glyphs",
+            data
+                .getValue("transformation")
+                .toString()
+                .substringAfter("\"name\":\"")
+                .substringBefore('"'),
+        )
+        assertTrue(data.getValue("glyphs").toString().contains("\"glyphInstanceId\":\"g-1\""))
+        assertTrue(data.getValue("glyphs").toString().contains("\"position\":0"))
+        val prohibited = listOf("message", "targetText", "expectedCharacter", "unicodeCodePoint", "characterName", "glyphLabel")
+        val serialized = data.values.joinToString(",")
+        for (field in prohibited) {
+            assertFalse(serialized.contains(field), "blueprint data must not contain $field")
+        }
+    }
+
+    @Test
+    fun blueprintEventDataCarriesGapKindAndWidth() {
+        val gap =
+            SoapGlyph(
+                glyphInstanceId = "g-gap",
+                position = 5,
+                kind = "GAP",
+                advanceWidth = 0.6,
+                primitives = emptyList(),
+            )
+
+        val data = blueprintEventData("run-1", "plan-1", "step-1", gap)
+
+        assertTrue(data.getValue("glyphs").toString().contains("\"kind\":\"GAP\""))
+        assertTrue(data.getValue("glyphs").toString().contains("\"advanceWidth\":0.6"))
+        assertTrue(data.getValue("glyphs").toString().contains("\"primitives\":[]"))
     }
 
     @Test
@@ -231,17 +237,6 @@ class ApplicationTest {
         assertEquals("all", props.getProperty("acks"))
         assertTrue(props.getProperty("key.serializer").contains("StringSerializer"))
         assertTrue(props.getProperty("value.serializer").contains("StringSerializer"))
-    }
-
-    @Test
-    fun consumerPropertiesContainGroupAndDeserializers() {
-        val props = consumerProperties("localhost:9092", "test-group")
-
-        assertEquals("localhost:9092", props.getProperty("bootstrap.servers"))
-        assertEquals("test-group", props.getProperty("group.id"))
-        assertEquals("earliest", props.getProperty("auto.offset.reset"))
-        assertTrue(props.getProperty("key.deserializer").contains("StringDeserializer"))
-        assertTrue(props.getProperty("value.deserializer").contains("StringDeserializer"))
     }
 
     @Test
@@ -289,7 +284,7 @@ class ApplicationTest {
             } as io.lettuce.core.api.sync.RedisCommands<String, String>
 
         val store = RedisRunStateStore(sync)
-        store.setRunStatus("r1", RunStatus.TEMP_WORKER_PENDING)
+        store.setRunStatus("r1", RunStatus.PLANNING)
         store.setRunResult("r1", "Hello World")
 
         assertEquals("run:r1", lastSetStatusKey)
@@ -338,6 +333,13 @@ class ApplicationTest {
             assertTrue(text.contains(": connected"), "text: $text")
             assertEquals(2, Regex("data: ").findAll(text).count(), "text: $text")
         }
+
+    @Test
+    fun isValidUtf8AcceptsWellFormedText() {
+        assertTrue(isValidUtf8("Hello World"))
+        assertTrue(isValidUtf8(""))
+        assertFalse(isValidUtf8("\uD800"))
+    }
 }
 
 class FakeEventProducer : EventProducer {
@@ -373,4 +375,34 @@ class FakeRunStateStore : RunStateStore {
     }
 
     override fun getRunStatus(runId: String): String? = status
+}
+
+class FakeGlyphPlanner : GlyphPlanner {
+    override fun plan(
+        message: String,
+        alphabet: String,
+        variant: String,
+    ): SoapPlan {
+        val glyphs =
+            message.mapIndexed { index, char ->
+                if (char == ' ') {
+                    SoapGlyph("gap-$index", index, "GAP", 0.6, emptyList())
+                } else {
+                    SoapGlyph(
+                        glyphInstanceId = "glyph-$index",
+                        position = index,
+                        kind = "DRAWABLE",
+                        advanceWidth = 1.0,
+                        primitives =
+                            listOf(
+                                SoapPrimitive(
+                                    "POLYLINE",
+                                    listOf(SoapPoint(0.1, 0.0), SoapPoint(0.9, 1.0)),
+                                ),
+                            ),
+                    )
+                }
+            }
+        return SoapPlan(planId = "plan-$message", glyphs = glyphs)
+    }
 }

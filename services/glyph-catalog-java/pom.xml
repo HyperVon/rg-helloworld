@@ -4,35 +4,102 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
+  <parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>3.5.3</version>
+    <relativePath/>
+  </parent>
+
   <groupId>dev.rghello</groupId>
   <artifactId>glyph-catalog-java</artifactId>
-  <version>0.0.0-skeleton</version>
+  <version>0.1.0-milestone4</version>
   <name>glyph-catalog-java</name>
-  <description>SOAP glyph catalog service (Milestone 0 skeleton)</description>
+  <description>SOAP glyph catalog service (Milestone 4)</description>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.release>21</maven.compiler.release>
-    <junit.jupiter.version>6.1.2</junit.jupiter.version>
+    <spring-ws.version>4.0.13</spring-ws.version>
+    <wsdl4j.version>1.6.3</wsdl4j.version>
+    <h2.version>2.4.240</h2.version>
+    <jaxb2-maven-plugin.version>4.0.16</jaxb2-maven-plugin.version>
     <jacoco.version>0.8.15</jacoco.version>
     <spotless.version>3.9.0</spotless.version>
   </properties>
 
   <dependencies>
     <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter</artifactId>
-      <version>${junit.jupiter.version}</version>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-jdbc</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.ws</groupId>
+      <artifactId>spring-ws-core</artifactId>
+      <version>${spring-ws.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>wsdl4j</groupId>
+      <artifactId>wsdl4j</artifactId>
+      <version>${wsdl4j.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.h2database</groupId>
+      <artifactId>h2</artifactId>
+      <version>${h2.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.ws</groupId>
+      <artifactId>spring-ws-test</artifactId>
+      <version>${spring-ws.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
 
   <build>
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+      </resource>
+      <resource>
+        <directory>${project.basedir}/../../contracts/soap</directory>
+        <targetPath>wsdl</targetPath>
+        <includes>
+          <include>glyph-catalog.wsdl</include>
+          <include>glyph-catalog.xsd</include>
+        </includes>
+      </resource>
+    </resources>
     <plugins>
       <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.13.0</version>
+        <groupId>org.jvnet.jaxb</groupId>
+        <artifactId>jaxb-maven-plugin</artifactId>
+        <version>${jaxb2-maven-plugin.version}</version>
+        <configuration>
+          <schemaDirectory>${project.basedir}/../../contracts/soap</schemaDirectory>
+          <schemaIncludes>
+            <include>glyph-catalog.xsd</include>
+          </schemaIncludes>
+          <generatePackage>dev.rghello.catalog.contract</generatePackage>
+          <cleanPackageDirectories>true</cleanPackageDirectories>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>generate</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -40,16 +107,8 @@
         <version>3.5.2</version>
       </plugin>
       <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-jar-plugin</artifactId>
-        <version>3.4.2</version>
-        <configuration>
-          <archive>
-            <manifest>
-              <mainClass>dev.rghello.catalog.GlyphCatalogApplication</mainClass>
-            </manifest>
-          </archive>
-        </configuration>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
       </plugin>
       <plugin>
         <groupId>org.jacoco</groupId>
@@ -67,6 +126,11 @@
             <goals>
               <goal>report</goal>
             </goals>
+            <configuration>
+              <excludes>
+                <exclude>dev/rghello/catalog/contract/**</exclude>
+              </excludes>
+            </configuration>
           </execution>
           <execution>
             <id>coverage-check</id>
@@ -75,6 +139,9 @@
               <goal>check</goal>
             </goals>
             <configuration>
+              <excludes>
+                <exclude>dev/rghello/catalog/contract/**</exclude>
+              </excludes>
               <rules>
                 <rule>
                   <element>BUNDLE</element>

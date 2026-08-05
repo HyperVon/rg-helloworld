@@ -135,16 +135,16 @@ kill "${PORTFORWARD_PIDS[0]}" 2>/dev/null || true
 PORTFORWARD_PIDS=()
 echo ""
 
-# --- Test 5: Milestone 3 vertical slice (CLI -> orchestrator -> Kafka -> SSE) ---
-echo "--- Test 5: Milestone 3 vertical slice ---"
+# --- Test 5: Milestone 4 SOAP planning + vertical slice (CLI -> REST -> SOAP -> Kafka -> SSE) ---
+echo "--- Test 5: Milestone 4 SOAP planning + vertical slice ---"
 
 if command -v docker >/dev/null 2>&1; then
-    echo "Building and deploying orchestrator + temp worker"
+    echo "Building and deploying orchestrator + glyph catalog"
     bash "$PROJECT_ROOT/scripts/build-images.sh" || exit 1
-    retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone3/orchestrator.yaml"
-    retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone3/temp-worker.yaml"
+    retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone4/orchestrator.yaml"
+    retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone4/glyph-catalog.yaml"
     retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=run-orchestrator --timeout=180s
-    retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=temp-worker --timeout=180s
+    retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=glyph-catalog --timeout=180s
 
     kubectl port-forward -n $NAMESPACE svc/run-orchestrator 8080:8080 &>/dev/null &
     PORTFORWARD_PIDS+=($!)
@@ -153,22 +153,56 @@ if command -v docker >/dev/null 2>&1; then
     if ! command -v go >/dev/null 2>&1; then
         echo "SKIP: go not installed, skipping rghello run acceptance"
     else
-        RESULT=$(cd "$PROJECT_ROOT/cmd/rghello" && go run . run --api-url "http://localhost:8080" --quiet --timeout 90s 2>/dev/null)
+        RESULT=$(cd "$PROJECT_ROOT/cmd/rghello" && go run . run --api-url "http://localhost:8080" --quiet --timeout 90s 2>/dev/null || true)
         if [[ "$RESULT" == "Hello World" ]]; then
             echo "PASS: rghello run printed 'Hello World'"
         else
             echo "FAIL: rghello run printed '$RESULT'"
             kubectl logs -n $NAMESPACE deploy/run-orchestrator --tail=20 || true
-            kubectl logs -n $NAMESPACE deploy/temp-worker --tail=20 || true
+            kubectl logs -n $NAMESPACE deploy/glyph-catalog --tail=20 || true
             exit 1
         fi
     fi
+
+    echo "Verifying glyph blueprints on rg.glyph-blueprints.v1"
+    BLUEPRINTS=$(kubectl exec -n $NAMESPACE kafka-controller-0 -c kafka -- \
+        timeout 20 kafka-console-consumer.sh --topic rg.glyph-blueprints.v1 \
+        --bootstrap-server $KAFKA_BROKER --from-beginning --max-messages 50 --timeout-ms 5000 2>/dev/null \
+        | grep '"glyphInstanceId"' | tail -11 || true)
+    BLUEPRINT_COUNT=$(printf '%s\n' "$BLUEPRINTS" | grep -c '"glyphInstanceId"')
+    if [[ "$BLUEPRINT_COUNT" -eq 11 ]]; then
+        echo "PASS: eleven ordered blueprint records observed"
+    else
+        echo "FAIL: expected 11 blueprint records, saw $BLUEPRINT_COUNT"
+        exit 1
+    fi
+    for POSITION in 0 1 2 3 4 5 6 7 8 9 10; do
+        if printf '%s\n' "$BLUEPRINTS" | grep -q "\"position\":$POSITION,"; then
+            :
+        else
+            echo "FAIL: missing blueprint record at position $POSITION"
+            exit 1
+        fi
+    done
+    if printf '%s\n' "$BLUEPRINTS" | grep -q '"position":5,.*"kind":"GAP"'; then
+        echo "PASS: gap position exists"
+    else
+        echo "FAIL: no gap blueprint at position 5"
+        exit 1
+    fi
+    if printf '%s\n' "$BLUEPRINTS" | grep -qE '"(message|targetText|expectedCharacter|unicodeCodePoint|characterName|glyphLabel)"'; then
+        echo "FAIL: blueprint events contain prohibited fields"
+        exit 1
+    else
+        echo "PASS: blueprint events exclude plaintext and code points"
+    fi
+
     if [[ ${#PORTFORWARD_PIDS[@]} -gt 0 ]]; then
         kill "${PORTFORWARD_PIDS[0]}" 2>/dev/null || true
         PORTFORWARD_PIDS=()
     fi
 else
-    echo "SKIP: docker not installed, skipping Milestone 3 vertical slice"
+    echo "SKIP: docker not installed, skipping Milestone 4 vertical slice"
 fi
 echo ""
 

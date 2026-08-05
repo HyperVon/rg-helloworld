@@ -5,7 +5,7 @@ metadata:
   namespace: rube-goldberg
   labels:
     app: run-orchestrator
-    milestone: "3"
+    milestone: "4"
 spec:
   replicas: 1
   selector:
@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: orchestrator
-          image: rghello-registry:5001/run-orchestrator:milestone3
+          image: rghello-registry:5001/run-orchestrator:milestone4
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
@@ -29,6 +29,8 @@ spec:
               value: redis://:RedisPassw0rd!@redis-master.rube-goldberg.svc.cluster.local:6379
             - name: ORCHESTRATOR_PORT
               value: "8080"
+            - name: GLYPH_CATALOG_URL
+              value: http://glyph-catalog.rube-goldberg.svc.cluster.local:8080/ws/glyph-catalog
           readinessProbe:
             httpGet:
               path: /healthz
@@ -40,7 +42,13 @@ spec:
               path: /healthz
               port: 8080
             initialDelaySeconds: 10
-            periodSeconds: 20
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 512Mi
 ---
 apiVersion: v1
 kind: Service

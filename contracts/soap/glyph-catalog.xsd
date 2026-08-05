@@ -27,20 +27,32 @@
     </sequence>
   </complexType>
 
+  <complexType name="Primitives">
+    <sequence>
+      <element name="primitive" type="glyph:Primitive" minOccurs="0" maxOccurs="unbounded" />
+    </sequence>
+  </complexType>
+
   <complexType name="Glyph">
     <sequence>
       <element name="glyphInstanceId" type="string" />
       <element name="position" type="int" />
       <element name="kind" type="string" />
       <element name="advanceWidth" type="double" />
-      <element name="primitives" type="glyph:Primitive" minOccurs="0" maxOccurs="unbounded" />
+      <element name="primitives" type="glyph:Primitives" minOccurs="0" />
+    </sequence>
+  </complexType>
+
+  <complexType name="Glyphs">
+    <sequence>
+      <element name="glyph" type="glyph:Glyph" minOccurs="0" maxOccurs="unbounded" />
     </sequence>
   </complexType>
 
   <complexType name="PlanPhraseResponse">
     <sequence>
       <element name="planId" type="string" />
-      <element name="glyphs" type="glyph:Glyph" minOccurs="0" maxOccurs="unbounded" />
+      <element name="glyphs" type="glyph:Glyphs" minOccurs="0" />
     </sequence>
   </complexType>
 

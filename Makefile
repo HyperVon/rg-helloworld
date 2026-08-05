@@ -17,7 +17,7 @@ JAVA_DIR    := services/glyph-catalog-java
 CPP_DIR     := services/geometry-engine-cpp
 DOTNET_DIR  := services/rasterizer-dotnet
 PYTHON_DIR  := services/image-pipeline-python
-NODE_DIRS   := services/ocr-worker-node services/event-gateway-node services/temp-worker-node
+NODE_DIRS   := services/ocr-worker-node services/event-gateway-node
 RUBY_DIR    := services/adjudicator-ruby
 RUST_DIR    := services/phrase-assembler-rust
 

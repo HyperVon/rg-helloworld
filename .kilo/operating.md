@@ -144,3 +144,57 @@ launch contract, presets, and report format.
   limitation; do not claim a role-only Task call changed the model.
 - Never persist credentials, balances, or raw provider errors in repository
   files; `env.local` and `manifest.local` are git-ignored.
+
+## 9. Context-mode plugin and MCP servers
+
+The project config loads the `context-mode` and `@tarquinen/opencode-dcp`
+plugins and local/remote MCP servers; changes to `kilo.json` take effect on
+the next Kilo restart.
+
+Active MCP servers:
+
+- `context7` — up-to-date library docs (remote).
+- `gh_grep` — GitHub code search (remote).
+- `kops` — read-only Kubernetes tools (`k8s_get`, `k8s_describe`, `k8s_logs`,
+  `k8s_events`, `k8s_triage`, `k8s_inventory`) against the k3d cluster via
+  kubectl; never returns Secret/ConfigMap values. Lives at
+  `~/.local/share/kilo/mcp-servers/kops`.
+- `kafka` (disabled) — read-only Kafka inspection. Disabled because the
+  Bitnami KRaft broker advertises only its in-cluster headless DNS, which a
+  host-side client cannot reach (verified: metadata fetch times out even
+  through a port-forward). Re-enable only if the broker gets a
+  host-reachable advertised listener (e.g. NodePort). Write tools
+  (`produce_message`, `create_topic`, offset resets, etc.) are denied in
+  `kilo.json` permissions.
+
+`context-mode` routing — the plugin redirects agent tool calls that would
+flood the context window:
+
+- `curl`/`wget` without silent (`-s`) file-output (`-o FILE` / `> FILE`) is
+  redirected — use the `ctx_execute` / `ctx_fetch_and_index` tools instead,
+  which have full network access and keep raw bodies out of context. Silent
+  file-output downloads still pass through.
+- Inline HTTP in scripts (`fetch(`, `requests.get(`) is redirected the same way.
+- Large shell/filter/analysis work should use `ctx_execute` (sandboxed code,
+  only stdout enters context) instead of dumping raw output into the session.
+- `ctx_search` queries the plugin's session index; `ctx_index` stores content
+  for later search. The plugin persists per-session state under
+  `~/.config/kilo/context-mode/`.
+
+`@tarquinen/opencode-dcp` prunes obsolete tool outputs from the conversation
+context to keep long sessions small.
+
+## 10. LSP servers
+
+LSP is enabled (`"lsp": true` in `kilo.json`) so language-server diagnostics
+are fed back when files are read. Servers auto-start on matching extensions
+and auto-install when the toolchain is present: clangd and rust-analyzer are
+already on PATH; gopls installs via `go install` on first `.go` read;
+kotlin-ls and jdtls download on first `.kt`/`.java` read (JVM servers,
+memory-heavy — the acceptance cluster shares the same laptop). C# and Python
+servers stay inactive (no .NET SDK / pyright). `KILO_DISABLE_LSP_DOWNLOAD=1`
+disables all auto-installs if the downloads become a problem.
+
+This does not replace the repo's evidence discipline: keep captured logs under
+`.local/diagnostics/`, redact credentials, and never log plaintext or image
+bytes.

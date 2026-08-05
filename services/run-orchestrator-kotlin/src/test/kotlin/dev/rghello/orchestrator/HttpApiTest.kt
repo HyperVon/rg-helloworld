@@ -16,7 +16,6 @@ import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.ktor.server.testing.testApplication
 import io.ktor.utils.io.readUTF8Line
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
@@ -25,6 +24,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -35,16 +35,19 @@ class HttpApiTest {
     fun setUp() {
         runs.clear()
         idempotentRuns.clear()
+        expectedTexts.clear()
         sseClients.clear()
         lastRunEvents.clear()
         Services.eventProducer = null
         Services.runStateStore = null
+        Services.planner = FakeGlyphPlanner()
     }
 
     @AfterEach
     fun tearDown() {
         Services.eventProducer = null
         Services.runStateStore = null
+        Services.planner = null
     }
 
     private suspend fun io.ktor.client.HttpClient.createRun(
@@ -86,7 +89,7 @@ class HttpApiTest {
             val response = client.get("/api/v1/runs/$runId")
             assertEquals(HttpStatusCode.OK, response.status)
             val statusBody = response.bodyAsText()
-            assertTrue(statusBody.contains("\"status\":\"PLANNING\""), "body: $statusBody")
+            assertTrue(statusBody.contains("\"status\":\"SUCCEEDED\""), "body: $statusBody")
 
             val links = client.post("/api/v1/runs/$runId/cancel")
             assertEquals(HttpStatusCode.OK, links.status)
@@ -115,28 +118,131 @@ class HttpApiTest {
         }
 
     @Test
-    fun createRunWithProducerMovesToTempWorkerPending() =
+    fun createRunEmitsOneBlueprintEventPerPosition() =
         testApplication {
             application { module() }
-            Services.eventProducer = FakeEventProducer()
+            val producer = FakeEventProducer()
+            Services.eventProducer = producer
+            Services.planner = FakeGlyphPlanner()
             val client = createClient {}
             val runId = client.createRun("Hello World")
 
-            assertEquals(RunStatus.TEMP_WORKER_PENDING, runs[runId]?.status)
-            val store = FakeRunStateStore()
-            Services.runStateStore = store
-            val stored = client.get("/api/v1/runs/$runId")
-            assertEquals(HttpStatusCode.OK, stored.status)
+            assertEquals(RunStatus.SUCCEEDED, runs[runId]?.status)
+            assertEquals("Hello World", expectedTexts[runId])
+            val blueprints = producer.sent.filter { it.first == Services.PLANNING_TOPIC }
+            assertEquals(11, blueprints.size, "expected 11 blueprint events")
+            blueprints.forEachIndexed { index, sent ->
+                assertEquals(runId, sent.second.substringBefore(':'), "partition key for $index")
+                assertTrue(sent.second.contains(':'), "partition key must include glyphInstanceId")
+                assertTrue(sent.third.contains("\"position\":$index"), "event $index: ${sent.third}")
+            }
+            assertEquals(0, blueprints.filter { it.third.contains("\"message\"") }.size)
+            assertTrue(producer.sent.any { it.first == Services.RUN_EVENTS_TOPIC })
         }
 
     @Test
-    fun sseStreamDeliversCompletionEvent() =
+    fun createRunBlueprintEventsExcludePlaintextAndCodePoints() =
+        testApplication {
+            application { module() }
+            val producer = FakeEventProducer()
+            Services.eventProducer = producer
+            Services.planner = FakeGlyphPlanner()
+            val client = createClient {}
+            client.createRun("Hello World")
+
+            val prohibited = listOf("message", "targetText", "expectedCharacter", "unicodeCodePoint", "characterName", "glyphLabel")
+            val blueprints = producer.sent.filter { it.first == Services.PLANNING_TOPIC }
+            for (sent in blueprints) {
+                for (field in prohibited) {
+                    assertFalse(sent.third.contains(field), "blueprint event must not contain $field: ${sent.third}")
+                }
+            }
+        }
+
+    @Test
+    fun createRunBlueprintEventsCarryGapAtPositionFive() =
+        testApplication {
+            application { module() }
+            val producer = FakeEventProducer()
+            Services.eventProducer = producer
+            Services.planner = FakeGlyphPlanner()
+            val client = createClient {}
+            client.createRun("Hello World")
+
+            val gapEvent =
+                producer.sent
+                    .filter { it.first == Services.PLANNING_TOPIC }
+                    .first { it.third.contains("\"position\":5") }
+            assertTrue(gapEvent.third.contains("\"kind\":\"GAP\""), gapEvent.third)
+            assertTrue(gapEvent.third.contains("\"advanceWidth\":0.6"), gapEvent.third)
+        }
+
+    @Test
+    fun createRunWithoutPlannerFailsRun() =
+        testApplication {
+            application { module() }
+            Services.eventProducer = FakeEventProducer()
+            Services.planner = null
+            val client = createClient {}
+
+            val response =
+                client.post("/api/v1/runs") {
+                    contentType(ContentType.Application.Json)
+                    setBody("""{"message":"Hello World"}""")
+                }
+            assertEquals(HttpStatusCode.InternalServerError, response.status)
+        }
+
+    @Test
+    fun createRunWithUnsupportedMessageFailsRun() =
+        testApplication {
+            application { module() }
+            Services.eventProducer = FakeEventProducer()
+            Services.planner =
+                object : GlyphPlanner {
+                    override fun plan(
+                        message: String,
+                        alphabet: String,
+                        variant: String,
+                    ): SoapPlan = throw RuntimeException("Unsupported character U+0021")
+                }
+            val client = createClient {}
+
+            val response =
+                client.post("/api/v1/runs") {
+                    contentType(ContentType.Application.Json)
+                    setBody("""{"message":"Hello World!"}""")
+                }
+            assertEquals(HttpStatusCode.InternalServerError, response.status)
+            val body = response.bodyAsText()
+            assertTrue(body.contains("FAILED"), body)
+        }
+
+    @Test
+    fun createRunRejectsInvalidUtf8() =
+        testApplication {
+            application { module() }
+            val client = createClient {}
+
+            val response =
+                client.post("/api/v1/runs") {
+                    contentType(ContentType.Application.Json)
+                    setBody("""{"message":"\ud800"}""")
+                }
+            assertEquals(HttpStatusCode.BadRequest, response.status)
+        }
+
+    @Test
+    fun sseStreamReplaysCompletedRunEvent() =
         runBlocking {
             val server = embeddedServer(Netty, port = 0, host = "127.0.0.1") { module() }
             server.start(wait = false)
             val base = "http://127.0.0.1:${server.engine.resolvedConnectors().first().port}"
             val client = HttpClient(CIO)
             try {
+                val store = FakeRunStateStore()
+                Services.runStateStore = store
+                Services.eventProducer = FakeEventProducer()
                 val response =
                     client.post("$base/api/v1/runs") {
                         contentType(ContentType.Application.Json)
@@ -145,8 +251,6 @@ class HttpApiTest {
                 assertEquals(HttpStatusCode.Accepted, response.status)
                 val parsed = Json.parseToJsonElement(response.bodyAsText()).jsonObject
                 val runId = parsed.getValue("runId").jsonPrimitive.content
-                val store = FakeRunStateStore()
-                Services.runStateStore = store
 
                 withTimeout(10_000) {
                     client.prepareRequest("$base/api/v1/runs/$runId/stream").execute { stream ->
@@ -154,21 +258,6 @@ class HttpApiTest {
                         val first = channel.readUTF8Line()
                         assertEquals(": connected", first)
                         assertEquals("", channel.readUTF8Line())
-
-                        val echo =
-                            """
-                            {
-                              "specversion": "1.0",
-                              "id": "${UUID.randomUUID()}",
-                              "source": "temp-worker",
-                              "type": "rg.temp-echo.v1",
-                              "subject": "runs/$runId",
-                              "datacontenttype": "application/json",
-                              "correlationid": "$runId",
-                              "data": {"assembledText": "Hello World"}
-                            }
-                            """.trimIndent()
-                        launch { handleEchoResponse(runId, echo) }
 
                         var eventLine: String? = null
                         while (eventLine == null || !eventLine.contains("SUCCEEDED")) {
@@ -199,6 +288,7 @@ class HttpApiTest {
         testApplication {
             application { module() }
             Services.eventProducer = FakeEventProducer()
+            Services.planner = FakeGlyphPlanner()
             val client = createClient {}
 
             val response =
@@ -211,7 +301,7 @@ class HttpApiTest {
             assertEquals(HttpStatusCode.Accepted, response.status)
             val parsed = Json.parseToJsonElement(response.bodyAsText()).jsonObject
             val runId = parsed.getValue("runId").jsonPrimitive.content
-            assertEquals(RunStatus.TEMP_WORKER_PENDING, runs[runId]?.status)
+            assertEquals(RunStatus.SUCCEEDED, runs[runId]?.status)
         }
 
     @Test

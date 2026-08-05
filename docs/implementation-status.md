@@ -11,8 +11,8 @@
 | 0 | Repository skeleton | **COMPLETE** |
 | 1 | Contracts (OpenAPI, AsyncAPI, JSON Schema, WSDL/XSD, protobuf) | **COMPLETE** |
 | 2 | Local platform (k3d, Terraform, PostgreSQL, Kafka KRaft, Redis, MinIO) | **COMPLETE** |
-| 3 | Thin vertical slice (CLI → REST → Kafka → SSE) | **IN PROGRESS** |
-| 4 | SOAP planning (Java glyph catalog, `RUBE_SIMPLEX_V1`) | not started |
+| 3 | Thin vertical slice (CLI → REST → Kafka → SSE) | **COMPLETE** |
+| 4 | SOAP planning (Java glyph catalog, `RUBE_SIMPLEX_V1`) | **IN PROGRESS** |
 | 5 | Geometry and vector artifacts (C++, Go) | not started |
 | 6 | gRPC rasterization (C#, SkiaSharp) | not started |
 | 7 | Composition and preprocessing (Python) | not started |
@@ -349,3 +349,83 @@ Milestone 2 acceptance passes.
 | 2026-08-04 | Deploy to k3d (`rube-goldberg` namespace) | PASS (both deployments ready) |
 | 2026-08-04 | Vertical slice smoke test | PASS (`rghello run` printed `Hello World`, exit 0) |
 | 2026-08-04 | `make e2e` | PASS (all gates + integration + platform smoke tests + vertical slice) |
+
+---
+
+## Milestone 4 — SOAP planning
+
+### Scope
+
+- [ ] Implement the Java glyph catalog (`services/glyph-catalog-java`) as a
+      WSDL-first SOAP server (Spring Boot + Spring Web Services):
+  - [ ] Serve the contract WSDL at `/ws/glyph-catalog`
+  - [ ] `PlanPhrase` operation: decode the phrase, assign opaque
+        `glyphInstanceId`s, map every character to a `RUBE_SIMPLEX_V1` glyph
+        (H e l o W r d + SPACE), emit a gap blueprint for whitespace
+  - [ ] `GetAlternateBlueprint` operation: return an alternate geometric
+        representation for a glyph of a stored plan
+  - [ ] Persist plans (embedded H2, file-backed) so alternates survive restarts
+  - [ ] SOAP fault for unsupported characters
+- [ ] Generate the Kotlin SOAP client from `contracts/soap/glyph-catalog.wsdl`
+      (wsimport at build time) and wrap it in the orchestrator
+- [ ] Orchestrator planning path:
+  - [ ] Call `PlanPhrase` on run creation
+  - [ ] Store the expected code points privately (never downstream)
+  - [ ] Emit one `glyph-blueprint-produced.v1` event per phrase position to
+        `rg.glyph-blueprints.v1` with partition key `runId:glyphInstanceId`
+  - [ ] Remove the temp-worker echo path from the run state machine
+- [ ] Remove the temporary worker (`services/temp-worker-node`), its
+      deployment manifest, and Makefile references
+- [ ] Deploy the glyph catalog to Kubernetes and update smoke tests:
+  - [ ] Eleven ordered blueprint records for `"Hello World"` on
+        `rg.glyph-blueprints.v1`
+  - [ ] Gap position exists at index 5
+  - [ ] Downstream blueprint events contain no plaintext or code points
+- [ ] Add the section 7.4 static prohibited-field scan on event schemas
+
+### Acceptance conditions
+
+- `"Hello World"` produces eleven ordered blueprint records (positions 0..10).
+- Gap position exists (position 5, kind `GAP`, advance width, no primitives).
+- Downstream events (`rg.glyph-blueprints.v1`) exclude plaintext and code
+  points; `rghello run` still prints `Hello World` via the orchestrator.
+- Plans persist; `GetAlternateBlueprint` returns a different blueprint.
+- `make e2e` passes (gates + integration + platform smoke + SOAP planning).
+
+### Verification log
+
+| Date | Check | Result |
+| --- | --- | --- |
+| 2026-08-04 | Java glyph catalog `mvn verify` | PASS (26 tests, JaCoCo line >= 90%, generated JAXB excluded) |
+| 2026-08-04 | Java spotless:check | PASS |
+| 2026-08-04 | Kotlin orchestrator `./gradlew check` | PASS (38 tests, JaCoCo line >= 90%, generated wsimport classes excluded) |
+| 2026-08-04 | Kotlin ktlintCheck | PASS |
+| 2026-08-04 | `make contracts` / `make contract-test` | PASS (XSD wrapper shape `glyphs/glyph`, `primitives/primitive`; prohibited-field scans green) |
+| 2026-08-04 | `make format` / `make lint STRICT=1` | PASS |
+| 2026-08-04 | `make coverage STRICT=1` / `make build` | PASS |
+| 2026-08-04 | `make integration` | PASS (failures=0; SOAP round trip: 11 glyph records, positions 0..10, gap present) |
+| 2026-08-05 | `make e2e` | PASS (gates + integration + smoke; `rghello run` printed `Hello World`; 11 blueprint records, gap at 5, no prohibited fields) |
+
+E2E debugging notes (2026-08-05): the deployed orchestrator initially failed
+SOAP planning with "Cannot find 'wsdl/glyph-catalog.wsdl'". The wsimport
+generated client resolves `wsdlLocation` via `Class.getResource`, which is
+package-relative without a leading slash; the fix was the standard
+`-wsdllocation /wsdl/glyph-catalog.wsdl` in
+`services/run-orchestrator-kotlin/build.gradle.kts`. Images were rebuilt and
+deployments rolled. The smoke test also had a `set -euo pipefail` trap: the
+blueprint consumer timed out (fewer than 50 topic messages) and aborted the
+script silently before printing FAIL diagnostics; fixed with
+`--timeout-ms 5000` and a `|| true` guard on the consumption pipeline so
+assertions surface real PASS/FAIL output.
+
+### Milestone 4 limitations
+
+- The orchestrator completes runs from its private expected-text store; the
+  true OCR-derived assembly replaces this in Milestone 9 (the temporary
+  Node.js echo worker was removed in this milestone).
+- The orchestrator does not yet write the requested text to PostgreSQL
+  (architecture stage 1 step 2); run text lives in memory plus the Redis
+  result until a persistence milestone.
+- The section 7.4 runtime Kafka-event validator is deferred to the milestone
+  that adds downstream consumers; the static schema scan and orchestrator
+  unit tests already enforce the prohibited-field boundary.

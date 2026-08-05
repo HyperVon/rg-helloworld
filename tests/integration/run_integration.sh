@@ -125,8 +125,8 @@ echo "Verifying service banners:"
 
 check "rghello" "rghello 0.0.0-skeleton" "$BIN/rghello" version
 check "vector-normalizer" "vector-normalizer 0.0.0-skeleton" "$BIN/vector-normalizer" version
-check "glyph-catalog" "glyph-catalog 0.0.0-skeleton" java -jar "$ROOT/services/glyph-catalog-java/target/glyph-catalog-java-0.0.0-skeleton.jar" version
-check "run-orchestrator" "run-orchestrator 0.1.0-milestone3" "$ROOT/services/run-orchestrator-kotlin/build/install/run-orchestrator/bin/run-orchestrator" version
+check "glyph-catalog" "glyph-catalog 0.1.0-milestone4" java -jar "$ROOT/services/glyph-catalog-java/target/glyph-catalog-java-0.1.0-milestone4.jar" version
+check "run-orchestrator" "run-orchestrator 0.2.0-milestone4" "$ROOT/services/run-orchestrator-kotlin/build/install/run-orchestrator/bin/run-orchestrator" version
 check "geometry-engine" "geometry-engine 0.0.0-skeleton (Milestone 0 skeleton)" "$ROOT/.local/build/geometry-engine-cpp/geometry_engine"
 check "rasterizer" "rasterizer 0.0.0-skeleton (Milestone 0 skeleton)" "$DOTNET" "$ROOT/services/rasterizer-dotnet/cli/bin/Debug/net10.0/rasterizer.Cli.dll"
 check_eval "image-pipeline" "image-pipeline 0.0.0-skeleton (Milestone 0 skeleton)" "PYTHONPATH=$ROOT/services/image-pipeline-python/src python3 -c 'import rg_image_pipeline as m; print(m.banner())'"
@@ -134,6 +134,67 @@ check_eval "ocr-worker" "ocr-worker 0.0.0-skeleton (Milestone 0 skeleton)" "node
 check_eval "event-gateway" "event-gateway 0.0.0-skeleton (Milestone 0 skeleton)" "node -e \"import('$ROOT/services/event-gateway-node/out/src/index.js').then(m => console.log(m.banner()))\""
 check_eval "adjudicator" "adjudicator 0.0.0-skeleton (Milestone 0 skeleton)" "cd '$ROOT/services/adjudicator-ruby' && ruby -Ilib -e 'require \"adjudicator\"; puts Adjudicator.banner'"
 check "phrase-assembler" "phrase-assembler 0.0.0-skeleton (Milestone 0 skeleton)" "$ROOT/services/phrase-assembler-rust/target/debug/phrase-assembler"
+
+echo ""
+echo "Verifying SOAP glyph catalog round trip:"
+
+if command -v java >/dev/null 2>&1 && command -v curl >/dev/null 2>&1; then
+  CATALOG_PORT=18083
+  GLYPH_CATALOG_PORT=$CATALOG_PORT GLYPH_CATALOG_DB_URL=jdbc:h2:mem:integration \
+    java -jar "$ROOT/services/glyph-catalog-java/target/glyph-catalog-java-0.1.0-milestone4.jar" \
+    >/tmp/rghello-catalog.log 2>&1 &
+  CATALOG_PID=$!
+  READY=""
+  for _ in $(seq 1 30); do
+    if curl -sf "http://127.0.0.1:$CATALOG_PORT/healthz" >/dev/null 2>&1; then
+      READY="yes"
+      break
+    fi
+    sleep 1
+  done
+  if [ -z "$READY" ]; then
+    FAILED=$((FAILED + 1))
+    say "[FAIL] glyph catalog did not become ready (see /tmp/rghello-catalog.log)"
+  else
+    SOAP_RESPONSE=$(curl -sf -H "Content-Type: text/xml" \
+      -d '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:glyph="urn:rube-goldberg:glyph-catalog:v1"><soapenv:Body><glyph:PlanPhraseRequest><glyph:message>Hello World</glyph:message><glyph:alphabet>RUBE_SIMPLEX_V1</glyph:alphabet><glyph:variant>PRIMARY</glyph:variant></glyph:PlanPhraseRequest></soapenv:Body></soapenv:Envelope>' \
+      "http://127.0.0.1:$CATALOG_PORT/ws/glyph-catalog" 2>/dev/null)
+    if [ -z "$SOAP_RESPONSE" ]; then
+      FAILED=$((FAILED + 1))
+      say "[FAIL] SOAP PlanPhrase request returned no response"
+    else
+      GLYPH_COUNT=$(printf '%s' "$SOAP_RESPONSE" | grep -oE "<[a-zA-Z0-9]+:glyphInstanceId>" | wc -l | tr -d ' ')
+      if [ "$GLYPH_COUNT" = "11" ]; then
+        say "[ ok ] PlanPhrase returned 11 glyph records"
+      else
+        FAILED=$((FAILED + 1))
+        say "[FAIL] PlanPhrase returned $GLYPH_COUNT glyph records, expected 11"
+      fi
+      MISSING_POSITION=""
+      for i in 0 1 2 3 4 5 6 7 8 9 10; do
+        if ! printf '%s' "$SOAP_RESPONSE" | grep -q "position>$i<"; then
+          MISSING_POSITION="$MISSING_POSITION $i"
+        fi
+      done
+      if [ -z "$MISSING_POSITION" ]; then
+        say "[ ok ] Blueprint positions 0..10 present in order"
+      else
+        FAILED=$((FAILED + 1))
+        say "[FAIL] Missing blueprint positions:$MISSING_POSITION"
+      fi
+      if printf '%s' "$SOAP_RESPONSE" | grep -q "kind>GAP<"; then
+        say "[ ok ] Gap blueprint present"
+      else
+        FAILED=$((FAILED + 1))
+        say "[FAIL] No gap blueprint in PlanPhrase response"
+      fi
+    fi
+  fi
+  kill "$CATALOG_PID" 2>/dev/null || true
+  wait "$CATALOG_PID" 2>/dev/null || true
+else
+  skip "Java or curl for SOAP round trip"
+fi
 
 echo ""
 echo "Integration results: failures=$FAILED skipped=$SKIPPED"
