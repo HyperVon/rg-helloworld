@@ -1,7 +1,7 @@
 # asdf tool versions — mirror versions.env.
 # Java and .NET are managed per-project (maven.compiler.release, global.json).
 golang 1.26.5
-nodejs 24.19.0
-python 3.13.14
-ruby 3.4.10
+nodejs 26.6.0
+python 3.14.6
+ruby 4.0.6
 rust 1.97.1

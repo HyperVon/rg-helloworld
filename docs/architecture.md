@@ -2189,7 +2189,7 @@ Directory.Packages.props
 Reasonable baseline families:
 
 ```text
-Java: 21 LTS
+Java: 25 LTS
 Kotlin: 2.x
 Go: stable 1.24+
 Node.js: current LTS

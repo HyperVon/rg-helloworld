@@ -1,12 +1,12 @@
 package dev.rghello.catalog;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.rghello.catalog.contract.PlanPhraseResponse;
 import java.time.Instant;
 import java.util.List;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 @Repository
 public class PlanRepository {
@@ -23,7 +23,7 @@ public class PlanRepository {
     String json;
     try {
       json = mapper.writeValueAsString(plan);
-    } catch (JsonProcessingException e) {
+    } catch (JacksonException e) {
       throw new IllegalStateException("Failed to serialize plan " + plan.getPlanId(), e);
     }
     jdbc.update(
@@ -44,7 +44,7 @@ public class PlanRepository {
     }
     try {
       return mapper.readValue(rows.get(0), PlanPhraseResponse.class);
-    } catch (JsonProcessingException e) {
+    } catch (JacksonException e) {
       throw new IllegalStateException("Failed to deserialize plan " + planId, e);
     }
   }

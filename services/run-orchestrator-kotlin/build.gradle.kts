@@ -15,7 +15,7 @@ repositories {
 
 val ktorVersion = "3.5.2"
 val kafkaVersion = "4.3.1"
-val lettuceVersion = "6.7.1.RELEASE"
+val lettuceVersion = "7.6.0.RELEASE"
 val jaxwsVersion = "4.0.5"
 
 val wsimportTools by configurations.creating
@@ -47,7 +47,7 @@ dependencies {
 }
 
 ktlint {
-    version.set("1.7.1")
+    version.set("1.8.0")
     filter {
         exclude("**/generated/**")
     }

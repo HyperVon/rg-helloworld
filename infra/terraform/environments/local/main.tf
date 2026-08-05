@@ -5,15 +5,15 @@ terraform {
   required_providers {
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "3.1.0"
+      version = "3.2.1"
     }
     helm = {
       source  = "hashicorp/helm"
-      version = "2.11.0"
+      version = "3.2.0"
     }
     kubectl = {
       source  = "gavinbunney/kubectl"
-      version = "1.17.0"
+      version = "1.19.0"
     }
   }
 }
@@ -23,7 +23,7 @@ provider "kubernetes" {
 }
 
 provider "helm" {
-  kubernetes {
+  kubernetes = {
     config_path = "~/.kube/config"
   }
 }
@@ -90,50 +90,52 @@ resource "helm_release" "postgresql" {
   version   = var.helm_postgresql_version
   namespace = local.namespace
 
-  set {
-    name  = "auth.username"
-    value = "postgres"
-  }
-  set {
-    name  = "auth.password"
-    value = "PostgresPassw0rd!"
-  }
-  set {
-    name  = "auth.database"
-    value = "postgres"
-  }
-  set {
-    name  = "primary.persistence.enabled"
-    value = "true"
-  }
-  set {
-    name  = "primary.persistence.size"
-    value = "2Gi"
-  }
-  set {
-    name  = "architecture"
-    value = "standalone"
-  }
-  set {
-    name  = "service.type"
-    value = "ClusterIP"
-  }
-  set {
-    name  = "resources.limits.memory"
-    value = "512Mi"
-  }
-  set {
-    name  = "resources.limits.cpu"
-    value = "500m"
-  }
-  set {
-    name  = "resources.requests.memory"
-    value = "256Mi"
-  }
-  set {
-    name  = "resources.requests.cpu"
-    value = "256Mi"
-  }
+  set = [
+    {
+      name  = "auth.username"
+      value = "postgres"
+    },
+    {
+      name  = "auth.password"
+      value = "PostgresPassw0rd!"
+    },
+    {
+      name  = "auth.database"
+      value = "postgres"
+    },
+    {
+      name  = "primary.persistence.enabled"
+      value = "true"
+    },
+    {
+      name  = "primary.persistence.size"
+      value = "2Gi"
+    },
+    {
+      name  = "architecture"
+      value = "standalone"
+    },
+    {
+      name  = "service.type"
+      value = "ClusterIP"
+    },
+    {
+      name  = "resources.limits.memory"
+      value = "512Mi"
+    },
+    {
+      name  = "resources.limits.cpu"
+      value = "500m"
+    },
+    {
+      name  = "resources.requests.memory"
+      value = "256Mi"
+    },
+    {
+      name  = "resources.requests.cpu"
+      value = "256Mi"
+    },
+  ]
 }
 
 # Kafka KRaft (Bitnami chart) - using local chart archive
@@ -144,62 +146,64 @@ resource "helm_release" "kafka" {
   namespace = local.namespace
   timeout   = 300
 
-  set {
-    name  = "global.security.allowInsecureImages"
-    value = "true"
-  }
-  set {
-    name  = "image.registry"
-    value = "registry-1.docker.io"
-  }
-  set {
-    name  = "image.repository"
-    value = "bitnamilegacy/kafka"
-  }
-  set {
-    name  = "replica.replicaCount"
-    value = "1"
-  }
-  set {
-    name  = "zookeeper.enabled"
-    value = "false"
-  }
-  set {
-    name  = "listeners.client.protocol"
-    value = "PLAINTEXT"
-  }
-  set {
-    name  = "listeners.controller.protocol"
-    value = "PLAINTEXT"
-  }
-  set {
-    name  = "listeners.interbroker.protocol"
-    value = "PLAINTEXT"
-  }
-  set {
-    name  = "service.ports.client"
-    value = "9092"
-  }
-  set {
-    name  = "resources.limits.memory"
-    value = "512Mi"
-  }
-  set {
-    name  = "resources.limits.cpu"
-    value = "500m"
-  }
-  set {
-    name  = "resources.requests.memory"
-    value = "256Mi"
-  }
-  set {
-    name  = "resources.requests.cpu"
-    value = "256Mi"
-  }
-  set {
-    name  = "probeStartupFailureThreshold"
-    value = "60"
-  }
+  set = [
+    {
+      name  = "global.security.allowInsecureImages"
+      value = "true"
+    },
+    {
+      name  = "image.registry"
+      value = "registry-1.docker.io"
+    },
+    {
+      name  = "image.repository"
+      value = "bitnamilegacy/kafka"
+    },
+    {
+      name  = "replica.replicaCount"
+      value = "1"
+    },
+    {
+      name  = "zookeeper.enabled"
+      value = "false"
+    },
+    {
+      name  = "listeners.client.protocol"
+      value = "PLAINTEXT"
+    },
+    {
+      name  = "listeners.controller.protocol"
+      value = "PLAINTEXT"
+    },
+    {
+      name  = "listeners.interbroker.protocol"
+      value = "PLAINTEXT"
+    },
+    {
+      name  = "service.ports.client"
+      value = "9092"
+    },
+    {
+      name  = "resources.limits.memory"
+      value = "512Mi"
+    },
+    {
+      name  = "resources.limits.cpu"
+      value = "500m"
+    },
+    {
+      name  = "resources.requests.memory"
+      value = "256Mi"
+    },
+    {
+      name  = "resources.requests.cpu"
+      value = "256Mi"
+    },
+    {
+      name  = "probeStartupFailureThreshold"
+      value = "60"
+    },
+  ]
 }
 
 # Redis (Bitnami chart) - using local chart archive
@@ -209,42 +213,44 @@ resource "helm_release" "redis" {
   version   = var.helm_redis_version
   namespace = local.namespace
 
-  set {
-    name  = "auth.password"
-    value = "RedisPassw0rd!"
-  }
-  set {
-    name  = "architecture"
-    value = "standalone"
-  }
-  set {
-    name  = "master.persistence.enabled"
-    value = "true"
-  }
-  set {
-    name  = "master.persistence.size"
-    value = "2Gi"
-  }
-  set {
-    name  = "service.type"
-    value = "ClusterIP"
-  }
-  set {
-    name  = "resources.limits.memory"
-    value = "512Mi"
-  }
-  set {
-    name  = "resources.limits.cpu"
-    value = "500m"
-  }
-  set {
-    name  = "resources.requests.memory"
-    value = "256Mi"
-  }
-  set {
-    name  = "resources.requests.cpu"
-    value = "256Mi"
-  }
+  set = [
+    {
+      name  = "auth.password"
+      value = "RedisPassw0rd!"
+    },
+    {
+      name  = "architecture"
+      value = "standalone"
+    },
+    {
+      name  = "master.persistence.enabled"
+      value = "true"
+    },
+    {
+      name  = "master.persistence.size"
+      value = "2Gi"
+    },
+    {
+      name  = "service.type"
+      value = "ClusterIP"
+    },
+    {
+      name  = "resources.limits.memory"
+      value = "512Mi"
+    },
+    {
+      name  = "resources.limits.cpu"
+      value = "500m"
+    },
+    {
+      name  = "resources.requests.memory"
+      value = "256Mi"
+    },
+    {
+      name  = "resources.requests.cpu"
+      value = "256Mi"
+    },
+  ]
 }
 
 # MinIO (Bitnami chart) - using local chart archive
@@ -254,57 +260,58 @@ resource "helm_release" "minio" {
   version   = var.helm_minio_version
   namespace = local.namespace
 
-  set {
-    name  = "global.security.allowInsecureImages"
-    value = "true"
-  }
-  set {
-    name  = "image.registry"
-    value = "registry-1.docker.io"
-  }
-  set {
-    name  = "image.repository"
-    value = "bitnamilegacy/minio"
-  }
-  set {
-    name  = "console.image.registry"
-    value = "registry-1.docker.io"
-  }
-  set {
-    name  = "console.image.repository"
-    value = "bitnamilegacy/minio-object-browser"
-  }
-  set {
-    name  = "auth.existingSecret"
-    value = "minio-credentials"
-  }
-  set {
-    name  = "mode"
-    value = "standalone"
-  }
-  set {
-    name  = "persistence.enabled"
-    value = "true"
-  }
-  set {
-    name  = "persistence.size"
-    value = "2Gi"
-  }
-  set {
-    name  = "service.type"
-    value = "ClusterIP"
-  }
-
-  set {
-    name  = "resources.limits.memory"
-    value = "512Mi"
-  }
-  set {
-    name  = "resources.limits.cpu"
-    value = "500m"
-  }
-  set {
-    name  = "defaultBuckets"
-    value = "rube-goldberg-artifacts:none"
-  }
+  set = [
+    {
+      name  = "global.security.allowInsecureImages"
+      value = "true"
+    },
+    {
+      name  = "image.registry"
+      value = "registry-1.docker.io"
+    },
+    {
+      name  = "image.repository"
+      value = "bitnamilegacy/minio"
+    },
+    {
+      name  = "console.image.registry"
+      value = "registry-1.docker.io"
+    },
+    {
+      name  = "console.image.repository"
+      value = "bitnamilegacy/minio-object-browser"
+    },
+    {
+      name  = "auth.existingSecret"
+      value = "minio-credentials"
+    },
+    {
+      name  = "mode"
+      value = "standalone"
+    },
+    {
+      name  = "persistence.enabled"
+      value = "true"
+    },
+    {
+      name  = "persistence.size"
+      value = "2Gi"
+    },
+    {
+      name  = "service.type"
+      value = "ClusterIP"
+    },
+    {
+      name  = "resources.limits.memory"
+      value = "512Mi"
+    },
+    {
+      name  = "resources.limits.cpu"
+      value = "500m"
+    },
+    {
+      name  = "defaultBuckets"
+      value = "rube-goldberg-artifacts:none"
+    },
+  ]
 }

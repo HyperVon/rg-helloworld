@@ -275,11 +275,15 @@ class ApplicationTest {
                         if (key.endsWith(":result")) lastSetResultKey = key else lastSetStatusKey = key
                         "OK"
                     }
+
                     "get" -> {
                         statusGetKey = args[0] as String
                         "SUCCEEDED"
                     }
-                    else -> null
+
+                    else -> {
+                        null
+                    }
                 }
             } as io.lettuce.core.api.sync.RedisCommands<String, String>
 

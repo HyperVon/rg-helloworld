@@ -74,14 +74,14 @@ any business functionality.
 | --- | --- | --- | --- |
 | `cmd/rghello` | Go | `go build` | `go test` |
 | `services/vector-normalizer-go` | Go | `go build` | `go test` |
-| `services/glyph-catalog-java` | Java 21 | Maven `package` | JUnit Jupiter |
+| `services/glyph-catalog-java` | Java 25 | Maven `package` | JUnit Jupiter |
 | `services/run-orchestrator-kotlin` | Kotlin 2.4 / JVM 21 | Gradle `assemble` | JUnit Jupiter |
 | `services/geometry-engine-cpp` | C++20 | CMake | CTest |
 | `services/rasterizer-dotnet` | .NET 10 | `dotnet build` | xUnit |
-| `services/image-pipeline-python` | Python 3.13+ | `compileall` | unittest |
-| `services/ocr-worker-node` | TypeScript 5.9 / Node 24 | `tsc` | `node --test` |
-| `services/event-gateway-node` | TypeScript 5.9 / Node 24 | `tsc` | `node --test` |
-| `services/adjudicator-ruby` | Ruby 3.4+ | `ruby -c` | minitest |
+| `services/image-pipeline-python` | Python 3.14+ | `compileall` | unittest |
+| `services/ocr-worker-node` | TypeScript 7.0 / Node 26 | `tsc` | `node --test` |
+| `services/event-gateway-node` | TypeScript 7.0 / Node 26 | `tsc` | `node --test` |
+| `services/adjudicator-ruby` | Ruby 4.0+ | `ruby -c` | minitest |
 | `services/phrase-assembler-rust` | Rust 1.97 | `cargo build` | `cargo test` |
 
 ### Tasks
@@ -405,6 +405,12 @@ Milestone 2 acceptance passes.
 | 2026-08-04 | `make coverage STRICT=1` / `make build` | PASS |
 | 2026-08-04 | `make integration` | PASS (failures=0; SOAP round trip: 11 glyph records, positions 0..10, gap present) |
 | 2026-08-05 | `make e2e` | PASS (gates + integration + smoke; `rghello run` printed `Hello World`; 11 blueprint records, gap at 5, no prohibited fields) |
+| 2026-08-05 | Dependency upgrade sweep (ADR-0006) | PASS (Spring Boot 4.1.0 / Spring WS 5.0.2 / JDK 25 Temurin / Lettuce 7.6.0 / TypeScript 7.0.2 / Node 26 / Python 3.14 / Ruby 4.0 / Terraform providers helm 3.2.0, kubernetes 3.2.1, kubectl 1.19.0; CI actions SHA-pinned) |
+| 2026-08-05 | `make format` / `make lint STRICT=1` | PASS (new pins; ktlint 1.8.0, tsc 7.0.2 clean) |
+| 2026-08-05 | `make unit` / `make coverage` / `make build` | PASS (all language gates >= 90%; Java 26 tests on Boot 4.1.0, Kotlin 38, .NET 5/5, Python 4/4, Node 5+5, Ruby 5, Rust 5) |
+| 2026-08-05 | `make integration` | PASS (failures=0; SOAP round trip 11 glyph records, gap present) |
+| 2026-08-05 | Terraform helm provider v3 migration | PASS (`terraform plan`: 0 to add, 4 in-place changes, 0 to destroy; e2e apply: 0 added, 4 changed, 0 destroyed) |
+| 2026-08-05 | `make e2e` (post-upgrade) | PASS (full gates + integration + smoke; smoke: eleven ordered blueprint records, no plaintext/code points) |
 
 E2E debugging notes (2026-08-05): the deployed orchestrator initially failed
 SOAP planning with "Cannot find 'wsdl/glyph-catalog.wsdl'". The wsimport
