@@ -116,6 +116,38 @@ optional focused-development aid.
 - No unapproved architecture changes; record changes as ADRs under
   `docs/adr/`.
 
+## Skills and agents
+
+Always-on norms live in `.kilo/operating.md` (loaded via `kilo.json`). For a
+task that matches a skill, read and follow that skill before inventing a
+process. Skills live in `.agents/skills/` (registered in `kilo.json`); Kilo
+commands and agents live in `.kilo/command/` and `.kilo/agent/`.
+
+| User intent | Skill / command |
+|---|---|
+| Implement / resume a milestone | `rghello-milestone` (`.kilo/skills/`) |
+| Run gates / evidence before changes | `/quality-gate` |
+| Review working-tree changes before commit | `/review-diff` |
+| Boot the acceptance stack and verify | `/acceptance-smoke` |
+| Commit / push | `commit-and-push` |
+| Open PR | `open-pr` (+ mandatory `adversarial-pr-review`) |
+| Adversarial / multi-agent PR review | `adversarial-pr-review` |
+| Artifact-quality / "de-slop" audit | `ai-slop-detector` |
+| Docs audit vs source truth | `documentation-review` |
+| Incremental docs sync after a change | `docs-sync` |
+| Review skills for content depth | `skill-reviewer` |
+| Audit rules/skills structure, overlap, drift | `rules-and-skills-audit` |
+| Create or modify a skill | `skill-authoring` |
+| Fan-out parallel work | `parallel-multi-agent` |
+| QA loop / test hardening | `continuous-quality` |
+| Unattended multi-pass cleanup | `autonomous-code-optimizer` |
+| TODO burn-down | `todo-resolution` |
+| Comment hygiene / explain complex code | `complex-code-comments` |
+| Dependency upgrades | `dependency-upgrade` |
+| Architecture review / redesign brainstorm | `architecture-review` |
+| Code-size reduction / large-file splits | `reduce-code-size` |
+| Model routing for delegation | `.kilo/model-router/` (optional; see its `instructions.md`) |
+
 ## Context and output discipline
 
 - Use quiet test modes; capture complete logs in files under

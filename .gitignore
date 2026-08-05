@@ -43,3 +43,7 @@ target/release/
 *.tfstate
 *.tfstate.backup
 .terraform.lock.hcl
+
+# Local model-router credentials
+.kilo/model-router/env.local
+.kilo/model-router/manifest.local
