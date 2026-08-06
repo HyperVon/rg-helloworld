@@ -14,7 +14,7 @@
 | 3 | Thin vertical slice (CLI → REST → Kafka → SSE) | **COMPLETE** |
 | 4 | SOAP planning (Java glyph catalog, `RUBE_SIMPLEX_V1`) | **COMPLETE** |
 | 5 | Geometry and vector artifacts (C++, Go) | **COMPLETE** |
-| 6 | gRPC rasterization (C#, ImageSharp) | **IN PROGRESS** |
+| 6 | gRPC rasterization (C#, ImageSharp) | **COMPLETE** |
 | 7 | Composition and preprocessing (Python) | not started |
 | 8 | OCR and adjudication (Node.js, Ruby) | not started |
 | 9 | Rust assembly and true final output | not started |
