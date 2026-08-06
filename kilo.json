@@ -28,14 +28,6 @@
       "type": "local",
       "command": ["uv", "--directory", "/Users/charlesv/.local/share/kilo/mcp-servers/kops", "run", "kops"],
       "enabled": true
-    },
-    "kafka": {
-      "type": "local",
-      "command": ["uv", "--directory", "/Users/charlesv/.local/share/kilo/mcp-servers/kafka-mcp", "run", "kafka-mcp"],
-      "environment": {
-        "KAFKA_BOOTSTRAP_SERVERS": "localhost:9092"
-      },
-      "enabled": false
     }
   },
   "permission": {

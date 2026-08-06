@@ -154,7 +154,10 @@ commands and agents live in `.kilo/command/` and `.kilo/agent/`.
   `.local/diagnostics/`.
 - Show only relevant failure excerpts; never dump entire dependency trees or
   full Kubernetes manifests.
-- Use `kubectl logs --tail`, bounded `grep`/`head`.
+- Prefer the `kops` MCP tools (`k8s_get`, `k8s_describe`, `k8s_logs`,
+  `k8s_events`, `k8s_triage`, `k8s_inventory`) over raw `kubectl` for
+  read-only cluster inspection; use `kubectl logs --tail`, bounded
+  `grep`/`head` for anything else.
 - Summarize command results instead of repeating thousands of lines.
 
 ## Kilo session hygiene (prevent output-limit failures)

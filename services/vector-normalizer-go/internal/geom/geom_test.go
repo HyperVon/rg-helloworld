@@ -122,3 +122,24 @@ func TestNormalizeDegenerateBounds(t *testing.T) {
 		}
 	}
 }
+
+func TestNormalizeZeroHeightGlyph(t *testing.T) {
+	// A single horizontal line has zero height; normalization must not
+	// divide by zero and must keep coordinates finite.
+	payload := GeometryPayload{
+		Kind: "DRAWABLE_GEOMETRY",
+		Segments: []Segment{
+			{X1: 0.0, Y1: 0.5, X2: 1.0, Y2: 0.5},
+		},
+	}
+	result := Normalize(payload)
+	if len(result.Segments) != 1 {
+		t.Fatalf("segments = %d, want 1", len(result.Segments))
+	}
+	for _, value := range []float64{result.Segments[0].X1, result.Segments[0].Y1,
+		result.Segments[0].X2, result.Segments[0].Y2} {
+		if math.IsNaN(value) || math.IsInf(value, 0) {
+			t.Fatalf("non-finite coordinate %v", value)
+		}
+	}
+}

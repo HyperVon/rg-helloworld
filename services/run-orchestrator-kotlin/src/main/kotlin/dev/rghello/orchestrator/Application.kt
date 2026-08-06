@@ -96,6 +96,7 @@ enum class RunStatus {
     PLANNING,
     GENERATING_GEOMETRY,
     NORMALIZING,
+    RASTERIZING,
     SUCCEEDED,
     FAILED,
 }
@@ -104,6 +105,7 @@ enum class RunEvent {
     PLANNED,
     GEOMETRY_COMPLETE,
     NORMALIZED_COMPLETE,
+    RASTERIZED_COMPLETE,
     FAILURE_REPORTED,
 }
 
@@ -122,7 +124,11 @@ object RunStateMachine {
             }
 
             RunEvent.NORMALIZED_COMPLETE -> {
-                if (status == RunStatus.NORMALIZING) RunStatus.SUCCEEDED else status
+                if (status == RunStatus.NORMALIZING) RunStatus.RASTERIZING else status
+            }
+
+            RunEvent.RASTERIZED_COMPLETE -> {
+                if (status == RunStatus.RASTERIZING) RunStatus.SUCCEEDED else status
             }
 
             RunEvent.FAILURE_REPORTED -> {
@@ -209,6 +215,7 @@ object Services {
     const val PLANNING_TOPIC = "rg.glyph-blueprints.v1"
     const val GEOMETRY_TOPIC = "rg.geometry-expanded.v1"
     const val NORMALIZED_TOPIC = "rg.glyph-normalized.v1"
+    const val RASTERIZED_TOPIC = "rg.glyph-rasterized.v1"
     const val RUN_EVENTS_TOPIC = "rg.run-events.v1"
     const val ALPHABET = "RUBE_SIMPLEX_V1"
 
@@ -301,7 +308,7 @@ fun startStageConsumer() {
             System.err.println("stage consumer init failed: ${e.message}")
             return
         }
-    consumer.subscribe(listOf(Services.GEOMETRY_TOPIC, Services.NORMALIZED_TOPIC))
+    consumer.subscribe(listOf(Services.GEOMETRY_TOPIC, Services.NORMALIZED_TOPIC, Services.RASTERIZED_TOPIC))
     val thread = Thread { StageConsumer(consumer, monitor).runForever() }
     thread.isDaemon = true
     thread.name = "stage-consumer"
@@ -452,7 +459,8 @@ suspend fun handleCreateRun(call: ApplicationCall) {
             )
         }
         broadcastEvent(runId, eventMap("PLANNED", "SOAP plan produced ${plan.glyphs.size} glyph blueprints"))
-        Services.stageMonitor?.registerRun(runId, plan.glyphs.size)
+        val drawableCount = plan.glyphs.count { it.kind != "GAP" }
+        Services.stageMonitor?.registerRun(runId, plan.glyphs.size, drawableCount)
         transitionRun(runId, RunEvent.PLANNED)
     }
 
@@ -486,7 +494,7 @@ fun completeRun(
     assembledText: String,
 ) {
     val state = runs[runId] ?: return
-    val succeeded = state.copy(status = RunStateMachine.transition(state.status, RunEvent.NORMALIZED_COMPLETE))
+    val succeeded = state.copy(status = RunStateMachine.transition(state.status, RunEvent.RASTERIZED_COMPLETE))
     if (succeeded.status == state.status) {
         return
     }

@@ -1,6 +1,6 @@
 # Vector normalizer: Go consumer of geometry events -> normalized SVG.
 # Base images are tag-pinned (never "latest").
-FROM golang:1.26-bookworm AS builder
+FROM golang:1.26.5-bookworm AS builder
 
 WORKDIR /app
 COPY services/vector-normalizer-go /app/services/vector-normalizer-go

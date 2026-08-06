@@ -11,11 +11,13 @@ import java.time.Duration
 import java.util.Properties
 import java.util.concurrent.ConcurrentHashMap
 
-// Stage monitoring for Milestone 5: the orchestrator consumes
-// GeometryExpanded and VectorNormalized events, validates them (maturity
-// must strictly increase; section 7.4 prohibited fields are rejected), and
-// fans the per-glyph completions in to drive the run state machine
-// PLANNING -> GENERATING_GEOMETRY -> NORMALIZING -> SUCCEEDED.
+// Stage monitoring for Milestone 6: the orchestrator consumes
+// GeometryExpanded, VectorNormalized, and GlyphRasterized events, validates
+// them (maturity must strictly increase; section 7.4 prohibited fields are
+// rejected), and fans the per-glyph completions in to drive the run state
+// machine PLANNING -> GENERATING_GEOMETRY -> NORMALIZING -> RASTERIZING ->
+// SUCCEEDED. Gap positions have layout metadata but no raster, so the
+// rasterized fan-in counts only drawable glyphs.
 
 data class MaturityPair(
     val input: Int,
@@ -79,16 +81,21 @@ enum class StageTransition {
 
 class StageProgressTracker {
     private val expectedTotals = ConcurrentHashMap<String, Int>()
+    private val drawableTotals = ConcurrentHashMap<String, Int>()
     private val geometryCompleted = ConcurrentHashMap<String, MutableSet<String>>()
     private val normalizedCompleted = ConcurrentHashMap<String, MutableSet<String>>()
+    private val rasterizedCompleted = ConcurrentHashMap<String, MutableSet<String>>()
 
     fun registerRun(
         runId: String,
         glyphCount: Int,
+        drawableCount: Int = glyphCount,
     ) {
         expectedTotals[runId] = glyphCount
+        drawableTotals[runId] = drawableCount
         geometryCompleted[runId] = ConcurrentHashMap.newKeySet()
         normalizedCompleted[runId] = ConcurrentHashMap.newKeySet()
+        rasterizedCompleted[runId] = ConcurrentHashMap.newKeySet()
     }
 
     fun onGeometryEvent(
@@ -108,6 +115,16 @@ class StageProgressTracker {
         val total = expectedTotals[runId] ?: return StageTransition.UNKNOWN_RUN
         val completed = normalizedCompleted.getOrPut(runId) { ConcurrentHashMap.newKeySet() }
         completed.add(glyphInstanceId)
+        return if (completed.size >= total) StageTransition.STAGE_COMPLETE else StageTransition.PROGRESS
+    }
+
+    fun onRasterizedEvent(
+        runId: String,
+        glyphInstanceId: String,
+    ): StageTransition {
+        val total = drawableTotals[runId] ?: return StageTransition.UNKNOWN_RUN
+        val completed = rasterizedCompleted.getOrPut(runId) { ConcurrentHashMap.newKeySet() }
+        completed.add(glyphInstanceId)
         return if (completed.size >= total) StageTransition.RUN_COMPLETE else StageTransition.PROGRESS
     }
 }
@@ -119,8 +136,9 @@ class StageMonitor(
     fun registerRun(
         runId: String,
         glyphCount: Int,
+        drawableCount: Int = glyphCount,
     ) {
-        tracker.registerRun(runId, glyphCount)
+        tracker.registerRun(runId, glyphCount, drawableCount)
     }
 
     fun handle(
@@ -131,6 +149,7 @@ class StageMonitor(
             when (topic) {
                 Services.GEOMETRY_TOPIC -> MaturityPair(10, 20)
                 Services.NORMALIZED_TOPIC -> MaturityPair(20, 30)
+                Services.RASTERIZED_TOPIC -> MaturityPair(30, 40)
                 else -> return
             }
         val parsed =
@@ -170,7 +189,13 @@ class StageMonitor(
                     }
 
                     Services.NORMALIZED_TOPIC -> {
-                        if (tracker.onNormalizedEvent(runId, glyphInstanceId) == StageTransition.RUN_COMPLETE) {
+                        if (tracker.onNormalizedEvent(runId, glyphInstanceId) == StageTransition.STAGE_COMPLETE) {
+                            transitionRun(runId, RunEvent.NORMALIZED_COMPLETE)
+                        }
+                    }
+
+                    Services.RASTERIZED_TOPIC -> {
+                        if (tracker.onRasterizedEvent(runId, glyphInstanceId) == StageTransition.RUN_COMPLETE) {
                             completeRun(runId, expectedTexts[runId] ?: "")
                         }
                     }

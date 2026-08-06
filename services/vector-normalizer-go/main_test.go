@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -10,10 +11,50 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/grpc"
+
+	rgProto "rghello.dev/vector-normalizer/internal/rasterproto"
 	"rghello.dev/vector-normalizer/internal/worker"
 )
 
-const versionPrefix = "vector-normalizer 0.1.0-milestone5"
+const geometryEventForMain = `{
+  "specversion": "1.0",
+  "id": "11111111-1111-4111-8111-111111111111",
+  "source": "geometry-engine",
+  "type": "rg.geometry-expanded.v1",
+  "subject": "runs/22222222-2222-4222-8222-222222222222/glyphs/55555555-5555-4555-8555-555555555555",
+  "time": "2026-08-05T00:00:00.000Z",
+  "datacontenttype": "application/json",
+  "correlationid": "22222222-2222-4222-8222-222222222222",
+  "causationid": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  "data": {
+    "runId": "22222222-2222-4222-8222-222222222222",
+    "stepId": "44444444-4444-4444-8444-444444444444",
+    "glyphInstanceId": "55555555-5555-4555-8555-555555555555",
+    "position": 0,
+    "attempt": 1,
+    "inputMaturity": 10,
+    "outputMaturity": 20,
+    "inputArtifacts": ["runs/22222222-2222-4222-8222-222222222222/glyphs/0-55555555-5555-4555-8555-555555555555/geometry-attempt-1-abc.json"],
+    "outputArtifacts": [],
+    "transformation": {"name": "expand-geometry", "version": "1.0.0"},
+    "geometry": {
+      "kind": "DRAWABLE_GEOMETRY",
+      "segments": [
+        {"x1": 0.1, "y1": 0.0, "x2": 0.1, "y2": 1.0},
+        {"x1": 0.9, "y1": 0.0, "x2": 0.9, "y2": 1.0},
+        {"x1": 0.1, "y1": 0.5, "x2": 0.9, "y2": 0.5}
+      ],
+      "boundingBox": {"xMin": 0.1, "yMin": 0.0, "xMax": 0.9, "yMax": 1.0},
+      "advanceWidth": 1.0,
+      "totalLength": 2.8,
+      "segmentCount": 3,
+      "geometrySha256": "28f75f5ee107f08144aa9a9ac1eb56c82c58336d4d99f7dab3da91b009d43636"
+    }
+  }
+}`
+
+const versionPrefix = "vector-normalizer 0.2.0-milestone6"
 
 func TestVersionCommand(t *testing.T) {
 	var stdout, stderr bytes.Buffer
@@ -308,5 +349,71 @@ func TestMainInvocation(t *testing.T) {
 	}
 	if !strings.HasPrefix(string(out), versionPrefix+"\n") {
 		t.Fatalf("main() output = %q, want prefix %q", out, versionPrefix+"\n")
+	}
+}
+
+type fakeRasterizerForMain struct {
+	rgProto.UnimplementedRasterizerServer
+}
+
+func (f *fakeRasterizerForMain) RenderGlyph(_ context.Context, _ *rgProto.RenderGlyphRequest) (*rgProto.RenderGlyphResponse, error) {
+	return &rgProto.RenderGlyphResponse{
+		ObjectKey:   "runs/r/glyphs/0-g/raster-attempt-1-op.png",
+		Sha256:      "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+		Width:       64,
+		Height:      96,
+		ByteCount:   1234,
+		ContentType: "image/png",
+	}, nil
+}
+
+func TestOnceModeWithRasterizer(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	server := grpc.NewServer()
+	rgProto.RegisterRasterizerServer(server, &fakeRasterizerForMain{})
+	go func() { _ = server.Serve(listener) }()
+	t.Cleanup(server.Stop)
+
+	var stdout, stderr bytes.Buffer
+	input := strings.NewReader(geometryEventForMain)
+	code := runOnce([]string{"--rasterizer-url", listener.Addr().String()}, input, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("runOnce = %d, stderr=%q", code, stderr.String())
+	}
+	lines := strings.Split(strings.TrimSpace(stdout.String()), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("stdout has %d lines, want 2 (normalized + rasterized): %q", len(lines), stdout.String())
+	}
+	if !strings.Contains(lines[1], `"type":"rg.glyph-rasterized.v1"`) ||
+		!strings.Contains(lines[1], `"outputMaturity":40`) {
+		t.Fatalf("rasterized event missing: %q", lines[1])
+	}
+	if worker.ContainsProhibitedField(lines[1]) {
+		t.Fatal("rasterized event contains a prohibited field")
+	}
+}
+
+func TestOnceModeRasterizerUnreachable(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	input := strings.NewReader(geometryEventForMain)
+	code := runOnce([]string{"--rasterizer-url", "127.0.0.1:1"}, input, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("runOnce = %d, want 1; stderr=%q", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "rasterize glyph") {
+		t.Fatalf("stderr = %q", stderr.String())
+	}
+}
+
+func TestRunWorkerWithRasterizerAddrFailsWithoutMinio(t *testing.T) {
+	t.Setenv("MINIO_ENDPOINT", "not a host")
+	t.Setenv("RASTERIZER_ADDR", "127.0.0.1:50051")
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"run"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("run(run) = %d, want 1; stderr=%q", code, stderr.String())
 	}
 }

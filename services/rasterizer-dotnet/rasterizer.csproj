@@ -5,11 +5,26 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>0.0.0-skeleton</Version>
+    <Version>0.1.0-milestone6</Version>
     <RootNamespace>RgHello.Rasterizer</RootNamespace>
     <IsPackable>false</IsPackable>
     <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Google.Protobuf" Version="3.35.1" />
+    <PackageReference Include="Grpc.AspNetCore" Version="2.83.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.83.0" PrivateAssets="All" />
+    <PackageReference Include="Minio" Version="7.0.0" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
+    <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="2.1.7" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- gRPC/message code generated from the proto contract by
+         scripts/gen-csharp-proto.sh; generated code is never hand-edited. -->
+  </ItemGroup>
 
   <ItemGroup>
     <Compile Remove="cli/**" />

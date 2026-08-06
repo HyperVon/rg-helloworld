@@ -133,6 +133,14 @@ contracts:
 	else \
 		echo "ERROR: python3 not found"; exit 1; \
 	fi
+	@bash scripts/gen-proto.sh
+	@bash scripts/gen-csharp-proto.sh
+
+proto-gen:
+	@bash scripts/gen-proto.sh
+
+proto-gen-check:
+	@bash scripts/gen-proto.sh --check
 
 contract-test:
 	@echo ">> Contract tests: schema validation, example validation, prohibited-field tests"
@@ -169,6 +177,7 @@ format-cpp:
 format-dotnet:
 	$(call guard_tool,$(DOTNET),dotnet)
 	@echo ">> dotnet format whitespace ($(DOTNET_DIR))"
+	$(DOTNET) format whitespace $(DOTNET_DIR)/rasterizer.csproj
 	$(DOTNET) format whitespace $(DOTNET_DIR)/cli/rasterizer.Cli.csproj
 	$(DOTNET) format whitespace $(DOTNET_DIR)/rasterizer.Tests/rasterizer.Tests.csproj
 
@@ -221,6 +230,7 @@ lint-cpp:
 lint-dotnet:
 	$(call guard_tool,$(DOTNET),dotnet)
 	@echo ">> dotnet format --verify-no-changes ($(DOTNET_DIR))"
+	$(DOTNET) format --verify-no-changes $(DOTNET_DIR)/rasterizer.csproj
 	$(DOTNET) format --verify-no-changes $(DOTNET_DIR)/cli/rasterizer.Cli.csproj
 	$(DOTNET) format --verify-no-changes $(DOTNET_DIR)/rasterizer.Tests/rasterizer.Tests.csproj
 
@@ -257,7 +267,8 @@ coverage-go:
 	@for d in $(GO_CLI_DIR) $(GO_NORM_DIR); do \
 		echo ">> go test -cover ($$d)"; \
 		( cd $$d && rm -f out/coverage.out out/coverage.child.out out/coverage.merged.out && mkdir -p out && \
-		  RGHELLO_CHILD_COVER="$$PWD/out/coverage.child.out" go test -count=1 -coverprofile=out/coverage.out ./... >/dev/null && \
+		  PACKAGES="$$(go list ./... | grep -v '/internal/rasterproto$$')" && \
+		  RGHELLO_CHILD_COVER="$$PWD/out/coverage.child.out" go test -count=1 -coverprofile=out/coverage.out $$PACKAGES >/dev/null && \
 		  head -1 out/coverage.out > out/coverage.merged.out && \
 		  grep -h -v '^mode:' out/coverage.out out/coverage.child.out | \
 		    awk '{key=$$1" "$$2; if (!(key in cnt)) {span[key]=$$1" "$$2} cnt[key]+=$$3} END {for (k in span) print span[k], cnt[k]}' | \

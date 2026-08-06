@@ -52,6 +52,10 @@ class StageEventValidatorTest {
             ValidationResult.Valid,
             validator.validate(stageEvent(Services.NORMALIZED_TOPIC, "r1", "g1", 20, 30), MaturityPair(20, 30)),
         )
+        assertEquals(
+            ValidationResult.Valid,
+            validator.validate(stageEvent(Services.RASTERIZED_TOPIC, "r1", "g1", 30, 40), MaturityPair(30, 40)),
+        )
     }
 
     @Test
@@ -117,16 +121,34 @@ class StageProgressTrackerTest {
     }
 
     @Test
-    fun normalizedFanInCompletesRun() {
+    fun normalizedFanInMovesRunToRasterizing() {
         tracker.registerRun("r1", 2)
         assertEquals(StageTransition.PROGRESS, tracker.onNormalizedEvent("r1", "g0"))
-        assertEquals(StageTransition.RUN_COMPLETE, tracker.onNormalizedEvent("r1", "g1"))
+        assertEquals(StageTransition.STAGE_COMPLETE, tracker.onNormalizedEvent("r1", "g1"))
+    }
+
+    @Test
+    fun rasterizedFanInCompletesRunWithDrawableCount() {
+        // "Hello World": 11 positions, 10 drawable (position 5 is a gap).
+        tracker.registerRun("r1", 11, drawableCount = 10)
+        for (index in 0..9) {
+            val transition = tracker.onRasterizedEvent("r1", "g$index")
+            if (index < 9) {
+                assertEquals(StageTransition.PROGRESS, transition)
+            } else {
+                assertEquals(StageTransition.RUN_COMPLETE, transition)
+            }
+        }
+        // Events after completion keep reporting RUN_COMPLETE; the state
+        // machine makes the run-level transition a no-op.
+        assertEquals(StageTransition.RUN_COMPLETE, tracker.onRasterizedEvent("r1", "gap"))
     }
 
     @Test
     fun unknownRunIsIgnored() {
         assertEquals(StageTransition.UNKNOWN_RUN, tracker.onGeometryEvent("ghost", "g0"))
         assertEquals(StageTransition.UNKNOWN_RUN, tracker.onNormalizedEvent("ghost", "g0"))
+        assertEquals(StageTransition.UNKNOWN_RUN, tracker.onRasterizedEvent("ghost", "g0"))
     }
 }
 
@@ -155,7 +177,9 @@ class StageMonitorTest {
         val producer = FakeEventProducer()
         Services.eventProducer = producer
         val stage = monitor()
-        stage.registerRun(runId, 11)
+        // 11 positions, 10 drawable: the run completes on the rasterized
+        // fan-in of the drawable glyphs (position 5 is the gap).
+        stage.registerRun(runId, 11, drawableCount = 10)
 
         repeat(10) { index ->
             stage.handle(Services.GEOMETRY_TOPIC, stageEvent(Services.GEOMETRY_TOPIC, runId, "g$index", 10, 20))
@@ -172,9 +196,32 @@ class StageMonitorTest {
         assertEquals(RunStatus.NORMALIZING, runs[runId]?.status)
 
         stage.handle(Services.NORMALIZED_TOPIC, stageEvent(Services.NORMALIZED_TOPIC, runId, "g10", 20, 30))
+        assertEquals(RunStatus.RASTERIZING, runs[runId]?.status)
+        assertEquals("RASTERIZING", store.status)
+
+        repeat(9) { index ->
+            stage.handle(Services.RASTERIZED_TOPIC, stageEvent(Services.RASTERIZED_TOPIC, runId, "g$index", 30, 40))
+        }
+        assertEquals(RunStatus.RASTERIZING, runs[runId]?.status, "run stays in rasterizing until drawable fan-in")
+
+        stage.handle(Services.RASTERIZED_TOPIC, stageEvent(Services.RASTERIZED_TOPIC, runId, "g9", 30, 40))
         assertEquals(RunStatus.SUCCEEDED, runs[runId]?.status)
         assertEquals("Hello World", store.result)
         assertTrue(producer.sent.any { it.first == Services.RUN_EVENTS_TOPIC })
+    }
+
+    @Test
+    fun rasterizedMaturityViolationFailsTheRun() {
+        val runId = UUID.randomUUID().toString()
+        runs[runId] = RunState(runId, RunStatus.RASTERIZING, "Hello World", "key", java.time.Instant.now())
+        val stage = monitor()
+        stage.registerRun(runId, 1, drawableCount = 1)
+
+        stage.handle(
+            Services.RASTERIZED_TOPIC,
+            stageEvent(Services.RASTERIZED_TOPIC, runId, "g0", 30, 20),
+        )
+        assertEquals(RunStatus.FAILED, runs[runId]?.status)
     }
 
     @Test

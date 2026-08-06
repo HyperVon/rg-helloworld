@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: run-orchestrator
+  namespace: rube-goldberg
+  labels:
+    app: run-orchestrator
+    milestone: "6"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: run-orchestrator
+  template:
+    metadata:
+      labels:
+        app: run-orchestrator
+    spec:
+      containers:
+        - name: orchestrator
+          image: rghello-registry:5001/run-orchestrator:milestone6
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: KAFKA_BOOTSTRAP
+              value: kafka.rube-goldberg.svc.cluster.local:9092
+            - name: REDIS_URL
+              value: redis://:RedisPassw0rd!@redis-master.rube-goldberg.svc.cluster.local:6379
+            - name: ORCHESTRATOR_PORT
+              value: "8080"
+            - name: GLYPH_CATALOG_URL
+              value: http://glyph-catalog.rube-goldberg.svc.cluster.local:8080/ws/glyph-catalog
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 512Mi

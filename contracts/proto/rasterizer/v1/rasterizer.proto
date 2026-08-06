@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package rg.rasterizer.v1;
 
-option go_package = "rghello.dev/rasterizer/proto/rasterizer/v1;rbproto";
+option go_package = "rghello.dev/vector-normalizer/internal/rasterproto;rasterproto";
 option java_package = "dev.rghello.rasterizer.v1";
 option csharp_namespace = "RgHello.Rasterizer.V1";
 
@@ -20,6 +20,9 @@ message RenderGlyphRequest {
   RenderProfile profile = 7;
   repeated Segment segments = 8;
   TraceContext trace_context = 9;
+  // SHA-256 of the input normalized artifact; the idempotency input hash
+  // for the section 13.5 operation ID embedded in artifact object keys.
+  string input_artifact_sha256 = 10;
 }
 
 message Canvas {

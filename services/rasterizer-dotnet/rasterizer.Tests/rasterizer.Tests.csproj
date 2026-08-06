@@ -6,6 +6,10 @@
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <!-- Generated gRPC/message code from the proto contract is excluded from
+         the coverage gate; only hand-written rasterizer code is measured. -->
+    <ExcludeByFile>**/generated/**</ExcludeByFile>
   </PropertyGroup>
 
   <ItemGroup>

@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vector-normalizer
+  namespace: rube-goldberg
+  labels:
+    app: vector-normalizer
+    milestone: "6"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vector-normalizer
+  template:
+    metadata:
+      labels:
+        app: vector-normalizer
+    spec:
+      containers:
+        - name: vector-normalizer
+          image: rghello-registry:5001/vector-normalizer:milestone6
+          imagePullPolicy: Always
+          env:
+            - name: KAFKA_BOOTSTRAP
+              value: kafka.rube-goldberg.svc.cluster.local:9092
+            - name: KAFKA_GROUP_ID
+              value: vector-normalizer
+            - name: NORMALIZER_INPUT_TOPIC
+              value: rg.geometry-expanded.v1
+            - name: NORMALIZER_OUTPUT_TOPIC
+              value: rg.glyph-normalized.v1
+            - name: NORMALIZER_RASTERIZED_TOPIC
+              value: rg.glyph-rasterized.v1
+            - name: RASTERIZER_ADDR
+              value: rasterizer.rube-goldberg.svc.cluster.local:50051
+            - name: MINIO_ENDPOINT
+              value: minio.rube-goldberg.svc.cluster.local:9000
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: root-user
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: root-password
+            - name: MINIO_BUCKET
+              value: rube-goldberg-artifacts
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 128Mi

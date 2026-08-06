@@ -158,14 +158,10 @@ Active MCP servers:
 - `kops` — read-only Kubernetes tools (`k8s_get`, `k8s_describe`, `k8s_logs`,
   `k8s_events`, `k8s_triage`, `k8s_inventory`) against the k3d cluster via
   kubectl; never returns Secret/ConfigMap values. Lives at
-  `~/.local/share/kilo/mcp-servers/kops`.
-- `kafka` (disabled) — read-only Kafka inspection. Disabled because the
-  Bitnami KRaft broker advertises only its in-cluster headless DNS, which a
-  host-side client cannot reach (verified: metadata fetch times out even
-  through a port-forward). Re-enable only if the broker gets a
-  host-reachable advertised listener (e.g. NodePort). Write tools
-  (`produce_message`, `create_topic`, offset resets, etc.) are denied in
-  `kilo.json` permissions.
+  `~/.local/share/kilo/mcp-servers/kops`. **Prefer these tools over raw
+  `kubectl`** for read-only cluster inspection (pod state, rollout status,
+  logs, events, inventories) — they are idempotent, summarize output, and
+  cannot leak Secret/ConfigMap values.
 
 `context-mode` routing — the plugin redirects agent tool calls that would
 flood the context window:

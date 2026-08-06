@@ -6,8 +6,8 @@ import org.junit.jupiter.api.Test
 
 class VersionTest {
     @Test
-    fun versionMatchesMilestoneFour() {
-        assertEquals("0.3.0-milestone5", Version.VERSION)
+    fun versionMatchesMilestoneSix() {
+        assertEquals("0.4.0-milestone6", Version.VERSION)
     }
 
     @Test

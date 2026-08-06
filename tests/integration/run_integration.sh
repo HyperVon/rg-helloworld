@@ -124,11 +124,11 @@ fi
 echo "Verifying service banners:"
 
 check "rghello" "rghello 0.0.0-skeleton" "$BIN/rghello" version
-check "vector-normalizer" "vector-normalizer 0.1.0-milestone5" "$BIN/vector-normalizer" version
+check "vector-normalizer" "vector-normalizer 0.2.0-milestone6" "$BIN/vector-normalizer" version
 check "glyph-catalog" "glyph-catalog 0.1.0-milestone4" java -jar "$ROOT/services/glyph-catalog-java/target/glyph-catalog-java-0.1.0-milestone4.jar" version
-check "run-orchestrator" "run-orchestrator 0.3.0-milestone5" "$ROOT/services/run-orchestrator-kotlin/build/install/run-orchestrator/bin/run-orchestrator" version
+check "run-orchestrator" "run-orchestrator 0.4.0-milestone6" "$ROOT/services/run-orchestrator-kotlin/build/install/run-orchestrator/bin/run-orchestrator" version
 check "geometry-engine" "geometry-engine 0.1.0-milestone5" "$ROOT/.local/build/geometry-engine-cpp/geometry_engine" version
-check "rasterizer" "rasterizer 0.0.0-skeleton (Milestone 0 skeleton)" "$DOTNET" "$ROOT/services/rasterizer-dotnet/cli/bin/Debug/net10.0/rasterizer.Cli.dll"
+check "rasterizer" "rasterizer 0.1.0-milestone6" "$DOTNET" "$ROOT/services/rasterizer-dotnet/cli/bin/Debug/net10.0/rasterizer.Cli.dll" version
 check_eval "image-pipeline" "image-pipeline 0.0.0-skeleton (Milestone 0 skeleton)" "PYTHONPATH=$ROOT/services/image-pipeline-python/src python3 -c 'import rg_image_pipeline as m; print(m.banner())'"
 check_eval "ocr-worker" "ocr-worker 0.0.0-skeleton (Milestone 0 skeleton)" "node -e \"import('$ROOT/services/ocr-worker-node/out/src/index.js').then(m => console.log(m.banner()))\""
 check_eval "event-gateway" "event-gateway 0.0.0-skeleton (Milestone 0 skeleton)" "node -e \"import('$ROOT/services/event-gateway-node/out/src/index.js').then(m => console.log(m.banner()))\""
@@ -318,6 +318,158 @@ PYEOF
     /tmp/rghello-normalized-1.json /tmp/rghello-normalized-2.json
 else
   skip "geometry-engine or vector-normalizer binary (--once pipeline)"
+fi
+
+echo ""
+echo "Verifying Milestone 6 gRPC rasterization (local rasterizer):"
+
+if [ -x "$BIN/vector-normalizer" ] && [ -x "$DOTNET" ]; then
+  RASTERIZER_STORE_DIR=$(mktemp -d /tmp/rghello-raster-store.XXXXXX)
+  RASTERIZER_PORT=18505
+  RASTERIZER_STORE=local RASTERIZER_LOCAL_DIR="$RASTERIZER_STORE_DIR" RASTERIZER_PORT=$RASTERIZER_PORT \
+    "$DOTNET" "$ROOT/services/rasterizer-dotnet/cli/bin/Debug/net10.0/rasterizer.Cli.dll" serve \
+    >/tmp/rghello-rasterizer.log 2>&1 &
+  RASTERIZER_PID=$!
+  READY=""
+  for _ in $(seq 1 30); do
+    if nc -z 127.0.0.1 "$RASTERIZER_PORT" >/dev/null 2>&1; then
+      READY="yes"
+      break
+    fi
+    sleep 1
+  done
+  if [ -z "$READY" ]; then
+    FAILED=$((FAILED + 1))
+    say "[FAIL] rasterizer did not become ready (see /tmp/rghello-rasterizer.log)"
+    kill "$RASTERIZER_PID" 2>/dev/null || true
+  else
+    say "[ ok ] rasterizer gRPC server ready on :$RASTERIZER_PORT"
+
+    # Re-run geometry expansion so the normalized pipeline gets a fresh
+    # drawable geometry event, then rasterize it over the real gRPC contract.
+    FIXTURE="$ROOT/tests/integration/fixtures/blueprint-event.json"
+    GEOMETRY_ONCE="$ROOT/.local/build/geometry-engine-cpp/geometry_engine"
+    if [ -x "$GEOMETRY_ONCE" ]; then
+      "$GEOMETRY_ONCE" --once < "$FIXTURE" > /tmp/rghello-m6-geometry.json
+    else
+      say "[skip] geometry-engine binary missing for M6 geometry input"
+      cp /dev/null /tmp/rghello-m6-geometry.json
+    fi
+    if [ -s /tmp/rghello-m6-geometry.json ]; then
+      "$BIN/vector-normalizer" --once --rasterizer-url "127.0.0.1:$RASTERIZER_PORT" \
+        < /tmp/rghello-m6-geometry.json > /tmp/rghello-raster-1.json
+      "$BIN/vector-normalizer" --once --rasterizer-url "127.0.0.1:$RASTERIZER_PORT" \
+        < /tmp/rghello-m6-geometry.json > /tmp/rghello-raster-2.json
+
+      RASTER_LINES=$(wc -l < /tmp/rghello-raster-1.json | tr -d ' ')
+      if [ "$RASTER_LINES" = "2" ]; then
+        say "[ ok ] --once --rasterizer-url emitted normalized + rasterized events"
+      else
+        FAILED=$((FAILED + 1))
+        say "[FAIL] expected 2 output lines, got $RASTER_LINES"
+      fi
+
+      # The second line is the rasterized event.
+      RASTER_EVENT=$(sed -n 2p /tmp/rghello-raster-1.json)
+      if [ -n "$RASTER_EVENT" ] &&
+        printf '%s' "$RASTER_EVENT" | grep -q '"type":"rg.glyph-rasterized.v1"' &&
+        printf '%s' "$RASTER_EVENT" | grep -q '"inputMaturity":30' &&
+        printf '%s' "$RASTER_EVENT" | grep -q '"outputMaturity":40'; then
+        say "[ ok ] rasterized event type + maturity 30 -> 40"
+      else
+        FAILED=$((FAILED + 1))
+        say "[FAIL] rasterized event shape wrong"
+      fi
+
+      # Idempotency: the same request produces the identical event.
+      if cmp -s /tmp/rghello-raster-1.json /tmp/rghello-raster-2.json; then
+        say "[ ok ] --once --rasterizer-url is deterministic"
+      else
+        FAILED=$((FAILED + 1))
+        say "[FAIL] duplicate rasterization produced different events"
+      fi
+
+      # The PNG artifact exists in the local store under the event key and
+      # matches the reported sha256 (byte-identical duplicates too).
+      OBJECT_KEY=$(printf '%s' "$RASTER_EVENT" | grep -o '"objectKey":"[^"]*"' | head -1 | sed 's/.*:"//; s/"//')
+      RASTER_SHA=$(printf '%s' "$RASTER_EVENT" | grep -o '"sha256":"[0-9a-f]*"' | head -1 | sed 's/.*:"//; s/"//')
+      PNG_FILE="$RASTERIZER_STORE_DIR/$OBJECT_KEY"
+      if [ -f "$PNG_FILE" ]; then
+        MAGIC=$(head -c 8 "$PNG_FILE" | xxd -p | tr -d '\n')
+        if [ "$MAGIC" = "89504e470d0a1a0a" ]; then
+          say "[ ok ] rasterized PNG artifact present with PNG magic bytes"
+        else
+          FAILED=$((FAILED + 1))
+          say "[FAIL] PNG magic bytes wrong: $MAGIC"
+        fi
+        ACTUAL_SHA=$(shasum -a 256 "$PNG_FILE" | awk '{print $1}')
+        if [ "$ACTUAL_SHA" = "$RASTER_SHA" ]; then
+          say "[ ok ] PNG sha256 matches the event raster.sha256"
+        else
+          FAILED=$((FAILED + 1))
+          say "[FAIL] PNG sha256 $ACTUAL_SHA != event $RASTER_SHA"
+        fi
+      else
+        FAILED=$((FAILED + 1))
+        say "[FAIL] PNG artifact missing at $OBJECT_KEY"
+      fi
+
+      for field in message targetText expectedCharacter unicodeCodePoint characterName glyphLabel; do
+        if printf '%s' "$RASTER_EVENT" | grep -q "\"$field\""; then
+          FAILED=$((FAILED + 1))
+          say "[FAIL] prohibited field '$field' present in the rasterized event"
+        fi
+      done
+      say "[ ok ] no prohibited fields in the rasterized event"
+
+      # Schema validation of the rasterized event data payload.
+      if [ -x "$VENV_PY" ] && "$VENV_PY" -c "import jsonschema" >/dev/null 2>&1; then
+        printf '%s\n' "$RASTER_EVENT" > /tmp/rghello-raster-event.json
+        if "$VENV_PY" - "$ROOT/contracts/events/glyph-rasterized.v1.schema.json" /tmp/rghello-raster-event.json <<'PYEOF'
+import json
+import sys
+from jsonschema import validate
+
+schema = json.load(open(sys.argv[1]))
+event = json.load(open(sys.argv[2]))
+validate(instance=event["data"], schema=schema)
+PYEOF
+        then
+          say "[ ok ] rasterized event validates against its schema"
+        else
+          FAILED=$((FAILED + 1))
+          say "[FAIL] rasterized event failed schema validation"
+        fi
+        rm -f /tmp/rghello-raster-event.json
+      else
+        skip "venv jsonschema for rasterized event schema validation"
+      fi
+
+      # Gap geometry is normalized but never rasterized.
+      sed 's/"kind"[[:space:]]*:[[:space:]]*"DRAWABLE_GEOMETRY"/"kind": "GAP_GEOMETRY"/' /tmp/rghello-m6-geometry.json \
+        > /tmp/rghello-m6-gap.json
+      "$BIN/vector-normalizer" --once --rasterizer-url "127.0.0.1:$RASTERIZER_PORT" \
+        < /tmp/rghello-m6-gap.json > /tmp/rghello-raster-gap.json
+      GAP_LINES=$(wc -l < /tmp/rghello-raster-gap.json | tr -d ' ')
+      if [ "$GAP_LINES" = "1" ]; then
+        say "[ ok ] gap geometry skips rasterization"
+      else
+        FAILED=$((FAILED + 1))
+        say "[FAIL] gap geometry produced $GAP_LINES output lines, want 1"
+      fi
+
+      rm -f /tmp/rghello-m6-geometry.json /tmp/rghello-m6-gap.json \
+        /tmp/rghello-raster-1.json /tmp/rghello-raster-2.json /tmp/rghello-raster-gap.json
+    else
+      FAILED=$((FAILED + 1))
+      say "[FAIL] geometry-engine --once produced no geometry input"
+    fi
+  fi
+  kill "$RASTERIZER_PID" 2>/dev/null || true
+  wait "$RASTERIZER_PID" 2>/dev/null || true
+  rm -rf "$RASTERIZER_STORE_DIR"
+else
+  skip "vector-normalizer or dotnet for M6 gRPC pipeline"
 fi
 
 echo ""

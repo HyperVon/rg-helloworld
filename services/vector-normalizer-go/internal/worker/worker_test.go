@@ -44,9 +44,13 @@ const geometryEventFixture = `{
   }
 }`
 
-func mustProcess(t *testing.T, input string) Outcome {
+func mustProcess(t *testing.T, input string, cfg ...Config) Outcome {
 	t.Helper()
-	outcome, err := Process(input, Config{Bucket: "rube-goldberg-artifacts"})
+	config := Config{Bucket: "rube-goldberg-artifacts"}
+	if len(cfg) > 0 {
+		config = cfg[0]
+	}
+	outcome, err := Process(context.Background(), input, config)
 	if err != nil {
 		t.Fatalf("Process: %v", err)
 	}
@@ -205,11 +209,11 @@ func TestProcessRejectsInvalidInput(t *testing.T) {
 		`{"specversion":"1.0","data":{"glyphInstanceId":""}}`,
 	}
 	for _, input := range cases {
-		if _, err := Process(input, Config{Bucket: "bucket"}); err == nil {
+		if _, err := Process(context.Background(), input, Config{Bucket: "bucket"}); err == nil {
 			t.Fatalf("Process(%q) succeeded, want error", input)
 		}
 	}
-	if _, err := Process(geometryEventFixture, Config{}); err == nil {
+	if _, err := Process(context.Background(), geometryEventFixture, Config{}); err == nil {
 		t.Fatal("Process without bucket succeeded, want error")
 	}
 }
@@ -219,6 +223,7 @@ type fakeTransport struct {
 	pollIndex   int
 	produced    []string
 	produceErr  error
+	failTopic   string
 	commitCalls int
 }
 
@@ -232,7 +237,7 @@ func (f *fakeTransport) Poll(context.Context) (string, bool) {
 }
 
 func (f *fakeTransport) Produce(_ context.Context, topic, key, value string) error {
-	if f.produceErr != nil {
+	if f.produceErr != nil && (f.failTopic == "" || topic == f.failTopic) {
 		return f.produceErr
 	}
 	f.produced = append(f.produced, topic+"|"+key+"|"+value)

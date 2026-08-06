@@ -55,8 +55,9 @@ class HttpApiTest {
         Services.stageMonitor = null
     }
 
-    // Drives the stage fan-in for a "Hello World" run (11 positions) so the
-    // run completes through the real state machine.
+    // Drives the stage fan-in for a "Hello World" run (11 positions, 10
+    // drawable: the gap at position 5 has no raster) so the run completes
+    // through the real state machine.
     private fun driveRunToCompletion(runId: String) {
         val monitor = Services.stageMonitor ?: error("stageMonitor not wired")
         for (index in 0..10) {
@@ -64,6 +65,11 @@ class HttpApiTest {
         }
         for (index in 0..10) {
             monitor.handle(Services.NORMALIZED_TOPIC, stageEvent(Services.NORMALIZED_TOPIC, runId, "glyph-$index", 20, 30))
+        }
+        for (index in 0..10) {
+            if (index != 5) {
+                monitor.handle(Services.RASTERIZED_TOPIC, stageEvent(Services.RASTERIZED_TOPIC, runId, "glyph-$index", 30, 40))
+            }
         }
     }
 

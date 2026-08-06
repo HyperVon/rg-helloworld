@@ -145,10 +145,18 @@ if command -v docker >/dev/null 2>&1; then
     retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone5/glyph-catalog.yaml"
     retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone5/geometry-engine.yaml"
     retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone5/vector-normalizer.yaml"
+    echo "Deploying Milestone 6 overlays (rasterizer + updated workers)"
+    retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone6/run-orchestrator.yaml"
+    retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone6/vector-normalizer.yaml"
+    retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone6/rasterizer.yaml"
     retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=run-orchestrator --timeout=180s
     retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=glyph-catalog --timeout=180s
     retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=geometry-engine --timeout=180s
     retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=vector-normalizer --timeout=180s
+    retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=rasterizer --timeout=180s
+    retry kubectl rollout status deployment/run-orchestrator -n $NAMESPACE --timeout=180s
+    retry kubectl rollout status deployment/vector-normalizer -n $NAMESPACE --timeout=180s
+    retry kubectl rollout status deployment/rasterizer -n $NAMESPACE --timeout=180s
 
     kubectl port-forward -n $NAMESPACE svc/run-orchestrator 8080:8080 &>/dev/null &
     PORTFORWARD_PIDS+=($!)
@@ -368,6 +376,122 @@ PYEOF
     fi
 else
     echo "SKIP: docker not installed, skipping Milestone 5 artifact checks"
+fi
+echo ""
+
+# --- Test 7: Milestone 6 gRPC rasterization ---
+echo "--- Test 7: Milestone 6 gRPC rasterization ---"
+
+if command -v docker >/dev/null 2>&1; then
+    echo "Verifying rasterized records on rg.glyph-rasterized.v1"
+    RASTERIZED=$(kubectl exec -n $NAMESPACE kafka-controller-0 -c kafka -- \
+        timeout 20 kafka-console-consumer.sh --topic rg.glyph-rasterized.v1 \
+        --bootstrap-server $KAFKA_BROKER --from-beginning --max-messages 200 --timeout-ms 5000 2>/dev/null \
+        | grep '"glyphInstanceId"' || true)
+    RASTER_RUNID=$(printf '%s\n' "$RASTERIZED" | tail -1 | grep -o '"runId":"[^"]*"' | cut -d'"' -f4)
+    RASTERIZED=$(printf '%s\n' "$RASTERIZED" | grep "\"runId\":\"$RASTER_RUNID\"" || true)
+    RASTERIZED_COUNT=$(printf '%s\n' "$RASTERIZED" | grep -c '"glyphInstanceId"')
+    if [[ "$RASTERIZED_COUNT" -eq 10 ]]; then
+        echo "PASS: ten glyph-rasterized records observed (gap excluded)"
+    else
+        echo "FAIL: expected 10 rasterized records, saw $RASTERIZED_COUNT"
+        exit 1
+    fi
+    for POSITION in 0 1 2 3 4 6 7 8 9 10; do
+        printf '%s\n' "$RASTERIZED" | grep -q "\"position\":$POSITION," || {
+            echo "FAIL: missing rasterized record at position $POSITION"
+            exit 1
+        }
+    done
+    if printf '%s\n' "$RASTERIZED" | grep -q '"position":5,'; then
+        echo "FAIL: rasterized record exists for the gap position"
+        exit 1
+    fi
+    if printf '%s\n' "$RASTERIZED" | grep -qE '"inputMaturity":30,.*"outputMaturity":40'; then
+        echo "PASS: rasterized records mature 30 -> 40"
+    else
+        echo "FAIL: rasterized maturity not 30 -> 40"
+        exit 1
+    fi
+    if printf '%s\n' "$RASTERIZED" | grep -qE '"(message|targetText|expectedCharacter|unicodeCodePoint|characterName|glyphLabel)"'; then
+        echo "FAIL: rasterized events contain prohibited fields"
+        exit 1
+    else
+        echo "PASS: rasterized events exclude plaintext and code points"
+    fi
+
+    echo "Verifying raster PNG artifacts in MinIO"
+    kubectl port-forward -n $NAMESPACE svc/minio 9000:9000 &>/dev/null &
+    PORTFORWARD_PIDS+=($!)
+    sleep 3
+    mc alias set local http://localhost:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD --quiet
+
+    RASTER_FILES=$(mc find local/$MINIO_BUCKET --name 'raster-attempt-*.png' 2>/dev/null | wc -l | tr -d ' ')
+    if [[ "$RASTER_FILES" -ge 10 ]]; then
+        echo "PASS: $RASTER_FILES raster PNG artifacts in MinIO"
+    else
+        echo "FAIL: expected >= 10 raster PNG artifacts, saw $RASTER_FILES"
+        exit 1
+    fi
+
+    printf '%s\n' "$RASTERIZED" > /tmp/rghello-rasterized-records.txt
+    if python3 - "$MINIO_BUCKET" /tmp/rghello-rasterized-records.txt <<'PYEOF'
+import hashlib
+import json
+import subprocess
+import sys
+
+bucket, records_file = sys.argv[1], sys.argv[2]
+bad = 0
+checked = 0
+with open(records_file, encoding="utf-8") as handle:
+    for line in handle:
+        line = line.strip()
+        if not line:
+            continue
+        event = json.loads(line)
+        data = event["data"]
+        raster = data["raster"]
+        target = "/tmp/rghello-raster-check.png"
+        subprocess.run(
+            ["mc", "cp", f"local/{bucket}/{raster['objectKey']}", target, "--quiet"],
+            check=True,
+            capture_output=True,
+        )
+        with open(target, "rb") as png:
+            content = png.read()
+        if not content.startswith(b"\x89PNG\r\n\x1a\n"):
+            print(f"FAIL: {raster['objectKey']} is not a PNG")
+            bad = 1
+            break
+        actual = hashlib.sha256(content).hexdigest()
+        if actual != raster["sha256"]:
+            print(f"FAIL: raster {raster['objectKey']} sha256 {actual} != event {raster['sha256']}")
+            bad = 1
+            break
+        if raster["contentType"] != "image/png" or raster["width"] < 1 or raster["height"] < 1:
+            print(f"FAIL: raster metadata wrong for {raster['objectKey']}: {raster}")
+            bad = 1
+            break
+        checked += 1
+print(f"checked {checked} raster PNG artifacts against their event sha256")
+sys.exit(bad)
+PYEOF
+    then
+        echo "PASS: raster PNGs are valid, non-empty, and match their event sha256"
+    else
+        echo "FAIL: raster PNG artifact verification failed"
+        exit 1
+    fi
+    rm -f /tmp/rghello-rasterized-records.txt /tmp/rghello-raster-check.png
+    mc alias rm local 2>/dev/null || true
+
+    if [[ ${#PORTFORWARD_PIDS[@]} -gt 0 ]]; then
+        kill "${PORTFORWARD_PIDS[0]}" 2>/dev/null || true
+        PORTFORWARD_PIDS=()
+    fi
+else
+    echo "SKIP: docker not installed, skipping Milestone 6 rasterization checks"
 fi
 echo ""
 

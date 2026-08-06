@@ -14,7 +14,7 @@
 | 3 | Thin vertical slice (CLI → REST → Kafka → SSE) | **COMPLETE** |
 | 4 | SOAP planning (Java glyph catalog, `RUBE_SIMPLEX_V1`) | **COMPLETE** |
 | 5 | Geometry and vector artifacts (C++, Go) | **COMPLETE** |
-| 6 | gRPC rasterization (C#, SkiaSharp) | not started |
+| 6 | gRPC rasterization (C#, ImageSharp) | **IN PROGRESS** |
 | 7 | Composition and preprocessing (Python) | not started |
 | 8 | OCR and adjudication (Node.js, Ruby) | not started |
 | 9 | Rust assembly and true final output | not started |
@@ -574,3 +574,145 @@ evicted pods were force-deleted so `wait-ready.sh` sees only live pods.
   `rg.glyph-rasterized.v1` arrives in Milestone 6.
 - Retry/timeout policy for stuck stages lands with the failure-policy
   milestone; a run whose worker events never arrive stays in stage.
+
+---
+
+## Milestone 6 — gRPC rasterization
+
+### Scope
+
+- Implement the C#/.NET rasterizer (`services/rasterizer-dotnet`) as a gRPC
+  server implementing `rg.rasterizer.v1.Rasterizer.RenderGlyph` (Stage 4,
+  section 12):
+  - Validate requests at the trust boundary: reject non-finite coordinates,
+    empty segment lists, more than the configured maximum segments, canvases
+    outside the configured size limits, unknown line caps, unsupported
+    supersampling factors, and missing/malformed `input_artifact_sha256`
+  - Render normalized em-square segments onto a transparent canvas using the
+    equivalent local rendering library ImageSharp (section 30 note: Stage 4
+    permits "SkiaSharp or an equivalent local rendering library"; ADR-0008
+    records the choice): rounded line caps, configurable antialiasing and
+    stroke width, deterministic integer supersampling with box downsampling
+  - Crop to the drawn content bounds plus an OCR margin; encode PNG bytes
+    deterministically; compute SHA-256 and pixel density
+  - Upload PNG to MinIO under a deterministic object key that embeds the
+    section 13.5 operation ID (`SHA256(runId + "rasterize-glyph" +
+    glyphInstanceId + attempt + inputArtifactSha256)`); duplicate requests
+    therefore map to the same logical artifact (idempotent)
+  - Never receive the phrase, expected character, or code point — the request
+    carries only segments and opaque identifiers
+- Extend the rasterizer proto contract (`contracts/proto/rasterizer/v1/`):
+  add `input_artifact_sha256` to `RenderGlyphRequest` (the idempotency input
+  hash) and point `go_package` at the consuming Go module; C# codegen stays
+  build-time (Grpc.Tools); Go codegen becomes a pinned `make contracts`
+  step (protoc + protoc-gen-go + protoc-gen-go-grpc) with generated code
+  committed under `services/vector-normalizer-go/internal/rasterproto/`
+- Extend the Go vector-normalizer (Stage 3 → 4, section 29):
+  - gRPC client with a ten-second per-call deadline and retries for transient
+    status codes only (Unavailable, ResourceExhausted, Aborted)
+  - After normalizing a drawable glyph, call the rasterizer with the
+    normalized segments (1024 em-square, baseline 800 → 512×512 canvas) and a
+    named render profile, then publish `rg.glyph-rasterized.v1`
+    (maturity 30 → 40, `transformation.name` = `rasterize-glyph`, event id
+    derived from the same deterministic operation ID)
+  - Gap geometry is normalized into layout metadata only — no rasterizer
+    call, no rasterized event
+  - `--once` gains `--rasterizer-url` so the host integration harness can run
+    the real gRPC contract against a local rasterizer server
+- Extend the Kotlin orchestrator (section 29):
+  - Runs move PLANNING → GENERATING_GEOMETRY → NORMALIZING → RASTERIZING →
+    SUCCEEDED; the run completes only after every drawable position has a
+    rasterized event (drawable count excludes gap blueprints)
+  - Kafka consumer on `rg.glyph-rasterized.v1` with maturity validation
+    (30 → 40) and the section 7.4 prohibited-field validator
+- Deploy the rasterizer to Kubernetes (`infra/k8s/milestone6/`), extend
+  `scripts/build-images.sh` (milestone6 tag for rasterizer,
+  vector-normalizer, run-orchestrator), and extend `scripts/smoke-test.sh`
+  with milestone-6 acceptance checks
+- Host-level integration tests: run the rasterizer locally in
+  file-store mode, drive it through `vector-normalizer --once
+  --rasterizer-url`, and verify PNG validity, determinism, object keys,
+  schema conformance, maturity, and the gap skip in CI
+- Pin new dependencies in `versions.env` (Grpc.AspNetCore, Grpc.Tools,
+  ImageSharp, ImageSharp.Drawing, Minio .NET, grpc-go, protobuf-go, protoc
+  toolchain) and NuGet lock files; pin the rasterizer base images
+  (`sdk:10.0.302` builder, `aspnet:10.0.9` runtime)
+
+### Tasks
+
+- [x] Update `contracts/proto/rasterizer/v1/rasterizer.proto`
+      (`input_artifact_sha256 = 10`, `go_package` → vector-normalizer module)
+- [x] Add `scripts/gen-proto.sh` (pinned protoc 35.1 + protoc-gen-go
+      v1.36.11 + protoc-gen-go-grpc v1.6.2) and wire proto codegen into
+      `make contracts`
+- [x] C# rasterizer library: request validation, ImageSharp rendering with
+      crop, PNG encoding, SHA-256, pixel density
+- [x] C# rasterizer stores: MinIO (Minio 7.0.0) and file-based local store
+      (tests/integration); deterministic object keys with operation IDs
+- [x] C# `RasterizerService` gRPC handler + CLI `serve`/`version` host;
+      version 0.1.0-milestone6
+- [x] C# unit tests (validation, determinism, crop, profiles, keys, stores,
+      service) with coverlet 90% gate
+- [x] C# Dockerfile (sdk:10.0.302 / aspnet:10.0.9) and NuGet lock files
+- [x] Go generated proto package + rasterclient (deadline, transient-only
+      retry) with bufconn tests
+- [x] Go worker: rasterized event publication for drawables, gap skip,
+      deterministic event id; `--once --rasterizer-url`; version
+      0.2.0-milestone6; coverage >= 90%
+- [x] Kotlin orchestrator: RASTERIZING stage, rasterized fan-in with
+      drawable count, maturity 30 → 40; version 0.4.0-milestone6; tests
+- [x] Integration harness: local rasterizer server + gRPC `--once` pipeline
+      checks (determinism, PNG validity/sha256, keys, schema, prohibited
+      fields, gap skip)
+- [x] `infra/k8s/milestone6/` manifests (rasterizer + overlays for
+      vector-normalizer and orchestrator), build-images.sh milestone6 tags
+- [x] Smoke test Test 7: ten rasterized records for `"Hello World"` (gap
+      excluded), maturity 30 → 40, no prohibited fields, PNG artifacts in
+      MinIO with matching sha256 and PNG magic bytes
+- [x] Docs: ADR-0008, service READMEs, versions.env pins, verification log
+
+### Acceptance conditions
+
+- Every drawable glyph blueprint produces a recognizable PNG: 512×512
+  normalized canvas cropped to drawn bounds plus OCR margin, non-empty
+  rendered content (verified by unit tests, integration, and cluster smoke).
+- The rasterizer receives no expected character: the gRPC request contains
+  only segments and opaque identifiers (contract + tests); rasterized events
+  pass the section 7.4 prohibited-field scan.
+- Duplicate requests are idempotent: identical `RenderGlyphRequest`s produce
+  the same object key, the same event id, and byte-identical PNGs (unit +
+  integration determinism checks).
+- Ten ordered `rg.glyph-rasterized.v1` records (positions 0..10, gap at
+  position 5 excluded) are produced for `"Hello World"` in the cluster,
+  mature 30 → 40, and contain no prohibited fields.
+- `rghello run` still prints `Hello World` (run completes only after the
+  rasterized fan-in, from the private expected-text store).
+- `make format`, `make lint`, `make unit`, `make coverage`, `make build`
+  (STRICT=1), `make contracts`, `make integration`, and `make e2e` all pass.
+
+### Verification log
+
+| Date | Check | Result |
+| --- | --- | --- |
+| 2026-08-05 | Milestone 6 scope/tasks/acceptance recorded | PASS (written before implementation) |
+| 2026-08-05 | Proto contract update + codegen (`make contracts`-wired scripts/gen-proto.sh; scripts/gen-csharp-proto.sh) | PASS (Go client generated in-repo; C# generated in pinned sdk:10.0.302 container on arm64 macOS, native on Linux x64; both committed, never hand-edited) |
+| 2026-08-05 | C# `make unit-dotnet` | PASS (63/63: validator, renderer determinism/crop/profiles, operation keys, stores, service; TestServerCallContext) |
+| 2026-08-05 | C# `make coverage-dotnet` | PASS (99.19% lines / 95.28% branches / 100% methods >= 90%; generated code excluded via ExcludeByFile) |
+| 2026-08-05 | C# `make format-dotnet` / `make lint-dotnet` | PASS (dotnet format whitespace + --verify-no-changes on library, cli, tests; generated/ skipped via generated_code) |
+| 2026-08-05 | Go `make coverage-go` | PASS (cmd/rghello 91.5%, vector-normalizer 90.5% >= 90%; generated rasterproto excluded in Makefile + CI) |
+| 2026-08-05 | Go rasterclient bufconn tests | PASS (deadline 10s, retry only Unavailable/ResourceExhausted/Aborted, 3 attempts, backoff; no retry on InvalidArgument/DeadlineExceeded) |
+| 2026-08-05 | Kotlin `./gradlew build` | PASS (ktlint + tests + JaCoCo 90%; RASTERIZING stage, drawable-count fan-in 10/11, maturity 30 -> 40, prohibited-field validator) |
+| 2026-08-05 | `make integration` | PASS (banners incl. rasterizer 0.1.0-milestone6; M6 block: local rasterizer server, --once --rasterizer-url emits normalized+rasterized events, byte-determinism, PNG magic bytes + sha256 match, schema validation, prohibited-field scan, gap skip) |
+| 2026-08-05 | `make contracts` / `make contract-test` | PASS (schemas unchanged; proto regenerated with no drift) |
+| 2026-08-05 | `make format` / `make lint` / `make unit` / `make coverage` / `make build` (STRICT=1) | PASS (all languages; see row above for per-language gates) |
+| 2026-08-05 | `make e2e` (cluster rube-goldberg) | PASS (smoke Test 7: ten glyph-rasterized records mature 30 -> 40 with no prohibited fields, gap position excluded, >= 10 raster PNG artifacts in MinIO with PNG magic bytes and sha256 matching each event) |
+
+M6 debugging notes (2026-08-05): Kestrel in .NET 10 rejects h2c with
+`Http1AndHttp2` — `SelectProtocol` always picks HTTP/1 without TLS (the
+.NET 9 `EnableHttp2ClearText` AppContext switch no longer exists in the
+assembly), so the rasterizer endpoint binds HTTP/2-only (ADR-0008). The
+integration harness initially used a port above 65535 (Abort trap) and a
+heredoc that shadowed the schema-check pipe; both fixed. Grpc.Tools ships no
+macOS-arm64 protoc in any 2.8x version, which forced the committed C#
+generated code + container-based codegen approach (ADR-0008).
+

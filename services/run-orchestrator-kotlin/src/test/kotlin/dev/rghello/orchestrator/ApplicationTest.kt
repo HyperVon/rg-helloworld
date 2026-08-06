@@ -53,7 +53,7 @@ class ApplicationTest {
         val code = run(PrintStream(out, true, StandardCharsets.UTF_8), PrintStream(err, true, StandardCharsets.UTF_8), arrayOf("version"))
 
         assertEquals(0, code)
-        assertEquals("run-orchestrator 0.3.0-milestone5\n", out.toString(StandardCharsets.UTF_8))
+        assertEquals("run-orchestrator 0.4.0-milestone6\n", out.toString(StandardCharsets.UTF_8))
         assertEquals("", err.toString(StandardCharsets.UTF_8))
     }
 
@@ -64,7 +64,7 @@ class ApplicationTest {
             run(PrintStream(out, true, StandardCharsets.UTF_8), PrintStream(err, true, StandardCharsets.UTF_8), arrayOf("version", "extra"))
 
         assertEquals(0, code)
-        assertEquals("run-orchestrator 0.3.0-milestone5\n", out.toString(StandardCharsets.UTF_8))
+        assertEquals("run-orchestrator 0.4.0-milestone6\n", out.toString(StandardCharsets.UTF_8))
         assertEquals("", err.toString(StandardCharsets.UTF_8))
     }
 
@@ -79,8 +79,12 @@ class ApplicationTest {
             RunStateMachine.transition(RunStatus.GENERATING_GEOMETRY, RunEvent.GEOMETRY_COMPLETE),
         )
         assertEquals(
-            RunStatus.SUCCEEDED,
+            RunStatus.RASTERIZING,
             RunStateMachine.transition(RunStatus.NORMALIZING, RunEvent.NORMALIZED_COMPLETE),
+        )
+        assertEquals(
+            RunStatus.SUCCEEDED,
+            RunStateMachine.transition(RunStatus.RASTERIZING, RunEvent.RASTERIZED_COMPLETE),
         )
         // Events out of order are ignored (no backward transitions).
         assertEquals(
@@ -89,7 +93,7 @@ class ApplicationTest {
         )
         assertEquals(
             RunStatus.SUCCEEDED,
-            RunStateMachine.transition(RunStatus.SUCCEEDED, RunEvent.NORMALIZED_COMPLETE),
+            RunStateMachine.transition(RunStatus.SUCCEEDED, RunEvent.RASTERIZED_COMPLETE),
         )
         assertEquals(
             RunStatus.FAILED,
@@ -122,7 +126,7 @@ class ApplicationTest {
         val runState =
             RunState(
                 runId = runId,
-                status = RunStatus.NORMALIZING,
+                status = RunStatus.RASTERIZING,
                 message = "Hello World",
                 idempotencyKey = "key",
                 createdAt = java.time.Instant.now(),
@@ -153,7 +157,7 @@ class ApplicationTest {
     }
 
     @Test
-    fun completeRunOnlySucceedsFromNormalizing() {
+    fun completeRunOnlySucceedsFromRasterizing() {
         val runId = UUID.randomUUID().toString()
         runs[runId] =
             RunState(
@@ -169,7 +173,7 @@ class ApplicationTest {
         completeRun(runId, "Hello World")
 
         assertEquals(RunStatus.GENERATING_GEOMETRY, runs[runId]?.status)
-        assertTrue(producer.sent.isEmpty(), "no final event before the normalized fan-in completes")
+        assertTrue(producer.sent.isEmpty(), "no final event before the rasterized fan-in completes")
     }
 
     @Test

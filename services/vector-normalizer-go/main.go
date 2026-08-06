@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"rghello.dev/vector-normalizer/internal/kafka"
+	"rghello.dev/vector-normalizer/internal/rasterclient"
 	"rghello.dev/vector-normalizer/internal/s3store"
 	"rghello.dev/vector-normalizer/internal/version"
 	"rghello.dev/vector-normalizer/internal/worker"
@@ -42,12 +43,19 @@ func run(args []string, stdout, stderr io.Writer) int {
 
 // runOnce transforms a single GeometryExpanded CloudEvent read from stdin
 // into the VectorNormalized event on stdout; with --emit-artifacts-to the
-// normalized JSON and SVG artifacts are also written to a directory.
+// normalized JSON and SVG artifacts are also written to a directory. With
+// --rasterizer-url the drawable glyph is additionally rasterized over gRPC
+// and the GlyphRasterized event is emitted on stdout.
 func runOnce(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	artifactsDir := ""
+	rasterizerURL := ""
 	for i := 0; i < len(args); i++ {
 		if args[i] == "--emit-artifacts-to" && i+1 < len(args) {
 			artifactsDir = args[i+1]
+			i++
+		}
+		if args[i] == "--rasterizer-url" && i+1 < len(args) {
+			rasterizerURL = args[i+1]
 			i++
 		}
 	}
@@ -57,7 +65,17 @@ func runOnce(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return 1
 	}
 	bucket := envOr("MINIO_BUCKET", "rube-goldberg-artifacts")
-	outcome, err := worker.Process(string(input), worker.Config{Bucket: bucket})
+	config := worker.Config{Bucket: bucket}
+	if rasterizerURL != "" {
+		client, err := rasterclient.New(rasterizerURL)
+		if err != nil {
+			fmt.Fprintf(stderr, "vector-normalizer: %v\n", err)
+			return 1
+		}
+		defer client.Close()
+		config.Renderer = client
+	}
+	outcome, err := worker.Process(context.Background(), string(input), config)
 	if err != nil {
 		fmt.Fprintf(stderr, "vector-normalizer: %v\n", err)
 		return 1
@@ -77,6 +95,9 @@ func runOnce(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		write(outcome.SvgKey, outcome.SvgContent)
 	}
 	fmt.Fprintln(stdout, outcome.OutputEvent)
+	if outcome.RasterEvent != "" {
+		fmt.Fprintln(stdout, outcome.RasterEvent)
+	}
 	return 0
 }
 
@@ -100,8 +121,18 @@ func runWorker(stderr io.Writer) int {
 	}
 
 	config := worker.Config{
-		OutputTopic: envOr("NORMALIZER_OUTPUT_TOPIC", "rg.glyph-normalized.v1"),
-		Bucket:      envOr("MINIO_BUCKET", "rube-goldberg-artifacts"),
+		OutputTopic:     envOr("NORMALIZER_OUTPUT_TOPIC", "rg.glyph-normalized.v1"),
+		RasterizedTopic: envOr("NORMALIZER_RASTERIZED_TOPIC", "rg.glyph-rasterized.v1"),
+		Bucket:          envOr("MINIO_BUCKET", "rube-goldberg-artifacts"),
+	}
+	if addr := envOr("RASTERIZER_ADDR", ""); addr != "" {
+		client, err := rasterclient.New(addr)
+		if err != nil {
+			fmt.Fprintf(stderr, "vector-normalizer: %v\n", err)
+			return 1
+		}
+		defer client.Close()
+		config.Renderer = client
 	}
 	return workerLoop(ctx, transport, store, config, stderr)
 }

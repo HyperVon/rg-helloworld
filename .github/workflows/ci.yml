@@ -32,7 +32,9 @@ jobs:
         run: go vet ./...
         working-directory: ${{ matrix.module }}
       - name: Test with coverage
-        run: RGHELLO_CHILD_COVER="$PWD/coverage.child.out" go test -coverprofile=coverage.out ./...
+        # Generated proto code (internal/rasterproto) is excluded from the
+        # coverage profile, mirroring the C++ gcovr excludes.
+        run: RGHELLO_CHILD_COVER="$PWD/coverage.child.out" go test -coverprofile=coverage.out $(go list ./... | grep -v '/internal/rasterproto$')
         working-directory: ${{ matrix.module }}
       - name: Coverage gate (90%)
         run: head -1 coverage.out > coverage.merged.out && grep -h -v '^mode:' coverage.out coverage.child.out | awk '{key=$1; if (!(key in cnt)) {span[key]=$1; stmt[key]=$2} cnt[key]+=$3} END {for (k in span) print span[k], stmt[k], cnt[k]}' | sort >> coverage.merged.out && go tool cover -func=coverage.merged.out | awk '/^total:/ { print $3; if ($3+0 < 90) exit 1 }'
@@ -40,6 +42,8 @@ jobs:
       - name: Build
         run: go build ./...
         working-directory: ${{ matrix.module }}
+      - name: Generated proto code is up to date
+        run: bash scripts/gen-proto.sh --check
 
   java:
     name: Java (glyph catalog)
@@ -103,14 +107,23 @@ jobs:
         with:
           dotnet-version: 10.0.302
       - name: Format check
-        run: dotnet format --verify-no-changes --nologo
+        # --nologo is parsed as a workspace path by dotnet format on SDK
+        # 10.0.302, so it must be omitted here.
+        run: |
+          dotnet format --verify-no-changes
+          dotnet format --verify-no-changes cli/rasterizer.Cli.csproj
+          dotnet format --verify-no-changes rasterizer.Tests/rasterizer.Tests.csproj
         working-directory: services/rasterizer-dotnet
       - name: Build
-        run: dotnet build --nologo
+        run: |
+          dotnet build --nologo cli/rasterizer.Cli.csproj
+          dotnet build --nologo rasterizer.Tests/rasterizer.Tests.csproj
         working-directory: services/rasterizer-dotnet
       - name: Test with coverage gate (90%)
-        run: dotnet test --nologo /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:Threshold=90 /p:CoverletOutput=coverage/
+        run: dotnet test --nologo rasterizer.Tests/rasterizer.Tests.csproj /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:Threshold=90 /p:CoverletOutput=coverage/
         working-directory: services/rasterizer-dotnet
+      - name: Generated C# gRPC code is up to date
+        run: bash scripts/gen-csharp-proto.sh --check
 
   python:
     name: Python (image pipeline)

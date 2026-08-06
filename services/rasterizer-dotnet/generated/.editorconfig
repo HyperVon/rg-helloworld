@@ -1,0 +1,4 @@
+# Generated gRPC/message code from the proto contract — dotnet format and
+# other tooling must treat these files as generated and leave them alone.
+[*.cs]
+generated_code = true
