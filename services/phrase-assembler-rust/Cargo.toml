@@ -1,7 +1,15 @@
 [package]
 name = "phrase-assembler"
-version = "0.0.0-skeleton"
+version = "0.5.0-milestone11"
 edition = "2024"
-description = "Final UTF-8 phrase assembly (Milestone 0 skeleton)"
+description = "Final UTF-8 phrase assembly from adjudicated OCR symbols (Milestone 11)"
 
 [dependencies]
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.140"
+sha2 = "0.10.8"
+uuid = { version = "1.16.0", features = ["v4"] }
+opentelemetry = { version = "0.27.0", default-features = false, features = ["trace"] }
+opentelemetry_sdk = { version = "0.27.1", features = ["trace", "tokio"] }
+tracing = { version = "0.1.41", features = ["log"] }
+tracing-subscriber = "0.3.19"

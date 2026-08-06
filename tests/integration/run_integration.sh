@@ -128,12 +128,14 @@ check "vector-normalizer" "vector-normalizer 0.2.0-milestone6" "$BIN/vector-norm
 check "glyph-catalog" "glyph-catalog 0.1.0-milestone4" java -jar "$ROOT/services/glyph-catalog-java/target/glyph-catalog-java-0.1.0-milestone4.jar" version
 check "run-orchestrator" "run-orchestrator 0.5.0-milestone7" "$ROOT/services/run-orchestrator-kotlin/build/install/run-orchestrator/bin/run-orchestrator" version
 check "geometry-engine" "geometry-engine 0.1.0-milestone5" "$ROOT/.local/build/geometry-engine-cpp/geometry_engine" version
-check "rasterizer" "rasterizer 0.1.0-milestone6" "$DOTNET" "$ROOT/services/rasterizer-dotnet/cli/bin/Debug/net10.0/rasterizer.Cli.dll" version
-check_eval "image-pipeline" "image-pipeline 0.1.0-milestone7" "PYTHONPATH=$ROOT/services/image-pipeline-python/src python3 -c 'import rg_image_pipeline as m; print(m.banner())'"
-check_eval "ocr-worker" "ocr-worker 0.0.0-skeleton (Milestone 0 skeleton)" "node -e \"import('$ROOT/services/ocr-worker-node/out/src/index.js').then(m => console.log(m.banner()))\""
-check_eval "event-gateway" "event-gateway 0.0.0-skeleton (Milestone 0 skeleton)" "node -e \"import('$ROOT/services/event-gateway-node/out/src/index.js').then(m => console.log(m.banner()))\""
-check_eval "adjudicator" "adjudicator 0.0.0-skeleton (Milestone 0 skeleton)" "cd '$ROOT/services/adjudicator-ruby' && ruby -Ilib -e 'require \"adjudicator\"; puts Adjudicator.banner'"
-check "phrase-assembler" "phrase-assembler 0.0.0-skeleton (Milestone 0 skeleton)" "$ROOT/services/phrase-assembler-rust/target/debug/phrase-assembler"
+check "rasterizer" "rasterizer 0.1.0-milestone11" "$DOTNET" "$ROOT/services/rasterizer-dotnet/cli/bin/Debug/net10.0/rasterizer.Cli.dll" version
+check_eval "image-pipeline" "image-pipeline 0.1.0-milestone11" "PYTHONPATH=$ROOT/services/image-pipeline-python/src python3 -c 'import rg_image_pipeline as m; print(m.banner())'"
+check_eval "ocr-worker" "ocr-worker 0.5.0-milestone8" "node -e \"import('$ROOT/services/ocr-worker-node/out/index.js').then(m => console.log(m.banner()))\""
+check_eval "event-gateway" "event-gateway 0.5.0-milestone11 (Milestone 11)" "node -e \"import('$ROOT/services/event-gateway-node/out/src/index.js').then(m => console.log(m.banner()))\""
+check_eval "adjudicator" "adjudicator 0.5.0-milestone8 (Milestone 8)" "cd '$ROOT/services/adjudicator-ruby' && ruby -Ilib -e 'require \"adjudicator\"; puts Adjudicator.banner'"
+check "phrase-assembler" "phrase-assembler 0.5.0-milestone11 (Milestone 11)" "$ROOT/services/phrase-assembler-rust/target/debug/phrase-assembler"
+check_eval "telemetry-element" "telemetry-element 0.5.0-milestone11 (Milestone 11)" "cd '$ROOT/services/telemetry-element' && node -e \"const m = require('./out/src/index.js'); console.log(m.banner())\""
+check_eval "artifact-inspector" "artifact-inspector 0.5.0-milestone11 (Milestone 11)" "cd '$ROOT/services/artifact-inspector-ruby' && ruby -Ilib -e 'require \"artifact_inspector\"; puts ArtifactInspector.banner'"
 
 echo ""
 echo "Verifying SOAP glyph catalog round trip:"
@@ -619,6 +621,139 @@ print('fixtures created')
   rm -rf "$M7_FIXTURES"
 else
   skip "python3 or image-pipeline for M7 composition/preprocessing"
+fi
+
+echo ""
+echo "Verifying Milestone 8 OCR and adjudication (--once):"
+
+if command -v node >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
+  M8_FIXTURES="/tmp/rghello-m8-fixtures"
+  mkdir -p "$M8_FIXTURES/crops"
+
+  python3 -c "
+import struct, zlib
+
+def make_png(width, height, fill=(128, 128, 128, 255)):
+    raw = b''
+    for _ in range(height):
+        raw += b'\x00'
+        for _ in range(width):
+            raw += bytes(fill)
+    def chunk(ctype, data):
+        c = ctype + data
+        return struct.pack('>I', len(data)) + c + struct.pack('>I', zlib.crc32(c) & 0xffffffff)
+    sig = b'\x89PNG\r\n\x1a\n'
+    ihdr = struct.pack('>IIBBBBB', width, height, 8, 6, 0, 0, 0)
+    idat = zlib.compress(raw)
+    return sig + chunk(b'IHDR', ihdr) + chunk(b'IDAT', idat) + chunk(b'IEND', b'')
+
+with open('$M8_FIXTURES/ocr-image.png', 'wb') as f:
+    f.write(make_png(200, 100))
+
+for pos in [0, 1, 2, 5]:
+    with open('$M8_FIXTURES/crops/crop-%d.png' % pos, 'wb') as f:
+        f.write(make_png(50, 50))
+
+import json
+manifest = {
+    'layout': [
+        {'position': 0, 'x': 0, 'y': 0, 'width': 50, 'height': 50, 'advanceWidth': 1.0, 'baseline': 40},
+        {'position': 1, 'x': 60, 'y': 0, 'width': 50, 'height': 50, 'advanceWidth': 1.0, 'baseline': 40},
+        {'position': 2, 'x': 120, 'y': 0, 'width': 50, 'height': 50, 'advanceWidth': 1.0, 'baseline': 40},
+        {'position': 5, 'x': 180, 'y': 0, 'width': 0, 'height': 0, 'advanceWidth': 0.6, 'baseline': 0},
+    ],
+    'totalWidth': 200,
+    'totalHeight': 100,
+}
+with open('$M8_FIXTURES/manifest.json', 'w') as f:
+    json.dump(manifest, f)
+print('M8 fixtures created')
+"
+
+  OCR_WORKER="$ROOT/services/ocr-worker-node/out/index.js"
+  M8_RUNNER="$ROOT/services/ocr-worker-node/tests/m8-once-runner.js"
+  if [ -f "$OCR_WORKER" ] && [ -f "$M8_RUNNER" ]; then
+    if node "$M8_RUNNER" "$M8_FIXTURES" "$M8_FIXTURES/observations.json" "$M8_FIXTURES/ocr-event.json" 2>/tmp/rghello-m8-ocr.log; then
+      say "[ ok ] OCR worker --once produced observations"
+  if [ -f "$M8_FIXTURES/observations.json" ]; then
+    say "[ ok ] observations file written"
+    if [ -f "$M8_FIXTURES/ocr-event.json" ]; then
+      if grep -q '"inputMaturity": 60' "$M8_FIXTURES/ocr-event.json" && grep -q '"outputMaturity": 70' "$M8_FIXTURES/ocr-event.json"; then
+        say "[ ok ] OCR event mature 60 -> 70"
+      else
+        FAILED=$((FAILED + 1))
+        say "[FAIL] OCR event missing maturity 60 -> 70"
+      fi
+    else
+      FAILED=$((FAILED + 1))
+      say "[FAIL] OCR event file missing"
+    fi
+  else
+    FAILED=$((FAILED + 1))
+    say "[FAIL] OCR observations file missing"
+  fi
+    else
+      FAILED=$((FAILED + 1))
+      say "[FAIL] OCR worker --once failed"
+      cat /tmp/rghello-m8-ocr.log
+    fi
+  else
+    skip "ocr-worker not built"
+  fi
+
+  if [ -f "$M8_FIXTURES/observations.json" ]; then
+    LAYOUT=$(cat "$M8_FIXTURES/manifest.json")
+    cat > "$M8_FIXTURES/observations.json" <<'OBS'
+{
+  "fullPhrase": {
+    "symbols": [
+      {"position": 0, "text": "H", "confidence": 0.9},
+      {"position": 1, "text": "H", "confidence": 0.9},
+      {"position": 2, "text": "H", "confidence": 0.9}
+    ]
+  },
+  "positionObservations": [
+    {"position": 0, "candidate": "H", "confidence": 0.95},
+    {"position": 1, "candidate": "H", "confidence": 0.92},
+    {"position": 2, "candidate": "H", "confidence": 0.88}
+  ],
+  "spacingObservations": []
+}
+OBS
+
+    if command -v ruby >/dev/null 2>&1; then
+      if (cd "$ROOT/services/adjudicator-ruby" && ruby -Ilib -e "require 'json'; require 'adjudicator'; result = Adjudicator::AdjudicatorImpl.run_once('$M8_FIXTURES/observations.json', '$M8_FIXTURES/manifest.json', event_output_path: '$M8_FIXTURES/adjudicator-event.json'); puts JSON.pretty_generate(result)" > "$M8_FIXTURES/adjudicated.json" 2>/tmp/rghello-m8-adjudicator.log); then
+        say "[ ok ] adjudicator --once produced adjudicated symbols"
+        if [ -f "$M8_FIXTURES/adjudicated.json" ]; then
+          say "[ ok ] adjudicated file written"
+          if [ -f "$M8_FIXTURES/adjudicator-event.json" ]; then
+            if grep -q '"inputMaturity": 70' "$M8_FIXTURES/adjudicator-event.json" && grep -q '"outputMaturity": 80' "$M8_FIXTURES/adjudicator-event.json"; then
+              say "[ ok ] adjudicated event mature 70 -> 80"
+            else
+              FAILED=$((FAILED + 1))
+              say "[FAIL] adjudicated event missing maturity 70 -> 80"
+            fi
+          else
+            FAILED=$((FAILED + 1))
+            say "[FAIL] adjudicator event file missing"
+          fi
+        else
+          FAILED=$((FAILED + 1))
+          say "[FAIL] adjudicated file missing"
+        fi
+      else
+        FAILED=$((FAILED + 1))
+        say "[FAIL] adjudicator --once failed"
+        cat /tmp/rghello-m8-adjudicator.log
+      fi
+    else
+      skip "ruby for adjudicator"
+    fi
+  fi
+
+  rm -rf "$M8_FIXTURES"
+else
+  skip "node or python3 for M8 OCR/adjudication"
 fi
 
 echo ""

@@ -28,5 +28,11 @@ build_and_push run-orchestrator services/run-orchestrator-kotlin/Dockerfile mile
 build_and_push vector-normalizer services/vector-normalizer-go/Dockerfile milestone6
 build_and_push rasterizer services/rasterizer-dotnet/Dockerfile milestone6
 build_and_push image-pipeline services/image-pipeline-python/Dockerfile milestone7 services/image-pipeline-python
- 
-echo ">> Images pushed to ${REGISTRY} (milestone5 + milestone6 + milestone7)"
+build_and_push ocr-worker services/ocr-worker-node/Dockerfile milestone8 services/ocr-worker-node
+build_and_push adjudicator services/adjudicator-ruby/Dockerfile milestone8 services/adjudicator-ruby
+build_and_push phrase-assembler services/phrase-assembler-rust/Dockerfile milestone9 services/phrase-assembler-rust
+build_and_push event-gateway services/event-gateway-node/Dockerfile milestone11 services/event-gateway-node
+build_and_push telemetry-element services/telemetry-element/Dockerfile milestone11 services/telemetry-element
+build_and_push artifact-inspector services/artifact-inspector-ruby/Dockerfile milestone11 services/artifact-inspector-ruby
+
+echo ">> Images pushed to ${REGISTRY} (milestone5 + milestone6 + milestone7 + milestone8 + milestone9 + milestone10 + milestone11)"

@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: adjudicator
+  namespace: rube-goldberg
+  labels:
+    app: adjudicator
+    milestone: "8"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: adjudicator
+  template:
+    metadata:
+      labels:
+        app: adjudicator
+    spec:
+      containers:
+        - name: adjudicator
+          image: rghello-registry:5001/adjudicator:milestone8
+          imagePullPolicy: Always
+          command: ["bundle", "exec", "/usr/local/bin/adjudicator", "run"]
+          ports:
+            - containerPort: 4242
+          env:
+            - name: KAFKA_BOOTSTRAP
+              value: "kafka.rube-goldberg.svc.cluster.local:9092"
+            - name: KAFKA_GROUP_ID
+              value: adjudicator-v1
+            - name: OBSERVATIONS_TOPIC
+              value: "rg.ocr-observations.v1"
+            - name: ADJUDICATED_TOPIC
+              value: "rg.symbols-adjudicated.v1"
+            - name: QUALITY_RETRY_TOPIC
+              value: "rg.quality-retry.v1"
+            - name: MINIO_ENDPOINT
+              value: "http://minio.rube-goldberg.svc.cluster.local:9000"
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: root-user
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: root-password
+            - name: TRACEPARENT_HEADER
+              value: "00-00000000000000000000000000000000-0000000000000000-00"
+          readinessProbe:
+            exec:
+              command: ["ruby", "-e", "exit 0"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["ruby", "-e", "exit 0"]
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 50m
+              memory: 256Mi
+            limits:
+              memory: 768Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: adjudicator
+  namespace: rube-goldberg
+  labels:
+    app: adjudicator
+    milestone: "8"
+spec:
+  selector:
+    app: adjudicator
+  ports:
+    - name: http
+      port: 4242
+      targetPort: 4242

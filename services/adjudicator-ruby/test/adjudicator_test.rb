@@ -4,8 +4,8 @@ require 'minitest/autorun'
 require 'adjudicator'
 
 class AdjudicatorTest < Minitest::Test
-  def test_version_matches_skeleton
-    assert_equal '0.0.0-skeleton', Adjudicator::VERSION
+  def test_version_matches_milestone_8
+    assert_equal '0.5.0-milestone8', Adjudicator::VERSION
   end
 
   def test_version_is_not_empty
@@ -17,7 +17,7 @@ class AdjudicatorTest < Minitest::Test
   end
 
   def test_banner_includes_service_and_version
-    assert_match(/\Aadjudicator 0\.0\.0-skeleton/, Adjudicator.banner)
+    assert_match(/\Aadjudicator 0\.5\.0-milestone8/, Adjudicator.banner)
   end
 
   def test_banner_is_deterministic

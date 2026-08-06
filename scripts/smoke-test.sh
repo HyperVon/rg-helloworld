@@ -158,6 +158,30 @@ if command -v docker >/dev/null 2>&1; then
     retry kubectl rollout status deployment/vector-normalizer -n $NAMESPACE --timeout=180s
     retry kubectl rollout status deployment/rasterizer -n $NAMESPACE --timeout=180s
 
+    echo "Deploying Milestone 7 image pipeline"
+    retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone7/image-pipeline.yaml"
+    retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=image-pipeline --timeout=180s
+    retry kubectl rollout status deployment/image-pipeline -n $NAMESPACE --timeout=180s
+
+    echo "Deploying Milestone 8 services (OCR worker + adjudicator)"
+    retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone8/ocr-worker.yaml"
+    retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone8/adjudicator.yaml"
+    retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=ocr-worker --timeout=180s
+    retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=adjudicator --timeout=180s
+
+    echo "Deploying Milestone 9 Rust assembler"
+    retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone9/phrase-assembler.yaml"
+    retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=phrase-assembler --timeout=180s
+    retry kubectl rollout status deployment/phrase-assembler -n $NAMESPACE --timeout=180s
+
+    echo "Deploying Milestone 10 event gateway + telemetry"
+    retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone10/event-gateway.yaml"
+    retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone10/telemetry-element.yaml"
+    retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone10/artifact-inspector.yaml"
+    retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=event-gateway --timeout=180s
+    retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=telemetry-element --timeout=180s
+    retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=artifact-inspector --timeout=180s
+
     kubectl port-forward -n $NAMESPACE svc/run-orchestrator 8080:8080 &>/dev/null &
     PORTFORWARD_PIDS+=($!)
     sleep 3
@@ -520,5 +544,227 @@ else
     echo "SKIP: python3 not found, skipping Milestone 7 checks"
 fi
 echo ""
- 
+
+# --- Test 9: Milestone 8 OCR and adjudication ---
+echo "--- Test 9: Milestone 8 OCR and adjudication ---"
+if command -v docker >/dev/null 2>&1; then
+    echo "Deploying Milestone 8 services (OCR worker + adjudicator)"
+    retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone8/ocr-worker.yaml"
+    retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone8/adjudicator.yaml"
+    retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=ocr-worker --timeout=180s
+    retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=adjudicator --timeout=180s
+
+    echo "Verifying OCR observations on rg.ocr-observations.v1"
+    OBSERVATIONS=$(kubectl exec -n $NAMESPACE kafka-controller-0 -c kafka -- \
+        timeout 20 kafka-console-consumer.sh --topic rg.ocr-observations.v1 \
+        --bootstrap-server $KAFKA_BROKER --from-beginning --max-messages 5 --timeout-ms 10000 2>/dev/null || true)
+    if printf '%s\n' "$OBSERVATIONS" | grep -q '"inputMaturity":60.*"outputMaturity":70'; then
+        echo "PASS: OCR observations mature 60 -> 70"
+    else
+        echo "FAIL: missing OCR observations with maturity 60 -> 70"
+        exit 1
+    fi
+    if printf '%s\n' "$OBSERVATIONS" | grep -q '"fullPhrase"'; then
+        echo "PASS: OCR observations contain full phrase"
+    else
+        echo "FAIL: OCR observations missing fullPhrase"
+        exit 1
+    fi
+    if printf '%s\n' "$OBSERVATIONS" | grep -q '"positionObservations"'; then
+        echo "PASS: OCR observations contain position observations"
+    else
+        echo "FAIL: OCR observations missing positionObservations"
+        exit 1
+    fi
+    if printf '%s\n' "$OBSERVATIONS" | grep -q '"spacingObservations"'; then
+        echo "PASS: OCR observations contain spacing observations"
+    else
+        echo "FAIL: OCR observations missing spacingObservations"
+        exit 1
+    fi
+    if printf '%s\n' "$OBSERVATIONS" | grep -qE '"(message|targetText|expectedCharacter|unicodeCodePoint|characterName|glyphLabel)"'; then
+        echo "FAIL: OCR observations contain prohibited fields"
+        exit 1
+    else
+        echo "PASS: OCR observations exclude prohibited fields"
+    fi
+
+    echo "Verifying adjudicated symbols on rg.symbols-adjudicated.v1"
+    ADJUDICATED=$(kubectl exec -n $NAMESPACE kafka-controller-0 -c kafka -- \
+        timeout 20 kafka-console-consumer.sh --topic rg.symbols-adjudicated.v1 \
+        --bootstrap-server $KAFKA_BROKER --from-beginning --max-messages 5 --timeout-ms 10000 2>/dev/null || true)
+    if printf '%s\n' "$ADJUDICATED" | grep -q '"inputMaturity":70.*"outputMaturity":80'; then
+        echo "PASS: adjudicated symbols mature 70 -> 80"
+    else
+        echo "FAIL: missing adjudicated symbols with maturity 70 -> 80"
+        exit 1
+    fi
+    if printf '%s\n' "$ADJUDICATED" | grep -q '"tokenType":"SYMBOL"'; then
+        echo "PASS: adjudicated symbols contain SYMBOL tokens"
+    else
+        echo "FAIL: adjudicated symbols missing SYMBOL tokens"
+        exit 1
+    fi
+    if printf '%s\n' "$ADJUDICATED" | grep -qE '"evidence"'; then
+        echo "PASS: adjudicated symbols include evidence"
+    else
+        echo "FAIL: adjudicated symbols missing evidence"
+        exit 1
+    fi
+    if printf '%s\n' "$ADJUDICATED" | grep -qE '"(message|targetText|expectedCharacter|unicodeCodePoint|characterName|glyphLabel)"'; then
+        echo "FAIL: adjudicated symbols contain prohibited fields"
+        exit 1
+    else
+        echo "PASS: adjudicated symbols exclude prohibited fields"
+    fi
+else
+    echo "SKIP: docker not installed, skipping Milestone 8 K8s checks"
+fi
+
+if command -v node >/dev/null 2>&1 && [ -d "${PROJECT_ROOT}/services/ocr-worker-node" ]; then
+    cd "${PROJECT_ROOT}/services/ocr-worker-node"
+    if npm run lint 2>&1 | grep -q "All matched files"; then
+        echo "PASS: OCR worker lint"
+    else
+        echo "FAIL: OCR worker lint"
+        exit 1
+    fi
+    if npm test 2>&1 | grep -q "pass 35"; then
+        echo "PASS: OCR worker unit tests"
+    else
+        echo "FAIL: OCR worker unit tests"
+        exit 1
+    fi
+    cd "${PROJECT_ROOT}"
+else
+    echo "SKIP: node not found, skipping OCR worker checks"
+fi
+
+if command -v ruby >/dev/null 2>&1 && [ -d "${PROJECT_ROOT}/services/adjudicator-ruby" ]; then
+    cd "${PROJECT_ROOT}/services/adjudicator-ruby"
+    if ruby -S bundle exec rake test 2>&1 | grep -q "0 failures"; then
+        echo "PASS: adjudicator unit tests"
+    else
+        echo "FAIL: adjudicator unit tests"
+        exit 1
+    fi
+    cd "${PROJECT_ROOT}"
+else
+    echo "SKIP: ruby not found, skipping adjudicator checks"
+fi
+
+# --- Test 10: Milestone 9 Phrase assembler ---
+echo "--- Test 10: Milestone 9 phrase assembler ---"
+if [ -d "${PROJECT_ROOT}/services/phrase-assembler-rust" ]; then
+    cd "${PROJECT_ROOT}/services/phrase-assembler-rust"
+    if command -v cargo >/dev/null 2>&1; then
+        CARGO="${CARGO:-cargo}"
+        if "$CARGO" build --quiet 2>/dev/null; then
+            echo "PASS: phrase-assembler builds"
+        else
+            echo "FAIL: phrase-assembler build failed"
+            exit 1
+        fi
+        if "$CARGO" test --quiet 2>/dev/null; then
+            echo "PASS: phrase-assembler unit tests"
+        else
+            echo "FAIL: phrase-assembler unit tests"
+            exit 1
+        fi
+        BANNER="$("${CARGO}" run --quiet -- version 2>/dev/null)"
+        if printf '%s' "$BANNER" | grep -q "phrase-assembler 0.5.0-milestone11"; then
+            echo "PASS: phrase-assembler banner"
+        else
+            echo "FAIL: phrase-assembler banner: $BANNER"
+            exit 1
+        fi
+    else
+        echo "SKIP: cargo not found, skipping phrase-assembler checks"
+    fi
+    cd "${PROJECT_ROOT}"
+fi
+
+# --- Test 11: Milestone 10 Event gateway + telemetry element ---
+echo "--- Test 11: Milestone 10 event gateway + telemetry element ---"
+
+if command -v node >/dev/null 2>&1 && [ -d "${PROJECT_ROOT}/services/event-gateway-node" ]; then
+    cd "${PROJECT_ROOT}/services/event-gateway-node"
+    if npm run lint 2>&1 | grep -q "All matched files"; then
+        echo "PASS: event-gateway lint"
+    else
+        echo "FAIL: event-gateway lint"
+        exit 1
+    fi
+    if npm test 2>&1 | grep -q "pass 33"; then
+        echo "PASS: event-gateway unit tests"
+    else
+        echo "FAIL: event-gateway unit tests"
+        exit 1
+    fi
+    cd "${PROJECT_ROOT}"
+else
+    echo "SKIP: node not found, skipping event-gateway checks"
+fi
+
+if command -v node >/dev/null 2>&1 && [ -d "${PROJECT_ROOT}/services/telemetry-element" ]; then
+    cd "${PROJECT_ROOT}/services/telemetry-element"
+    if npm run lint 2>&1 | grep -q "All matched files"; then
+        echo "PASS: telemetry-element lint"
+    else
+        echo "FAIL: telemetry-element lint"
+        exit 1
+    fi
+    if npm test 2>&1 | grep -q "pass 32"; then
+        echo "PASS: telemetry-element unit tests"
+    else
+        echo "FAIL: telemetry-element unit tests"
+        exit 1
+    fi
+    cd "${PROJECT_ROOT}"
+else
+    echo "SKIP: node not found, skipping telemetry-element checks"
+fi
+
+if command -v ruby >/dev/null 2>&1 && [ -d "${PROJECT_ROOT}/services/artifact-inspector-ruby" ]; then
+    cd "${PROJECT_ROOT}/services/artifact-inspector-ruby"
+    if ruby -Ilib -Itest test/inspector_test.rb 2>&1 | grep -q "0 failures"; then
+        echo "PASS: artifact-inspector unit tests"
+    else
+        echo "FAIL: artifact-inspector unit tests"
+        exit 1
+    fi
+    cd "${PROJECT_ROOT}"
+else
+    echo "SKIP: ruby not found, skipping artifact-inspector checks"
+fi
+
+# --- Test 12: Milestone 10 web-shell build ---
+echo "--- Test 12: Milestone 10 web-shell build ---"
+if command -v node >/dev/null 2>&1 && [ -d "${PROJECT_ROOT}/services/web-shell" ]; then
+    cd "${PROJECT_ROOT}/services/web-shell"
+    if npx prettier --check src/ tests/ 2>&1 | grep -q "All matched files"; then
+        echo "PASS: web-shell format check"
+    else
+        echo "FAIL: web-shell format check"
+        exit 1
+    fi
+    if npx tsc --noEmit 2>&1; then
+        echo "PASS: web-shell typecheck"
+    else
+        echo "FAIL: web-shell typecheck"
+        exit 1
+    fi
+    if node --test tests/*.test.ts 2>&1 | grep -q "pass 10"; then
+        echo "PASS: web-shell unit tests"
+    else
+        echo "FAIL: web-shell unit tests"
+        exit 1
+    fi
+    cd "${PROJECT_ROOT}"
+else
+    echo "SKIP: node not found, skipping web-shell checks"
+fi
+
+echo ""
+
 echo "=== All smoke tests passed! ==="

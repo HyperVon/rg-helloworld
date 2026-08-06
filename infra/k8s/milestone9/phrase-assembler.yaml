@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: phrase-assembler
+  namespace: rube-goldberg
+  labels:
+    app: phrase-assembler
+    milestone: "9"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: phrase-assembler
+  template:
+    metadata:
+      labels:
+        app: phrase-assembler
+    spec:
+      containers:
+        - name: phrase-assembler
+          image: rghello-registry:5001/phrase-assembler:milestone9
+          imagePullPolicy: Always
+          env:
+            - name: KAFKA_BOOTSTRAP
+              value: "kafka.rube-goldberg.svc.cluster.local:9092"
+            - name: KAFKA_GROUP_ID
+              value: phrase-assembler-v1
+            - name: ASSEMBLER_INPUT_TOPIC
+              value: "rg.symbols-adjudicated.v1"
+            - name: ASSEMBLER_OUTPUT_TOPIC
+              value: "rg.phrase-assembled.v1"
+            - name: MINIO_ENDPOINT
+              value: "http://minio.rube-goldberg.svc.cluster.local:9000"
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: root-user
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: root-password
+            - name: TRACEPARENT_HEADER
+              value: "00-00000000000000000000000000000000-0000000000000000-00"
+          readinessProbe:
+            exec:
+              command: ["phrase-assembler", "version"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["phrase-assembler", "version"]
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: phrase-assembler
+  namespace: rube-goldberg
+  labels:
+    app: phrase-assembler
+    milestone: "9"
+spec:
+  selector:
+    app: phrase-assembler
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080

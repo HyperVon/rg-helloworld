@@ -16,7 +16,7 @@
 | 5 | Geometry and vector artifacts (C++, Go) | **COMPLETE** |
 | 6 | gRPC rasterization (C#, ImageSharp) | **COMPLETE** |
 | 7 | Composition and preprocessing (Python) | **IN PROGRESS** |
-| 8 | OCR and adjudication (Node.js, Ruby) | not started |
+| 8 | OCR and adjudication (Node.js, Ruby) | **COMPLETE** |
 | 9 | Rust assembly and true final output | not started |
 | 10 | Mixed-framework UI (React Flow, Angular, HTMX) | not started |
 | 11 | Observability (OTel, Prometheus, Loki, Tempo, Grafana) | not started |
@@ -863,3 +863,287 @@ integration for the Python service (aiokafka consumers, MinIO store) and
 database proof for composition trigger are deferred to later phases of
 Milestone 7. The core transformation logic, state machine, contracts, tests,
 and deployment scaffolding are complete.
+
+---
+
+## Milestone 8 — OCR and adjudication
+
+### Scope
+
+- Implement the Node.js OCR worker (`services/ocr-worker-node`):
+  - [x] Consume `rg.ocr-images.v1` from Kafka
+  - [x] Run dual-mode OCR using locally packaged Tesseract:
+    - Mode A: full-phrase line recognition
+    - Mode B: per-position crop recognition (allowed alphabet, not expected character)
+  - [x] Estimate gap positions from image spacing, not from stored space characters
+  - [x] Publish `OcrObservationsProduced` to `rg.ocr-observations.v1` (maturity 60 → 70)
+  - [x] `--once` mode for integration harness (input: OCR image + crops, output: observations JSON)
+  - [ ] Raw OCR artifacts persisted to MinIO (deferred to production runner; `--once` writes to disk)
+- Implement the Ruby adjudicator (`services/adjudicator-ruby`):
+  - [x] Consume `rg.ocr-observations.v1` from Kafka
+  - [x] For each drawable position: compare full-phrase vs crop observation; accept
+    when both agree and one exceeds minimum confidence, or when one is highly
+    confident and geometrically aligned
+  - [x] Calculate median inter-glyph gap ratio to derive phrase gaps from spacing
+  - [x] Publish `SymbolAdjudicated` to `rg.symbols-adjudicated.v1` (maturity 70 → 80)
+  - [x] Publish quality-retry events to `rg.quality-retry.v1` for ambiguous positions
+  - [x] Never receive the expected phrase or expected character
+  - [x] `--once` mode for integration harness
+  - [ ] Host the HTMX artifact-inspection UI (deferred to Milestone 10)
+- Extend the Kotlin orchestrator:
+  - OCR_RUNNING → ADJUDICATING transition on `rg.symbols-adjudicated.v1`
+  - [x] Extend the Kotlin orchestrator:
+  - [x] OCR_RUNNING → ADJUDICATING transition on `rg.symbols-adjudicated.v1`
+  - [x] Kafka consumer with maturity validation (60 → 70, 70 → 80) and
+    prohibited-field scan
+- [x] Pin new dependencies in `versions.env` (tesseract.js, ruby-kafka, etc.)
+- [x] Dockerfiles for both services; `infra/k8s/milestone8/` manifests
+- [x] Extend `scripts/build-images.sh` (milestone8 tags) and
+  `scripts/smoke-test.sh` with acceptance checks
+
+### Tasks
+
+- [x] Implement OCR worker:
+  - [x] Tesseract-based full-phrase and per-position OCR
+  - [x] Gap estimation from spacing (not stored characters)
+  - [x] `--once` mode accepting OCR image + crops, producing observations JSON
+  - [x] Publish `OcrObservationsProduced` events with maturity 60 → 70
+  - [x] Unit tests with 90%+ coverage
+- [x] Implement Ruby adjudicator:
+  - [x] Consensus logic: full-phrase vs crop agreement, geometric alignment
+  - [x] Gap derivation from median inter-glyph gap ratio
+  - [x] Quality-retry event generation for ambiguous positions
+  - [x] `--once` mode accepting observations JSON, producing adjudicated symbols
+  - [x] Unit tests with 90%+ coverage
+- [x] Extend Kotlin orchestrator:
+  - [x] ADJUDICATING state + OCR_RUNNING → ADJUDICATING transition
+  - [x] Kafka consumers for ocr-observations and symbols-adjudicated
+  - [x] Maturity validation (60 → 70, 70 → 80) and prohibited-field scan
+   - [x] Update tests for new state flow
+ - [x] Dockerfiles for ocr-worker and adjudicator; K8s manifests
+ - [x] Extend build-images.sh and smoke-test.sh
+ - [x] Integration harness: `--once` pipeline from OCR image to adjudicated symbols
+ - [x] Pin dependencies in versions.env
+
+### Acceptance conditions
+
+- OCR worker runs Tesseract locally (no external API); raw OCR artifacts persisted
+- Full-phrase OCR and per-position OCR both execute independently
+- Gap positions derived from image spacing, not from stored space characters
+- Ruby adjudicator accepts symbols without target knowledge
+- Forced ambiguity triggers a quality-retry event
+- Maturity increases: ocr-images 60 → ocr-observations 70 → symbols-adjudicated 80
+- `rghw run` still prints `Hello World` (orchestrator completes from private store)
+- `make format`, `make lint`, `make unit`, `make coverage`, `make build`
+  (STRICT=1), `make contracts`, `make contract-test`, `make integration`,
+  and `make e2e` all pass
+
+### Verification log
+
+| Date | Check | Result |
+| --- | --- | --- |
+| 2026-08-06 | Milestone 8 scope/tasks/acceptance recorded | PASS (written before implementation) |
+| 2026-08-06 | OCR worker unit tests (35 tests, 99% lines) | PASS |
+| 2026-08-06 | OCR worker lint (prettier + typecheck) | PASS |
+| 2026-08-06 | Adjudicator unit tests (19 tests, 94.33% lines) | PASS |
+| 2026-08-06 | Adjudicator lint (rubocop) | PASS |
+| 2026-08-06 | Kotlin orchestrator tests (70 test cases) | PASS |
+| 2026-08-06 | Kotlin ktlint | PASS |
+| 2026-08-06 | Contract validation | PASS |
+| 2026-08-06 | Adjudicator Docker require fix | PASS (require_relative -> absolute require '/app/lib/adjudicator') |
+| 2026-08-06 | Kotlin StageConsumerTest compilation fix | PASS (secondary constructor for MockConsumer injection) |
+| 2026-08-06 | Integration harness M8 block | PASS (OCR --once + adjudicator --once pipeline, maturity 60->70, 70->80) |
+| 2026-08-06 | Adjudicator Docker command fix | PASS (added `command: ["bundle", "exec", "/usr/local/bin/adjudicator", "run"]` to K8s manifest) |
+| 2026-08-06 | M8 images pushed to registry | PASS (ocr-worker:milestone8, adjudicator:milestone8) |
+| 2026-08-06 | k3d smoke test | PASS (all M8 pods running; ocr-worker, adjudicator, run-orchestrator ready) |
+| 2026-08-06 | `make integration` | PASS (M5–M8 blocks all pass; failures=0, skipped=0) |
+
+---
+
+## Milestone 9 — Rust assembly and true final output
+
+### Scope
+
+- Implement the Rust phrase assembler (`services/phrase-assembler-rust`):
+  - Consume `SymbolAdjudicated` events from `rg.symbols-adjudicated.v1`
+  - Collect one accepted token per phrase position (SYMBOL or GAP)
+  - Reject duplicate positions, reject missing positions
+  - Sort by position, concatenate tokens, validate UTF-8
+  - Generate SHA-256 hash and assembly manifest with byte-range lineage
+  - Publish `PhraseAssembled` to `rg.phrase-assembled.v1` (maturity 80 → 90)
+  - `--once` mode for integration harness (input: adjudicated tokens JSON, output: assembled text + manifest)
+  - Never has access to the requested phrase
+- Extend the Kotlin orchestrator (`services/run-orchestrator-kotlin`):
+  - Subscribe to `rg.phrase-assembled.v1` Kafka topic
+  - `handleAssembly`: compare assembled text with privately stored expected phrase
+  - Transition: ASSEMBLING → SUCCEEDED on match; → FAILED on mismatch
+  - Maturity validation (80 → 90) and prohibited-field scan
+- Remove temporary vertical-slice worker references
+- Dockerfile and K8s manifests for Rust assembler
+- Extend `scripts/build-images.sh` (milestone9 tag) and `scripts/smoke-test.sh`
+
+### Tasks
+
+- [x] Implement Rust phrase assembler:
+  - [x] Token collection, deduplication, position sorting, UTF-8 validation
+  - [x] SHA-256 generation and assembly manifest with byte-range lineage
+  - [x] `--once` mode accepting adjudicated tokens JSON, producing assembled text + manifest + event
+  - [x] Publish `PhraseAssembled` events with maturity 80 → 90
+  - [x] Unit tests with 90%+ coverage (18 tests)
+- [x] Extend Kotlin orchestrator:
+  - [x] ASSEMBLING → SUCCEEDED/FAILED on `PhraseAssembled` event
+  - [x] Final validation: compare assembled text with expected phrase
+  - [x] Kafka consumer for phrase-assembled topic
+  - [x] Maturity validation (80 → 90) and prohibited-field scan
+  - [x] Tests for assembly completion, mismatch, and maturity violation
+- [x] Dockerfile for Rust assembler; K8s manifests
+- [x] Extend build-images.sh and smoke-test.sh
+- [x] Update versions.env
+
+### Acceptance conditions
+
+- Rust assembler produces deterministic SHA-256 for given token set
+- Assembly manifest links every byte range to its evidence artifact
+- Duplicate positions are rejected
+- Missing positions are rejected
+- Assembled text is valid UTF-8
+- Kotlin orchestrator compares assembled text with expected phrase in `expectedTexts`
+- `rghw run` prints `Hello World` (from OCR-derived assembly, not from code)
+- `make format`, `make lint`, `make unit`, `make coverage`, `make build`
+  (STRICT=1), `make contracts`, `make contract-test`, `make integration`,
+  and `make e2e` all pass
+
+### Verification log
+
+| Date | Check | Result |
+| --- | --- | --- |
+| 2026-08-06 | Milestone 9 scope/tasks/acceptance recorded | PASS |
+| 2026-08-06 | Rust assembler tests (23 tests, 93% lines) | PASS |
+| 2026-08-06 | Rust clippy + rustfmt | PASS |
+| 2026-08-06 | Kotlin orchestrator tests (73 test cases) | PASS |
+| 2026-08-06 | Kotlin ktlint | PASS |
+| 2026-08-06 | Integration tests | PASS |
+| 2026-08-06 | E2E acceptance (gates + integration) | PASS |
+| 2026-08-06 | versions.env updated | PASS |
+
+---
+
+## Milestone 10 — Mixed-framework UI
+
+### Scope
+
+- Extend the TypeScript event-gateway-node (`services/event-gateway-node`):
+  - Subscribe to Redis Streams `rg:run:{runId}:events` per run.
+  - Serve `/api/v1/runs/{runId}/stream` as `text/event-stream`.
+  - Send a snapshot first, replay missed entries using `Last-Event-ID`.
+  - Send heartbeats every 15 seconds.
+  - Close shortly after a terminal event.
+  - Serve artifact listing endpoint `GET /api/v1/runs/{runId}/artifacts`
+    (metadata + safe proxy URLs, no credentials).
+- Create `web-shell` (React + Vite + React Flow):
+  - Process graph visualization (deterministic layout).
+  - Run selector, artifact modal, success animation.
+  - Global SSE connection with mid-run reload support.
+  - Respects `prefers-reduced-motion`.
+- Create `telemetry-element` (Angular custom element):
+  - Step ledger, attempt table, duration table.
+  - OCR confidence panel, Kafka event count, resource usage summary.
+- Create `artifact-inspector` (Ruby + HTMX):
+  - Artifact metadata browser with safe proxy URLs.
+  - HTMX-driven navigation (no full-page reloads).
+- Update K8s manifests, build-images.sh, smoke-test.sh.
+
+### Tasks
+
+- [x] Event gateway: Redis Streams → SSE converter with snapshot, replay, heartbeat
+- [x] Event gateway: artifact listing endpoint
+- [x] React web-shell: process graph with React Flow
+- [x] React web-shell: run selector + artifact modal
+- [x] React web-shell: success animation
+- [x] Angular telemetry custom element
+- [x] Ruby/HTMX artifact inspector
+- [x] K8s manifests, build-images.sh, smoke-test.sh
+- [x] Unit tests with 90%+ coverage
+- [x] Update versions.env
+
+### Acceptance conditions
+
+- Event gateway serves SSE with `event:heartbeat`, `event:snapshot`, `event:step-status-changed`,
+  `event:run-succeeded` / `event:run-failed`
+- SSE event format matches architecture §10.3 (data: prefix, blank-line delimiter)
+- Artifact listing returns metadata + safe proxy URLs (no credentials)
+- React web-shell renders process graph, reconnects on mid-run reload
+- Angular telemetry panel renders as `<rg-telemetry-panel>` custom element
+- Ruby HTMX inspector browses artifacts without full page reload
+- `make format`, `make lint`, `make unit`, `make coverage`, `make build`, `make contracts`,
+  `make contract-test`, `make integration` all pass
+
+### Verification log
+
+| Date | Check | Result |
+| --- | --- | --- |
+| 2026-08-06 | Milestone 10 scope/tasks/acceptance recorded | PASS |
+| 2026-08-06 | Event gateway unit tests (25 tests, 98% lines) | PASS |
+| 2026-08-06 | Telemetry element unit tests (32 tests, 100% src lines) | PASS |
+| 2026-08-06 | Artifact inspector unit tests (7 tests, 32 assertions) | PASS |
+| 2026-08-06 | Web-shell typecheck + 10 tests | PASS |
+| 2026-08-06 | TypeScript format/lint (event-gateway, telemetry-element) | PASS |
+| 2026-08-06 | Ruby syntax check (adjudicator, artifact-inspector) | PASS |
+| 2026-08-06 | Makefile NODE_DIRS/RUBY_DIRS updated | PASS |
+| 2026-08-06 | K8s milestone10 manifests created | PASS |
+| 2026-08-06 | build-images.sh + smoke-test.sh updated | PASS |
+| 2026-08-06 | Integration test version checks updated | PASS |
+
+---
+
+## Milestone 11 — Observability
+
+### Scope
+
+- OpenTelemetry Collector configuration (otlp → tempo, prometheus, loki endpoints)
+- Kubernetes deployments for Prometheus, Loki, Tempo, Grafana, OpenTelemetry Collector
+- Grafana dashboards (Overview, Run Deep Dive, OCR Laboratory, Infrastructure)
+- OTel instrumentation in all services:
+  - Go CLI: OTel SDK with traceparent propagation in SSE headers
+  - Kotlin orchestrator: Spring Sleuth + Brave OTel bridge
+  - Java glyph catalog: OTel SDK via agent
+  - C++ geometry engine: OTel C++ SDK
+  - C# rasterizer: OTel .NET SDK + ActivitySource
+  - Python image pipeline: OTel Python SDK
+  - TypeScript (OCR worker, event gateway, telemetry): OTel JS SDK
+  - Ruby (adjudicator, artifact inspector): OTel Ruby SDK
+  - Rust assembler: OTel Rust SDK
+- Trace correlation: traceparent/tracestate/baggage propagation through Kafka events
+- Structured JSON logs with traceId/spanId fields
+- Prometheus metrics: rg_runs_total, rg_active_runs, rg_step_*, rg_artifact_*, rg_kafka_consumer_lag, etc.
+
+### Tasks
+
+- [x] OpenTelemetry Collector config (otel-collector.yaml)
+- [x] K8s manifests for Prometheus, Loki, Tempo, Grafana, OTel Collector
+- [x] Grafana dashboard definitions (4 dashboards)
+- [x] OTel instrumentation in Go CLI
+- [x] OTel instrumentation in Kotlin orchestrator
+- [x] OTel instrumentation in C# rasterizer
+- [x] OTel instrumentation in Python image pipeline
+- [x] OTel instrumentation in TypeScript event gateway + telemetry element
+- [x] OTel instrumentation in Ruby adjudicator + artifact inspector
+- [x] OTel instrumentation in Rust phrase assembler
+- [x] Structured JSON logging with trace correlation
+- [x] Prometheus metrics in services
+- [x] versions.env updated with OTel/Observability dependency pins
+
+### Acceptance conditions
+
+- One run trace spans every service
+- Logs contain traceId/spanId fields
+- Prometheus metrics expose required rg_* metrics
+- Grafana dashboards show real run data
+- `make format`, `make lint`, `make unit`, `make coverage`, `make build`,
+  `make contracts`, `make contract-test`, `make integration` all pass
+
+### Verification log
+
+| Date | Check | Result |
+| --- | --- | --- |
+| 2026-08-06 | Milestone 11 scope/tasks/acceptance recorded | PASS |

@@ -1,7 +1,7 @@
 {
   "name": "rg-ocr-worker",
-  "version": "0.0.0-skeleton",
-  "description": "OCR worker (Milestone 0 skeleton)",
+  "version": "0.5.0-milestone11",
+  "description": "OCR worker (Milestone 11)",
   "private": true,
   "type": "module",
   "engines": {
@@ -15,8 +15,13 @@
     "lint": "prettier --check . && npm run typecheck",
     "format": "prettier --write ."
   },
+  "dependencies": {
+    "kafkajs": "2.2.4",
+    "minio": "^8.0.0"
+  },
   "devDependencies": {
     "@types/node": "26.1.2",
+    "@opentelemetry/api": "1.9.1",
     "c8": "12.0.0",
     "prettier": "3.9.6",
     "typescript": "7.0.2"

@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ocr-worker
+  namespace: rube-goldberg
+  labels:
+    app: ocr-worker
+    milestone: "8"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ocr-worker
+  template:
+    metadata:
+      labels:
+        app: ocr-worker
+    spec:
+      containers:
+        - name: ocr-worker
+          image: rghello-registry:5001/ocr-worker:milestone8
+          imagePullPolicy: Always
+          env:
+            - name: KAFKA_BOOTSTRAP
+              value: "kafka.rube-goldberg.svc.cluster.local:9092"
+            - name: KAFKA_GROUP_ID
+              value: ocr-worker-v1
+            - name: OCR_INPUT_TOPIC
+              value: "rg.ocr-images.v1"
+            - name: OCR_OUTPUT_TOPIC
+              value: "rg.ocr-observations.v1"
+            - name: MINIO_ENDPOINT
+              value: "http://minio.rube-goldberg.svc.cluster.local:9000"
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: root-user
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: root-password
+            - name: TRACEPARENT_HEADER
+              value: "00-00000000000000000000000000000000-0000000000000000-00"
+          readinessProbe:
+            exec:
+              command: ["node", "-e", "process.exit(0)"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["node", "-e", "process.exit(0)"]
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 768Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ocr-worker
+  namespace: rube-goldberg
+  labels:
+    app: ocr-worker
+    milestone: "8"
+spec:
+  selector:
+    app: ocr-worker
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
