@@ -473,6 +473,155 @@ else
 fi
 
 echo ""
+echo "Verifying Milestone 7 composition and preprocessing (--once):"
+
+if command -v python3 >/dev/null 2>&1 && [ -f "$ROOT/services/image-pipeline-python/src/rg_image_pipeline/__init__.py" ]; then
+  # Create fixture glyph inputs (simulating rasterized glyph outputs)
+  # We create 11 JSON fixtures: 10 drawables + 1 gap, matching "Hello World"
+  M7_FIXTURES="/tmp/rghello-m7-glyphs"
+  mkdir -p "$M7_FIXTURES"
+
+  # Generate fixtures using a helper Python script
+  python3 -c "
+import sys, json, struct, zlib, os
+
+out_dir = '$M7_FIXTURES'
+
+def make_png(width, height, fill=(128, 128, 128, 255)):
+    raw = b''
+    for _ in range(height):
+        raw += b'\x00'
+        for _ in range(width):
+            raw += bytes(fill)
+    def chunk(ctype, data):
+        c = ctype + data
+        return struct.pack('>I', len(data)) + c + struct.pack('>I', zlib.crc32(c) & 0xffffffff)
+    sig = b'\x89PNG\r\n\x1a\n'
+    ihdr = struct.pack('>IIBBBBB', width, height, 8, 6, 0, 0, 0)
+    idat = zlib.compress(raw)
+    return (sig + chunk(b'IHDR', ihdr) + chunk(b'IDAT', idat) + chunk(b'IEND', b'')).hex()
+
+png_hex = make_png(100, 100)
+for pos in range(11):
+    if pos == 5:
+        fixture = {
+            'position': 5,
+            'glyphInstanceId': 'gap-5',
+            'object_key': '',
+            'sha256': '',
+            'width': 0,
+            'height': 0,
+            'advance_width': 0.6,
+            'baseline': 0.0,
+            'kind': 'GAP',
+            'image_bytes': None,
+        }
+    else:
+        fixture = {
+            'position': pos,
+            'glyphInstanceId': f'glyph-{pos}',
+            'object_key': f'artifacts/glyph-{pos}.png',
+            'sha256': '',
+            'width': 100,
+            'height': 100,
+            'advance_width': 1.0,
+            'baseline': 80.0,
+            'kind': 'DRAWABLE',
+            'image_bytes': png_hex,
+        }
+    with open(os.path.join(out_dir, f'glyph-{pos}.json'), 'w') as f:
+        json.dump(fixture, f, indent=2, sort_keys=True)
+print('fixtures created')
+"
+
+  if [ -x "$BIN/image-pipeline" ]; then
+    IMAGE_PIPELINE="$BIN/image-pipeline"
+  else
+    IMAGE_PIPELINE="PYTHONPATH=$ROOT/services/image-pipeline-python/src python3 -m rg_image_pipeline.cli"
+  fi
+
+  GLYPH_LIST=$(ls "$M7_FIXTURES"/glyph-*.json 2>/dev/null | sort | tr '\n' ' ')
+
+  if [ -n "$GLYPH_LIST" ]; then
+    # Run composition --once
+    if eval "$IMAGE_PIPELINE compose $GLYPH_LIST --output-phrase-image /tmp/rghello-m7-phrase.png --output-manifest /tmp/rghello-m7-manifest.json" 2>/tmp/rghello-m7-compose.log; then
+      if [ -f /tmp/rghello-m7-phrase.png ]; then
+        say "[ ok ] composition --once produced phrase PNG"
+        # Verify PNG magic bytes
+        if xxd -l 8 /tmp/rghello-m7-phrase.png 2>/dev/null | grep -q "8950 4e47 0d0a 1a0a"; then
+          say "[ ok ] phrase PNG has valid PNG magic bytes"
+        else
+          FAILED=$((FAILED + 1))
+          say "[FAIL] phrase PNG has invalid magic bytes"
+        fi
+        # Verify manifest was generated
+        if [ -f /tmp/rghello-m7-manifest.json ]; then
+          say "[ ok ] composition manifest generated"
+        else
+          FAILED=$((FAILED + 1))
+          say "[FAIL] composition manifest missing"
+        fi
+      else
+        FAILED=$((FAILED + 1))
+        say "[FAIL] composition --once did not produce phrase PNG"
+        cat /tmp/rghello-m7-compose.log
+      fi
+
+      # Verify determinism: run again, compare SHA-256
+      eval "$IMAGE_PIPELINE compose $GLYPH_LIST --output-phrase-image /tmp/rghello-m7-phrase2.png --output-manifest /tmp/rghello-m7-manifest2.json" >/dev/null 2>&1
+      SHA1=$(shasum -a 256 /tmp/rghello-m7-phrase.png 2>/dev/null | awk '{print $1}')
+      SHA2=$(shasum -a 256 /tmp/rghello-m7-phrase2.png 2>/dev/null | awk '{print $1}')
+      if [ "$SHA1" = "$SHA2" ]; then
+        say "[ ok ] composition is deterministic (sha256 match)"
+      else
+        FAILED=$((FAILED + 1))
+        say "[FAIL] composition is not deterministic: $SHA1 != $SHA2"
+      fi
+
+      # Run preprocessing --once
+      if eval "$IMAGE_PIPELINE preprocess --phrase-image /tmp/rghello-m7-phrase.png --composition-manifest /tmp/rghello-m7-manifest.json --output-ocr-image /tmp/rghello-m7-ocr.png --output-crops-dir /tmp/rghello-m7-crops --output-report /tmp/rghello-m7-report.json" 2>/tmp/rghello-m7-prep.log; then
+        if [ -f /tmp/rghello-m7-ocr.png ]; then
+          say "[ ok ] preprocessing --once produced OCR image"
+          if [ -f /tmp/rghello-m7-report.json ]; then
+            say "[ ok ] preprocessing report generated"
+          else
+            FAILED=$((FAILED + 1))
+            say "[FAIL] preprocessing report missing"
+          fi
+          # Verify crops were generated
+          CROP_COUNT=$(ls /tmp/rghello-m7-crops/*.png 2>/dev/null | wc -l | tr -d ' ')
+          if [ "$CROP_COUNT" -gt 0 ]; then
+            say "[ ok ] position crops generated ($CROP_COUNT crops)"
+          else
+            FAILED=$((FAILED + 1))
+            say "[FAIL] no position crops generated"
+          fi
+        else
+          FAILED=$((FAILED + 1))
+          say "[FAIL] preprocessing --once did not produce OCR image"
+        fi
+      else
+        FAILED=$((FAILED + 1))
+        say "[FAIL] preprocessing --once failed"
+        cat /tmp/rghello-m7-prep.log
+      fi
+
+      rm -f /tmp/rghello-m7-phrase.png /tmp/rghello-m7-phrase2.png /tmp/rghello-m7-manifest.json /tmp/rghello-m7-manifest2.json /tmp/rghello-m7-ocr.png /tmp/rghello-m7-report.json /tmp/rghello-m7-compose.log /tmp/rghello-m7-prep.log
+      rm -rf /tmp/rghello-m7-crops
+    else
+      FAILED=$((FAILED + 1))
+      say "[FAIL] image-pipeline compose command failed"
+    fi
+  else
+    FAILED=$((FAILED + 1))
+    say "[FAIL] no glyph fixtures found"
+  fi
+  rm -rf "$M7_FIXTURES"
+else
+  skip "python3 or image-pipeline for M7 composition/preprocessing"
+fi
+
+echo ""
 echo "Integration results: failures=$FAILED skipped=$SKIPPED"
 if [ "$FAILED" -gt 0 ]; then
   echo "integration: FAIL"

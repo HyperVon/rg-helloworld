@@ -16,7 +16,8 @@ build_and_push() {
     local dockerfile="$2"
     local tag="$3"
     echo ">> Building ${name} image (${REGISTRY}/${name}:${tag})"
-    docker build -f "${PROJECT_ROOT}/${dockerfile}" -t "${REGISTRY}/${name}:${tag}" "${PROJECT_ROOT}"
+    local context="${4:-${PROJECT_ROOT}}"
+    docker build -f "${PROJECT_ROOT}/${dockerfile}" -t "${REGISTRY}/${name}:${tag}" "${context}"
     docker push "${REGISTRY}/${name}:${tag}"
 }
  
@@ -26,6 +27,6 @@ build_and_push geometry-engine services/geometry-engine-cpp/Dockerfile milestone
 build_and_push run-orchestrator services/run-orchestrator-kotlin/Dockerfile milestone6
 build_and_push vector-normalizer services/vector-normalizer-go/Dockerfile milestone6
 build_and_push rasterizer services/rasterizer-dotnet/Dockerfile milestone6
-build_and_push image-pipeline services/image-pipeline-python/Dockerfile milestone7
+build_and_push image-pipeline services/image-pipeline-python/Dockerfile milestone7 services/image-pipeline-python
  
 echo ">> Images pushed to ${REGISTRY} (milestone5 + milestone6 + milestone7)"

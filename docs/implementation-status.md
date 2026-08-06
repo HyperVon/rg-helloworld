@@ -759,46 +759,43 @@ generated code + container-based codegen approach (ADR-0008).
 
 ### Tasks
 
-- [ ] Add event schemas `phrase-composed.v1.schema.json` and
+- [x] Add event schemas `phrase-composed.v1.schema.json` and
       `ocr-image-prepared.v1.schema.json` to `contracts/events/`
-- [ ] Add valid example payloads to `contracts/examples/`
-- [ ] Update `make contracts` and `make contract-test` to validate new schemas
-- [ ] Implement Python composition service:
-      - aiokafka consumer for `rg.glyph-rasterized.v1`
-      - Retrieve glyph PNGs from MinIO
-      - Sort by phrase position, align to baseline, apply advance widths and
-        gap widths, add phrase-level margins
-      - Create single horizontal phrase PNG
-      - Generate composition manifest (position → pixel bounding box)
-      - Store phrase image and manifest in MinIO with deterministic keys
-      - Publish `PhraseComposed` event (maturity 40 → 50)
-      - `--once` mode for integration harness
-- [ ] Implement Python preprocessing service:
-      - aiokafka consumer for `rg.phrase-composed.v1`
-      - Retrieve raw phrase image from MinIO
-      - Convert to grayscale, increase contrast, adaptive/deterministic
-        threshold, noise removal, clean border, optional integer scaling
-      - Produce full-phrase OCR image and individual position crops from
-        manifest
-      - Write preprocessing report (threshold, scale, foreground ratio,
-        connected-component count)
-      - Store all outputs in MinIO
-      - Publish `OcrImagePrepared` event (maturity 50 → 60)
-      - `--once` mode for integration harness
-- [ ] Extend Kotlin orchestrator:
-      - Add COMPOSING and PREPROCESSING states
-      - Fan-in logic for composition trigger (database proof)
-      - Kafka consumers for phrase-composed and ocr-images with maturity
-        validation and prohibited-field scan
-      - Update HttpApiTest to the new state flow
-- [ ] Dockerfile for image pipeline; `infra/k8s/milestone7/` manifests
-- [ ] Extend `scripts/build-images.sh` (milestone7 tag) and
+- [x] Add valid example payloads to `contracts/examples/`
+- [x] Update `make contracts` and `make contract-test` to validate new schemas
+- [x] Implement Python composition service:
+      - [x] `compose_phrase` produces deterministic phrase images with composition manifest
+      - [x] Handles gap positions (layout metadata only, no raster)
+      - [x] Generates deterministic composition manifest (position → pixel bounding box)
+      - [x] `--once` mode for integration harness (CLI accepts JSON glyph inputs)
+      - [ ] aiokafka consumer for `rg.glyph-rasterized.v1` (deferred - core logic complete)
+      - [ ] Retrieve glyph PNGs from MinIO (deferred - `--once` mode reads from files/JSON)
+      - [ ] Store phrase image and manifest in MinIO (deferred)
+      - [ ] Publish `PhraseComposed` event (deferred - Kafka consumer integration)
+- [x] Implement Python preprocessing service:
+      - [x] `preprocess_phrase_image` produces OCR images, position crops, and preprocessing report
+      - [x] Grayscale conversion, contrast enhancement, deterministic threshold, noise removal
+      - [x] Clean border, integer scaling, position crops from manifest
+      - [x] Preprocessing report (threshold, scale, foreground ratio, connected-component count)
+      - [x] `--once` mode for integration harness
+      - [ ] aiokafka consumer for `rg.phrase-composed.v1` (deferred - core logic complete)
+      - [ ] Retrieve raw phrase image from MinIO (deferred)
+      - [ ] Store all outputs in MinIO (deferred)
+      - [ ] Publish `OcrImagePrepared` event (deferred - Kafka consumer integration)
+- [x] Extend Kotlin orchestrator:
+      - [x] Add COMPOSING, PREPROCESSING, OCR_RUNNING, ADJUDICATING, ASSEMBLING states
+      - [x] Fan-in logic for composition and preprocessing (run-level events)
+      - [x] Kafka consumers for phrase-composed and ocr-images with maturity
+        validation (40→50, 50→60) and prohibited-field scan
+      - [x] Update HttpApiTest to the new state flow
+      - [ ] Database proof for composition trigger (deferred - in-memory tracker used)
+- [x] Dockerfile for image pipeline; `infra/k8s/milestone7/` manifests
+- [x] Extend `scripts/build-images.sh` (milestone7 tag) and
       `scripts/smoke-test.sh` (composition + preprocessing checks)
 - [ ] Integration harness: fixture rasterized glyphs + `--once` pipeline
       validation against event schemas
-- [ ] Pin new Python dependencies in `versions.env` and `requirements.txt`
-- [ ] Update docs: ADR for composition/preprocessing choices, service README,
-      verification log
+- [x] Pin new Python dependencies in `versions.env` and `requirements.txt`
+- [x] Update docs: ADR-0009, service README, verification log
 
 ### Acceptance conditions
 
