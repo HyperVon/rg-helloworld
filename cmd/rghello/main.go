@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"rghello.dev/rghello/internal/brainfuck"
 	"rghello.dev/rghello/internal/version"
 )
 
@@ -207,7 +208,14 @@ func streamResult(ctx context.Context, client *http.Client, baseURL, runID strin
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("stream: unexpected status %d", resp.StatusCode)
 	}
-	return parseSSE(ctx, resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("stream: read body: %w", err)
+	}
+	if err := brainfuck.VerifyIntegrity(body); err != nil {
+		return "", fmt.Errorf("stream: integrity check failed: %w", err)
+	}
+	return parseSSE(ctx, strings.NewReader(string(body)))
 }
 
 func parseSSE(ctx context.Context, body io.Reader) (string, error) {
