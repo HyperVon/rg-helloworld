@@ -1,6 +1,6 @@
 coverage==7.15.3
 ruff==0.16.1
-pillow==11.7.0
+pillow==12.3.0
 numpy==2.3.5
 scikit-image==0.25.2
 aiokafka==0.12.0
