@@ -792,7 +792,7 @@ generated code + container-based codegen approach (ADR-0008).
 - [x] Dockerfile for image pipeline; `infra/k8s/milestone7/` manifests
 - [x] Extend `scripts/build-images.sh` (milestone7 tag) and
       `scripts/smoke-test.sh` (composition + preprocessing checks)
-- [ ] Integration harness: fixture rasterized glyphs + `--once` pipeline
+- [x] Integration harness: fixture rasterized glyphs + `--once` pipeline
       validation against event schemas
 - [x] Pin new Python dependencies in `versions.env` and `requirements.txt`
 - [x] Update docs: ADR-0009, service README, verification log
@@ -844,15 +844,22 @@ generated code + container-based codegen approach (ADR-0008).
 | 2026-08-06 | Kotlin orchestrator version update | PASS (0.5.0-milestone7) |
 | 2026-08-06 | Python image pipeline banner() added | PASS (image-pipeline 0.1.0-milestone7) |
 | 2026-08-06 | Integration test version checks updated | PASS (run-orchestrator 0.5.0-milestone7, image-pipeline 0.1.0-milestone7) |
+| 2026-08-06 | `make contracts` / `make contract-test` | PASS (phrase-composed.v1 and ocr-image-prepared.v1 schemas validated; prohibited-field scans green) |
+| 2026-08-06 | Python `__main__` block added to cli.py | PASS (python3 -m rg_image_pipeline.cli compose/preprocess works) |
+| 2026-08-06 | `scripts/build-images.sh` Docker context fix | PASS (image-pipeline builds with service dir context) |
+| 2026-08-06 | `make integration` M7 block | PASS (fixtures created, compose deterministic, preprocess produces OCR + crops + report) |
+| 2026-08-06 | Root .venv deps updated | PASS (pillow, numpy, scikit-image, jsonschema installed for coverage) |
 
-M7 implementation notes (2026-08-05): Contracts were already committed in the
+M7 implementation notes (2026-08-06): Contracts were already committed in the
 skeleton; this implementation provides the Python image pipeline core modules
-(composition, preprocessing, events, imaging) with 99% coverage. The Kotlin
-orchestrator state machine has been extended to handle the new stages
-(COMPOSING -> PREPROCESSING -> OCR_RUNNING -> ADJUDICATING -> ASSEMBLING ->
-SUCCEEDED) and the orchestrator's Kafka consumer now subscribes to the
-phrase-composed and ocr-images topics with maturity validation and prohibited-
-field scanning. Full Kafka consumer integration for the Python service and
-cluster-level deployment testing are deferred to later phases of Milestone 7.
-The `--once` CLI modes enable integration harness testing without Kafka or
-MinIO.
+(composition, preprocessing, events, imaging) with 99% coverage, the Kotlin
+orchestrator state machine extended to handle the new stages (COMPOSING ->
+PREPROCESSING -> OCR_RUNNING -> ADJUDICATING -> ASSEMBLING -> SUCCEEDED) with
+Kafka consumers for phrase-composed and ocr-images topics with maturity
+validation and prohibited-field scanning, Dockerfile + K8s manifests,
+integration harness, and smoke test checks. The `--once` CLI modes enable
+integration harness testing without Kafka or MinIO. Full Kafka consumer
+integration for the Python service (aiokafka consumers, MinIO store) and
+database proof for composition trigger are deferred to later phases of
+Milestone 7. The core transformation logic, state machine, contracts, tests,
+and deployment scaffolding are complete.
