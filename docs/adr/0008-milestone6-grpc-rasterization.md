@@ -53,8 +53,8 @@ module that does not exist in this repository) to
 package of the only Go consumer. `RenderGlyphRequest` gained
 `input_artifact_sha256 = 10`: the SHA-256 of the input normalized artifact,
 used as the §13.5 idempotency input hash. The C# service derives the
-operation ID (`sha256(runId + "rasterize-glyph" + glyphInstanceId + attempt
-+ inputArtifactSha256)`), embeds it in the PNG object key, and derives the
+operation ID from `runId`, `rasterize-glyph`, `glyphInstanceId`, `attempt`,
+and `inputArtifactSha256`, embeds it in the PNG object key, and derives the
 artifact UUID from it; the Go normalizer computes the same operation ID, so
 event IDs and artifact keys are stable across duplicate requests. The
 `transformation.name` (`rasterize-glyph`) matches the

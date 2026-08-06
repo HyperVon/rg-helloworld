@@ -715,4 +715,3 @@ integration harness initially used a port above 65535 (Abort trap) and a
 heredoc that shadowed the schema-check pipe; both fixed. Grpc.Tools ships no
 macOS-arm64 protoc in any 2.8x version, which forced the committed C#
 generated code + container-based codegen approach (ADR-0008).
-

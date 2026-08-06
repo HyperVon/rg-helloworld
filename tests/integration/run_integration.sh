@@ -292,7 +292,7 @@ PYEOF
   fi
 
   # SVG artifacts: no text elements, and sha256 matches the event field.
-  SVG_FILE=$(ls /tmp/rghello-normalized-out/*.svg 2>/dev/null | head -1)
+  SVG_FILE=$(find /tmp/rghello-normalized-out -maxdepth 1 -type f -name '*.svg' -print -quit)
   if [ -n "$SVG_FILE" ]; then
     if grep -q "<text\|<font" "$SVG_FILE"; then
       FAILED=$((FAILED + 1))

@@ -81,7 +81,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install tools
-        run: sudo apt-get update && sudo apt-get install -y clang-format-18 gcovr librdkafka-dev=2.3.0-1build1
+        run: sudo apt-get update && sudo apt-get install -y clang-format-18 gcovr librdkafka-dev=2.3.0-1build2
       - name: Format check
         run: clang-format-18 --dry-run --Werror src/*.cpp include/geometry_engine/*.hpp tests/*.cpp
         working-directory: services/geometry-engine-cpp
@@ -188,7 +188,7 @@ jobs:
           bundler-cache: true
           working-directory: services/adjudicator-ruby
       - name: Lint (rubocop)
-        run: bundle exec rubocop
+        run: bundle exec rubocop --force-exclusion
         working-directory: services/adjudicator-ruby
       - name: Test
         run: bundle exec rake test
@@ -203,6 +203,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
+        with:
+          toolchain: 1.97.1
       - name: Format check
         run: cargo fmt --check
         working-directory: services/phrase-assembler-rust
@@ -271,8 +273,10 @@ jobs:
           ruby-version: 4.0.6
           bundler-cache: true
       - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
+        with:
+          toolchain: 1.97.1
       - name: Install C++ tools
-        run: sudo apt-get update && sudo apt-get install -y cmake g++ librdkafka-dev=2.3.0-1build1
+        run: sudo apt-get update && sudo apt-get install -y cmake g++ librdkafka-dev=2.3.0-1build2
       - name: Prepare dependencies
         run: make prerequisites
       - name: Integration tests

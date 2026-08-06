@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Build and push container images to the k3d local registry.
 #
 # Milestone 5 services (glyph-catalog, geometry-engine) are unchanged and

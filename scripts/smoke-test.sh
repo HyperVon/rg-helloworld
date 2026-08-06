@@ -165,7 +165,9 @@ if command -v docker >/dev/null 2>&1; then
     if ! command -v go >/dev/null 2>&1; then
         echo "SKIP: go not installed, skipping rghello run acceptance"
     else
-        RESULT=$(cd "$PROJECT_ROOT/cmd/rghello" && go run . run --api-url "http://localhost:8080" --quiet --timeout 90s 2>/dev/null || true)
+        if ! RESULT=$(cd "$PROJECT_ROOT/cmd/rghello" && go run . run --api-url "http://localhost:8080" --quiet --timeout 90s 2>/dev/null); then
+            RESULT=""
+        fi
         if [[ "$RESULT" == "Hello World" ]]; then
             echo "PASS: rghello run printed 'Hello World'"
         else

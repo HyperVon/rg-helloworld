@@ -2898,6 +2898,9 @@ Potential meaningful transformations:
 - Lua: script a final terminal animation.
 - Scala: run a Kafka Streams projection.
 - Dart: create a secondary desktop monitor.
+- Whitespace or Brainfuck: optionally transform or validate bounded,
+  non-sensitive artifact data; these are obfuscation curiosities, not secret
+  storage or encryption. See `docs/backlog.md` before considering them.
 
 Each extension must still perform a real transformation or validation.
 

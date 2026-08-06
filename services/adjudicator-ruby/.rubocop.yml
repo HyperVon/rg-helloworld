@@ -2,7 +2,7 @@ AllCops:
   NewCops: enable
   TargetRubyVersion: 3.4
   Exclude:
-    - vendor/bundle/**
+    - vendor/**/*
 
 Layout/LineLength:
   Max: 100
