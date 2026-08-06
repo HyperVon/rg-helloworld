@@ -126,10 +126,10 @@ echo "Verifying service banners:"
 check "rghello" "rghello 0.0.0-skeleton" "$BIN/rghello" version
 check "vector-normalizer" "vector-normalizer 0.2.0-milestone6" "$BIN/vector-normalizer" version
 check "glyph-catalog" "glyph-catalog 0.1.0-milestone4" java -jar "$ROOT/services/glyph-catalog-java/target/glyph-catalog-java-0.1.0-milestone4.jar" version
-check "run-orchestrator" "run-orchestrator 0.4.0-milestone6" "$ROOT/services/run-orchestrator-kotlin/build/install/run-orchestrator/bin/run-orchestrator" version
+check "run-orchestrator" "run-orchestrator 0.5.0-milestone7" "$ROOT/services/run-orchestrator-kotlin/build/install/run-orchestrator/bin/run-orchestrator" version
 check "geometry-engine" "geometry-engine 0.1.0-milestone5" "$ROOT/.local/build/geometry-engine-cpp/geometry_engine" version
 check "rasterizer" "rasterizer 0.1.0-milestone6" "$DOTNET" "$ROOT/services/rasterizer-dotnet/cli/bin/Debug/net10.0/rasterizer.Cli.dll" version
-check_eval "image-pipeline" "image-pipeline 0.0.0-skeleton (Milestone 0 skeleton)" "PYTHONPATH=$ROOT/services/image-pipeline-python/src python3 -c 'import rg_image_pipeline as m; print(m.banner())'"
+check_eval "image-pipeline" "image-pipeline 0.1.0-milestone7" "PYTHONPATH=$ROOT/services/image-pipeline-python/src python3 -c 'import rg_image_pipeline as m; print(m.banner())'"
 check_eval "ocr-worker" "ocr-worker 0.0.0-skeleton (Milestone 0 skeleton)" "node -e \"import('$ROOT/services/ocr-worker-node/out/src/index.js').then(m => console.log(m.banner()))\""
 check_eval "event-gateway" "event-gateway 0.0.0-skeleton (Milestone 0 skeleton)" "node -e \"import('$ROOT/services/event-gateway-node/out/src/index.js').then(m => console.log(m.banner()))\""
 check_eval "adjudicator" "adjudicator 0.0.0-skeleton (Milestone 0 skeleton)" "cd '$ROOT/services/adjudicator-ruby' && ruby -Ilib -e 'require \"adjudicator\"; puts Adjudicator.banner'"

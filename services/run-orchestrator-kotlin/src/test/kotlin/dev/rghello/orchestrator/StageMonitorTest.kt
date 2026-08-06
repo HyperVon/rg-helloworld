@@ -136,12 +136,12 @@ class StageProgressTrackerTest {
             if (index < 9) {
                 assertEquals(StageTransition.PROGRESS, transition)
             } else {
-                assertEquals(StageTransition.RUN_COMPLETE, transition)
+                assertEquals(StageTransition.STAGE_COMPLETE, transition)
             }
         }
-        // Events after completion keep reporting RUN_COMPLETE; the state
+        // Events after completion keep reporting STAGE_COMPLETE; the state
         // machine makes the run-level transition a no-op.
-        assertEquals(StageTransition.RUN_COMPLETE, tracker.onRasterizedEvent("r1", "gap"))
+        assertEquals(StageTransition.STAGE_COMPLETE, tracker.onRasterizedEvent("r1", "gap"))
     }
 
     @Test
@@ -166,7 +166,7 @@ class StageMonitorTest {
     private fun monitor(): StageMonitor = StageMonitor(StageProgressTracker(), StageEventValidator())
 
     @Test
-    fun fullPipelineDrivesRunToSucceeded() {
+    fun fullPipelineDrivesRunToPreprocessing() {
         val runId = UUID.randomUUID().toString()
         // The run is GENERATING_GEOMETRY after createRun published the
         // blueprints; the stage events drive it from there.
@@ -205,9 +205,15 @@ class StageMonitorTest {
         assertEquals(RunStatus.RASTERIZING, runs[runId]?.status, "run stays in rasterizing until drawable fan-in")
 
         stage.handle(Services.RASTERIZED_TOPIC, stageEvent(Services.RASTERIZED_TOPIC, runId, "g9", 30, 40))
-        assertEquals(RunStatus.SUCCEEDED, runs[runId]?.status)
-        assertEquals("Hello World", store.result)
-        assertTrue(producer.sent.any { it.first == Services.RUN_EVENTS_TOPIC })
+        assertEquals(RunStatus.COMPOSING, runs[runId]?.status, "rasterized fan-in transitions to COMPOSING")
+
+        // Composition event (run-level, maturity 40 -> 50)
+        stage.handle(Services.PHRASE_COMPOSED_TOPIC, stageEvent(Services.PHRASE_COMPOSED_TOPIC, runId, "g0", 40, 50))
+        assertEquals(RunStatus.PREPROCESSING, runs[runId]?.status, "composed transition moves to PREPROCESSING")
+
+        // OCR prepared event (run-level, maturity 50 -> 60)
+        stage.handle(Services.OCR_IMAGES_TOPIC, stageEvent(Services.OCR_IMAGES_TOPIC, runId, "g0", 50, 60))
+        assertEquals(RunStatus.OCR_RUNNING, runs[runId]?.status, "preprocessed transition moves to OCR_RUNNING")
     }
 
     @Test

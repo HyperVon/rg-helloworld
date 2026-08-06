@@ -1,6 +1,6 @@
 import unittest
 
-from rg_image_pipeline import SERVICE_NAME, __version__
+from rg_image_pipeline import SERVICE_NAME, __version__, banner
 
 
 class VersionTest(unittest.TestCase):
@@ -12,6 +12,9 @@ class VersionTest(unittest.TestCase):
 
     def test_service_name_is_set(self) -> None:
         self.assertEqual(SERVICE_NAME, "image-pipeline")
+
+    def test_banner_includes_service_and_version(self) -> None:
+        self.assertEqual(banner(), "image-pipeline 0.1.0-milestone7")
 
 
 if __name__ == "__main__":

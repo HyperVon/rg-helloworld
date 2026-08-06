@@ -11,7 +11,15 @@ class StageConsumerTest {
     @Test
     fun pollOnceDispatchesRecordsToTheMonitor() {
         val consumer = MockConsumer<String, String>(OffsetResetStrategy.EARLIEST)
-        consumer.subscribe(listOf(Services.GEOMETRY_TOPIC, Services.NORMALIZED_TOPIC, Services.RASTERIZED_TOPIC))
+        consumer.subscribe(
+            listOf(
+                Services.GEOMETRY_TOPIC,
+                Services.NORMALIZED_TOPIC,
+                Services.RASTERIZED_TOPIC,
+                Services.PHRASE_COMPOSED_TOPIC,
+                Services.OCR_IMAGES_TOPIC,
+            ),
+        )
         val geometryPartition = TopicPartition(Services.GEOMETRY_TOPIC, 0)
         val normalizedPartition = TopicPartition(Services.NORMALIZED_TOPIC, 0)
         val rasterizedPartition = TopicPartition(Services.RASTERIZED_TOPIC, 0)
@@ -44,7 +52,7 @@ class StageConsumerTest {
             "normalized record must reach the tracker",
         )
         assertEquals(
-            StageTransition.RUN_COMPLETE,
+            StageTransition.STAGE_COMPLETE,
             tracker.onRasterizedEvent("r1", "g0"),
             "rasterized record must reach the tracker",
         )

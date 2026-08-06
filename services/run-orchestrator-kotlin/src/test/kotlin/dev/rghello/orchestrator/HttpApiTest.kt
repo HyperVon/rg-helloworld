@@ -71,6 +71,18 @@ class HttpApiTest {
                 monitor.handle(Services.RASTERIZED_TOPIC, stageEvent(Services.RASTERIZED_TOPIC, runId, "glyph-$index", 30, 40))
             }
         }
+        // Composition event (run-level, maturity 40 -> 50)
+        monitor.handle(
+            Services.PHRASE_COMPOSED_TOPIC,
+            stageEvent(Services.PHRASE_COMPOSED_TOPIC, runId, "glyph-0", 40, 50),
+        )
+        // OCR prepared event (run-level, maturity 50 -> 60)
+        monitor.handle(
+            Services.OCR_IMAGES_TOPIC,
+            stageEvent(Services.OCR_IMAGES_TOPIC, runId, "glyph-0", 50, 60),
+        )
+        // Final assembly triggers completion
+        completeRun(runId, "Hello World")
     }
 
     private suspend fun io.ktor.client.HttpClient.createRun(

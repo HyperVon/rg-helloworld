@@ -53,7 +53,7 @@ class ApplicationTest {
         val code = run(PrintStream(out, true, StandardCharsets.UTF_8), PrintStream(err, true, StandardCharsets.UTF_8), arrayOf("version"))
 
         assertEquals(0, code)
-        assertEquals("run-orchestrator 0.4.0-milestone6\n", out.toString(StandardCharsets.UTF_8))
+        assertEquals("run-orchestrator 0.5.0-milestone7\n", out.toString(StandardCharsets.UTF_8))
         assertEquals("", err.toString(StandardCharsets.UTF_8))
     }
 
@@ -64,7 +64,7 @@ class ApplicationTest {
             run(PrintStream(out, true, StandardCharsets.UTF_8), PrintStream(err, true, StandardCharsets.UTF_8), arrayOf("version", "extra"))
 
         assertEquals(0, code)
-        assertEquals("run-orchestrator 0.4.0-milestone6\n", out.toString(StandardCharsets.UTF_8))
+        assertEquals("run-orchestrator 0.5.0-milestone7\n", out.toString(StandardCharsets.UTF_8))
         assertEquals("", err.toString(StandardCharsets.UTF_8))
     }
 
@@ -83,8 +83,20 @@ class ApplicationTest {
             RunStateMachine.transition(RunStatus.NORMALIZING, RunEvent.NORMALIZED_COMPLETE),
         )
         assertEquals(
-            RunStatus.SUCCEEDED,
+            RunStatus.COMPOSING,
             RunStateMachine.transition(RunStatus.RASTERIZING, RunEvent.RASTERIZED_COMPLETE),
+        )
+        assertEquals(
+            RunStatus.PREPROCESSING,
+            RunStateMachine.transition(RunStatus.COMPOSING, RunEvent.COMPOSED_COMPLETE),
+        )
+        assertEquals(
+            RunStatus.OCR_RUNNING,
+            RunStateMachine.transition(RunStatus.PREPROCESSING, RunEvent.PREPROCESSED_COMPLETE),
+        )
+        assertEquals(
+            RunStatus.SUCCEEDED,
+            RunStateMachine.transition(RunStatus.OCR_RUNNING, RunEvent.ASSEMBLED),
         )
         // Events out of order are ignored (no backward transitions).
         assertEquals(
@@ -93,7 +105,7 @@ class ApplicationTest {
         )
         assertEquals(
             RunStatus.SUCCEEDED,
-            RunStateMachine.transition(RunStatus.SUCCEEDED, RunEvent.RASTERIZED_COMPLETE),
+            RunStateMachine.transition(RunStatus.SUCCEEDED, RunEvent.ASSEMBLED),
         )
         assertEquals(
             RunStatus.FAILED,
@@ -126,7 +138,7 @@ class ApplicationTest {
         val runState =
             RunState(
                 runId = runId,
-                status = RunStatus.RASTERIZING,
+                status = RunStatus.OCR_RUNNING,
                 message = "Hello World",
                 idempotencyKey = "key",
                 createdAt = java.time.Instant.now(),
@@ -157,7 +169,7 @@ class ApplicationTest {
     }
 
     @Test
-    fun completeRunOnlySucceedsFromRasterizing() {
+    fun completeRunOnlySucceedsFromAssemblableStates() {
         val runId = UUID.randomUUID().toString()
         runs[runId] =
             RunState(
@@ -173,7 +185,7 @@ class ApplicationTest {
         completeRun(runId, "Hello World")
 
         assertEquals(RunStatus.GENERATING_GEOMETRY, runs[runId]?.status)
-        assertTrue(producer.sent.isEmpty(), "no final event before the rasterized fan-in completes")
+        assertTrue(producer.sent.isEmpty(), "no final event before the OCR stage completes")
     }
 
     @Test

@@ -842,10 +842,20 @@ generated code + container-based codegen approach (ADR-0008).
 | 2026-08-05 | ADR-0009 for Milestone 7 design decisions | PASS (created) |
 | 2026-08-06 | `scripts/build-images.sh` extended for milestone7 | PASS (image-pipeline tagged milestone7) |
 | 2026-08-06 | `scripts/smoke-test.sh` Test 8 added | PASS (unit tests + compile check) |
+| 2026-08-06 | Kotlin orchestrator state machine extended | PASS (COMPOSING, PREPROCESSING, OCR_RUNNING, ADJUDICATING, ASSEMBLING states; RASTERIZED_COMPLETE -> COMPOSING; COMPOSED_COMPLETE -> PREPROCESSING; PREPROCESSED_COMPLETE -> OCR_RUNNING; ASSEMBLED -> SUCCEEDED) |
+| 2026-08-06 | Kotlin orchestrator Kafka consumer topics extended | PASS (subscribes to PHRASE_COMPOSED_TOPIC, OCR_IMAGES_TOPIC; maturity 40->50, 50->60 validated; prohibited-field validator active) |
+| 2026-08-06 | Kotlin orchestrator version update | PASS (0.5.0-milestone7) |
+| 2026-08-06 | Python image pipeline banner() added | PASS (image-pipeline 0.1.0-milestone7) |
+| 2026-08-06 | Integration test version checks updated | PASS (run-orchestrator 0.5.0-milestone7, image-pipeline 0.1.0-milestone7) |
 
 M7 implementation notes (2026-08-05): Contracts were already committed in the
 skeleton; this implementation provides the Python image pipeline core modules
-(composition, preprocessing, events, imaging) with 99% coverage. Full Kafka
-consumer integration and Kubernetes deployment manifests are created but active
-cluster deployment testing is deferred to later phases of Milestone 7. The
-`--once` CLI modes enable integration harness testing without Kafka or MinIO.
+(composition, preprocessing, events, imaging) with 99% coverage. The Kotlin
+orchestrator state machine has been extended to handle the new stages
+(COMPOSING -> PREPROCESSING -> OCR_RUNNING -> ADJUDICATING -> ASSEMBLING ->
+SUCCEEDED) and the orchestrator's Kafka consumer now subscribes to the
+phrase-composed and ocr-images topics with maturity validation and prohibited-
+field scanning. Full Kafka consumer integration for the Python service and
+cluster-level deployment testing are deferred to later phases of Milestone 7.
+The `--once` CLI modes enable integration harness testing without Kafka or
+MinIO.

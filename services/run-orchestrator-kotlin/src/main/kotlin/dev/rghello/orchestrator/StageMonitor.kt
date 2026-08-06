@@ -11,13 +11,17 @@ import java.time.Duration
 import java.util.Properties
 import java.util.concurrent.ConcurrentHashMap
 
-// Stage monitoring for Milestone 6: the orchestrator consumes
-// GeometryExpanded, VectorNormalized, and GlyphRasterized events, validates
-// them (maturity must strictly increase; section 7.4 prohibited fields are
-// rejected), and fans the per-glyph completions in to drive the run state
-// machine PLANNING -> GENERATING_GEOMETRY -> NORMALIZING -> RASTERIZING ->
-// SUCCEEDED. Gap positions have layout metadata but no raster, so the
-// rasterized fan-in counts only drawable glyphs.
+// Stage monitoring for Milestone 6/7: the orchestrator consumes
+// GeometryExpanded, VectorNormalized, GlyphRasterized, PhraseComposed, and
+// OcrImagePrepared events, validates them (maturity must strictly increase;
+// section 7.4 prohibited fields are rejected), and fans the per-glyph
+// completions in to drive the run state machine
+// PLANNING -> GENERATING_GEOMETRY -> NORMALIZING -> RASTERIZING ->
+// COMPOSING -> PREPROCESSING -> OCR_RUNNING -> ADJUDICATING ->
+// ASSEMBLING -> VALIDATING -> SUCCEEDED. Gap positions have layout
+// metadata but no raster, so the rasterized fan-in counts only drawable
+// glyphs. Composition and preprocessing are run-level fan-ins (one event
+// each per run).
 
 data class MaturityPair(
     val input: Int,
@@ -85,6 +89,8 @@ class StageProgressTracker {
     private val geometryCompleted = ConcurrentHashMap<String, MutableSet<String>>()
     private val normalizedCompleted = ConcurrentHashMap<String, MutableSet<String>>()
     private val rasterizedCompleted = ConcurrentHashMap<String, MutableSet<String>>()
+    private val compositionCompleted = ConcurrentHashMap.newKeySet<String>()
+    private val ocrPreparedCompleted = ConcurrentHashMap.newKeySet<String>()
 
     fun registerRun(
         runId: String,
@@ -125,7 +131,19 @@ class StageProgressTracker {
         val total = drawableTotals[runId] ?: return StageTransition.UNKNOWN_RUN
         val completed = rasterizedCompleted.getOrPut(runId) { ConcurrentHashMap.newKeySet() }
         completed.add(glyphInstanceId)
-        return if (completed.size >= total) StageTransition.RUN_COMPLETE else StageTransition.PROGRESS
+        return if (completed.size >= total) StageTransition.STAGE_COMPLETE else StageTransition.PROGRESS
+    }
+
+    fun markComposed(runId: String): StageTransition {
+        if (!expectedTotals.containsKey(runId)) return StageTransition.UNKNOWN_RUN
+        compositionCompleted.add(runId)
+        return StageTransition.STAGE_COMPLETE
+    }
+
+    fun markOcrPrepared(runId: String): StageTransition {
+        if (!expectedTotals.containsKey(runId)) return StageTransition.UNKNOWN_RUN
+        ocrPreparedCompleted.add(runId)
+        return StageTransition.STAGE_COMPLETE
     }
 }
 
@@ -150,6 +168,8 @@ class StageMonitor(
                 Services.GEOMETRY_TOPIC -> MaturityPair(10, 20)
                 Services.NORMALIZED_TOPIC -> MaturityPair(20, 30)
                 Services.RASTERIZED_TOPIC -> MaturityPair(30, 40)
+                Services.PHRASE_COMPOSED_TOPIC -> MaturityPair(40, 50)
+                Services.OCR_IMAGES_TOPIC -> MaturityPair(50, 60)
                 else -> return
             }
         val parsed =
@@ -195,8 +215,20 @@ class StageMonitor(
                     }
 
                     Services.RASTERIZED_TOPIC -> {
-                        if (tracker.onRasterizedEvent(runId, glyphInstanceId) == StageTransition.RUN_COMPLETE) {
-                            completeRun(runId, expectedTexts[runId] ?: "")
+                        if (tracker.onRasterizedEvent(runId, glyphInstanceId) == StageTransition.STAGE_COMPLETE) {
+                            transitionRun(runId, RunEvent.RASTERIZED_COMPLETE)
+                        }
+                    }
+
+                    Services.PHRASE_COMPOSED_TOPIC -> {
+                        if (tracker.markComposed(runId) == StageTransition.STAGE_COMPLETE) {
+                            transitionRun(runId, RunEvent.COMPOSED_COMPLETE)
+                        }
+                    }
+
+                    Services.OCR_IMAGES_TOPIC -> {
+                        if (tracker.markOcrPrepared(runId) == StageTransition.STAGE_COMPLETE) {
+                            transitionRun(runId, RunEvent.PREPROCESSED_COMPLETE)
                         }
                     }
                 }

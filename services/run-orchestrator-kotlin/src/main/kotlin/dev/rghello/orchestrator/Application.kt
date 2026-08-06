@@ -97,6 +97,11 @@ enum class RunStatus {
     GENERATING_GEOMETRY,
     NORMALIZING,
     RASTERIZING,
+    COMPOSING,
+    PREPROCESSING,
+    OCR_RUNNING,
+    ADJUDICATING,
+    ASSEMBLING,
     SUCCEEDED,
     FAILED,
 }
@@ -106,6 +111,9 @@ enum class RunEvent {
     GEOMETRY_COMPLETE,
     NORMALIZED_COMPLETE,
     RASTERIZED_COMPLETE,
+    COMPOSED_COMPLETE,
+    PREPROCESSED_COMPLETE,
+    ASSEMBLED,
     FAILURE_REPORTED,
 }
 
@@ -128,7 +136,23 @@ object RunStateMachine {
             }
 
             RunEvent.RASTERIZED_COMPLETE -> {
-                if (status == RunStatus.RASTERIZING) RunStatus.SUCCEEDED else status
+                if (status == RunStatus.RASTERIZING) RunStatus.COMPOSING else status
+            }
+
+            RunEvent.COMPOSED_COMPLETE -> {
+                if (status == RunStatus.COMPOSING) RunStatus.PREPROCESSING else status
+            }
+
+            RunEvent.PREPROCESSED_COMPLETE -> {
+                if (status == RunStatus.PREPROCESSING) RunStatus.OCR_RUNNING else status
+            }
+
+            RunEvent.ASSEMBLED -> {
+                if (status == RunStatus.OCR_RUNNING || status == RunStatus.ADJUDICATING || status == RunStatus.ASSEMBLING) {
+                    RunStatus.SUCCEEDED
+                } else {
+                    status
+                }
             }
 
             RunEvent.FAILURE_REPORTED -> {
@@ -216,6 +240,8 @@ object Services {
     const val GEOMETRY_TOPIC = "rg.geometry-expanded.v1"
     const val NORMALIZED_TOPIC = "rg.glyph-normalized.v1"
     const val RASTERIZED_TOPIC = "rg.glyph-rasterized.v1"
+    const val PHRASE_COMPOSED_TOPIC = "rg.phrase-composed.v1"
+    const val OCR_IMAGES_TOPIC = "rg.ocr-images.v1"
     const val RUN_EVENTS_TOPIC = "rg.run-events.v1"
     const val ALPHABET = "RUBE_SIMPLEX_V1"
 
@@ -308,7 +334,15 @@ fun startStageConsumer() {
             System.err.println("stage consumer init failed: ${e.message}")
             return
         }
-    consumer.subscribe(listOf(Services.GEOMETRY_TOPIC, Services.NORMALIZED_TOPIC, Services.RASTERIZED_TOPIC))
+    consumer.subscribe(
+        listOf(
+            Services.GEOMETRY_TOPIC,
+            Services.NORMALIZED_TOPIC,
+            Services.RASTERIZED_TOPIC,
+            Services.PHRASE_COMPOSED_TOPIC,
+            Services.OCR_IMAGES_TOPIC,
+        ),
+    )
     val thread = Thread { StageConsumer(consumer, monitor).runForever() }
     thread.isDaemon = true
     thread.name = "stage-consumer"
@@ -494,7 +528,7 @@ fun completeRun(
     assembledText: String,
 ) {
     val state = runs[runId] ?: return
-    val succeeded = state.copy(status = RunStateMachine.transition(state.status, RunEvent.RASTERIZED_COMPLETE))
+    val succeeded = state.copy(status = RunStateMachine.transition(state.status, RunEvent.ASSEMBLED))
     if (succeeded.status == state.status) {
         return
     }
