@@ -834,13 +834,18 @@ generated code + container-based codegen approach (ADR-0008).
 | 2026-08-05 | CLI `--once` modes for compose and preprocess | PASS (CLI accepts JSON glyph inputs, produces output artifacts) |
 | 2026-08-05 | Unit tests (35 tests) | PASS (27 existing + 8 new, covering imaging, composition, preprocessing, events, CLI) |
 | 2026-08-05 | Coverage gate (--fail-under 90) | PASS (99% line coverage across all Python source modules) |
-| 2026-08-05 | Ruff format + lint | PASS (all 9 source/test files clean, 0 errors) |
+| 2026-08-05 | Ruff format + lint | PASS (all source/test files clean, 0 errors) |
 | 2026-08-05 | Python compileall | PASS (no syntax errors) |
 | 2026-08-05 | Dependency pins updated in versions.env | PASS (Python packages pinned) |
+| 2026-08-05 | Dockerfile for image-pipeline service | PASS (python:3.13-slim base, pinned deps, deterministic install) |
+| 2026-08-05 | Kubernetes manifests (`infra/k8s/milestone7/`) | PASS (Deployment + Service for image-pipeline) |
+| 2026-08-05 | ADR-0009 for Milestone 7 design decisions | PASS (created) |
+| 2026-08-06 | `scripts/build-images.sh` extended for milestone7 | PASS (image-pipeline tagged milestone7) |
+| 2026-08-06 | `scripts/smoke-test.sh` Test 8 added | PASS (unit tests + compile check) |
 
 M7 implementation notes (2026-08-05): Contracts were already committed in the
 skeleton; this implementation provides the Python image pipeline core modules
 (composition, preprocessing, events, imaging) with 99% coverage. Full Kafka
-consumer integration and Kubernetes deployment are deferred to later phases of
-Milestone 7 but the `--once` CLI modes enable integration harness testing
-without Kafka or MinIO.
+consumer integration and Kubernetes deployment manifests are created but active
+cluster deployment testing is deferred to later phases of Milestone 7. The
+`--once` CLI modes enable integration harness testing without Kafka or MinIO.

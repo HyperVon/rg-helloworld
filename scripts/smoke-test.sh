@@ -496,5 +496,29 @@ else
     echo "SKIP: docker not installed, skipping Milestone 6 rasterization checks"
 fi
 echo ""
-
+ 
+# --- Test 8: Milestone 7 Composition and preprocessing ---
+echo "--- Test 8: Milestone 7 composition and preprocessing ---"
+if command -v python3 &>/dev/null && [ -d "${PROJECT_ROOT}/services/image-pipeline-python" ]; then
+    cd "${PROJECT_ROOT}/services/image-pipeline-python"
+    if PYTHONPATH=src python3 -m unittest discover -s tests -v 2>&1 | grep -q "OK"; then
+        echo "PASS: image pipeline unit tests"
+    else
+        echo "FAIL: image pipeline unit tests"
+        cd "${PROJECT_ROOT}"
+        exit 1
+    fi
+    if PYTHONPATH=src python3 -m compileall -q src 2>&1; then
+        echo "PASS: image pipeline compile check"
+    else
+        echo "FAIL: image pipeline compile check"
+        cd "${PROJECT_ROOT}"
+        exit 1
+    fi
+    cd "${PROJECT_ROOT}"
+else
+    echo "SKIP: python3 not found, skipping Milestone 7 checks"
+fi
+echo ""
+ 
 echo "=== All smoke tests passed! ==="

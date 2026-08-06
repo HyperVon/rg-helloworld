@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: image-pipeline
+  namespace: rube-goldberg
+  labels:
+    app: image-pipeline
+    milestone: "7"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: image-pipeline
+  template:
+    metadata:
+      labels:
+        app: image-pipeline
+    spec:
+      containers:
+        - name: image-pipeline
+          image: localhost:5001/image-pipeline:milestone7
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: PIPELINE_BUCKET
+              value: rube-goldberg-artifacts
+            - name: MINIO_ENDPOINT
+              value: http://minio.rube-goldberg.svc.cluster.local:9000
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: root-user
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: root-password
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: kafka.rube-goldberg.svc.cluster.local:9092
+            - name: KAFKA_CONSUMER_GROUP
+              value: image-pipeline-v1
+            - name: TRACEPARENT_HEADER
+              value: "00-00000000000000000000000000000000-0000000000000000-00"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: image-pipeline
+  namespace: rube-goldberg
+  labels:
+    app: image-pipeline
+    milestone: "7"
+spec:
+  selector:
+    app: image-pipeline
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
