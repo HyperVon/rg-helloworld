@@ -1,13 +1,13 @@
-# Rube Goldberg Hello World
+# Rube Goldberg rghw
 
 ## Implementation and Architecture Specification
 
 **Working project name:** `rube-goldberg-hello-world`  
-**CLI name:** `rghello`  
+**CLI name:** `rghw`  
 **Primary acceptance command:**
 
 ```bash
-rghello run
+rghw run
 ```
 
 **Required final standard output:**
@@ -135,14 +135,14 @@ make demo
 5. Image pushes into the local registry.
 6. Terraform initialization and apply.
 7. Kubernetes readiness checks.
-8. Execution of `rghello run`.
+8. Execution of `rghw run`.
 9. Printing of `Hello World`.
 10. Display of the dashboard address on standard error.
 
 After the environment exists, subsequent executions use:
 
 ```bash
-rghello run
+rghw run
 ```
 
 ## 4.2 CLI behavior
@@ -150,13 +150,13 @@ rghello run
 Default command:
 
 ```bash
-rghello run
+rghw run
 ```
 
 Equivalent explicit command:
 
 ```bash
-rghello run --message "Hello World"
+rghw run --message "Hello World"
 ```
 
 Useful options:
@@ -212,7 +212,7 @@ This must be strictly enforced:
 This allows:
 
 ```bash
-RESULT="$(rghello run)"
+RESULT="$(rghw run)"
 test "$RESULT" = "Hello World"
 ```
 
@@ -222,7 +222,7 @@ test "$RESULT" = "Hello World"
 
 ```mermaid
 flowchart LR
-    CLI[Go CLI: rghello] -->|REST POST /runs| ORCH[Kotlin Orchestrator]
+    CLI[Go CLI: rghw] -->|REST POST /runs| ORCH[Kotlin Orchestrator]
 
     ORCH -->|SOAP| CATALOG[Java Glyph Catalog]
     CATALOG -->|Glyph blueprints| ORCH
@@ -784,7 +784,7 @@ The only successful print path must use the terminal response’s `assembledText
 
 | Service | Language and framework | Primary responsibility | Inputs | Outputs |
 | --- | --- | --- | --- | --- |
-| `rghello-cli` | Go, Cobra | Start a run, follow progress, print result | REST/SSE | Console |
+| `rghw-cli` | Go, Cobra | Start a run, follow progress, print result | REST/SSE | Console |
 | `run-orchestrator` | Kotlin, Spring Boot, Spring Kafka, Flyway | Run state machine, scheduling, validation, persistence | REST, SOAP, Kafka | Kafka, SSE, Redis |
 | `glyph-catalog` | Java, Spring Boot, Spring Web Services | Phrase planning and vector glyph blueprints | SOAP | SOAP |
 | `geometry-engine` | C++20, CMake, librdkafka | Expand primitives into line segments | Kafka | MinIO, Kafka |
@@ -2063,17 +2063,17 @@ grafana:3000
 Local ingress:
 
 ```text
-http://rghello.localhost/
-http://rghello.localhost/api/
-http://rghello.localhost/inspector/
-http://grafana.rghello.localhost/
-http://minio.rghello.localhost/
+http://rghw.localhost/
+http://rghw.localhost/api/
+http://rghw.localhost/inspector/
+http://grafana.rghw.localhost/
+http://minio.rghw.localhost/
 ```
 
 The CLI should default to:
 
 ```text
-http://rghello.localhost/api
+http://rghw.localhost/api
 ```
 
 ## 21.5 Resource targets
@@ -2156,7 +2156,7 @@ scripts/k3d-create.sh     Creates local cluster and registry
 Docker/BuildKit           Builds images
 Terraform                 Installs infrastructure and applications
 Kubernetes Jobs           Perform migrations and topic initialization
-rghello CLI               Starts an actual run
+rghw CLI               Starts an actual run
 ```
 
 Use local Terraform state under an ignored directory:
@@ -2242,7 +2242,7 @@ rube-goldberg-hello-world/
 │   ├── soap/
 │   └── examples/
 ├── cmd/
-│   └── rghello/
+│   └── rghw/
 ├── services/
 │   ├── run-orchestrator-kotlin/
 │   ├── glyph-catalog-java/
@@ -2491,7 +2491,7 @@ Test:
 Primary test:
 
 ```bash
-OUTPUT="$(rghello run --quiet)"
+OUTPUT="$(rghw run --quiet)"
 test "$OUTPUT" = "Hello World"
 ```
 
@@ -2542,7 +2542,7 @@ The project is complete only when all of the following are true.
 ## Functional
 
 - `make demo` works on a documented laptop environment.
-- `rghello run` prints exactly `Hello World`.
+- `rghw run` prints exactly `Hello World`.
 - The CLI exits successfully.
 - The output comes from the assembly event.
 - The assembly comes from adjudicated OCR symbols.
@@ -2788,7 +2788,7 @@ Deliver:
 Acceptance:
 
 ```bash
-rghello run --quiet
+rghw run --quiet
 ```
 
 prints exactly:
@@ -2853,7 +2853,7 @@ These should not block the primary implementation.
 Add:
 
 ```yaml
-apiVersion: absurdity.rghello.dev/v1
+apiVersion: absurdity.rghw.dev/v1
 kind: HelloWorldRun
 ```
 
@@ -2911,7 +2911,7 @@ Each extension must still perform a real transformation or validation.
 The project has achieved its intended joke when this command:
 
 ```bash
-rghello run
+rghw run
 ```
 
 causes a local Kubernetes cluster containing a distributed, event-driven, polyglot, observable collection of services to:

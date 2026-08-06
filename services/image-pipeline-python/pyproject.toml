@@ -4,9 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rg-image-pipeline"
-version = "0.0.0-skeleton"
-description = "Phrase composition and OCR preprocessing (Milestone 0 skeleton)"
+version = "0.1.0-milestone7"
+description = "Phrase composition and OCR preprocessing (Milestone 7)"
 requires-python = ">=3.13"
+
+[project.scripts]
+image-pipeline = "rg_image_pipeline.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

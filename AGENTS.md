@@ -14,7 +14,7 @@ adjudication -> assembly.
   sections before any milestone work).
 - Authoritative status: `docs/implementation-status.md` (update it with every
   milestone; work must be resumable after context compression).
-- Acceptance: `rghello run` prints exactly `Hello World` and exits 0, with the
+- Acceptance: `rghw run` prints exactly `Hello World` and exits 0, with the
   phrase derived from OCR-derived artifacts — never printed from the request.
 
 ## Non-negotiable integrity rules
@@ -28,6 +28,10 @@ adjudication -> assembly.
 5. The CLI prints only the orchestrator's terminal `assembledText`.
 6. Every primary transformation must increase the artifact maturity rank
    (0 -> 10 -> 20 -> ... -> 100).
+7. Source code (excluding tests and contract examples) must not contain the
+   clear-text phrase "Hello World" or variants. Use obfuscation languages
+   like Whitespace or Brainfuck where needed for transformations. The CLI
+   executable is named `rghw` (not `rghw` or any variant of "Hello World").
 7. Every output artifact records input artifact IDs and SHA-256 hashes.
 8. Kafka consumers must be idempotent (deterministic operation IDs).
 9. No paid service or external runtime API, ever.
@@ -87,7 +91,7 @@ protocol the architecture requires:
 
 | Language | Owns |
 | --- | --- |
-| Go | `cmd/rghello` (CLI), `services/vector-normalizer-go` |
+| Go | `cmd/rghw` (CLI), `services/vector-normalizer-go` |
 | Kotlin | `services/run-orchestrator-kotlin` (orchestrator) |
 | Java | `services/glyph-catalog-java` (SOAP glyph catalog) |
 | C++ | `services/geometry-engine-cpp` |

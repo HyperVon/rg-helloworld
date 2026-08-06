@@ -1,0 +1,140 @@
+from __future__ import annotations
+
+import io
+from typing import Any
+
+import numpy as np
+from PIL import Image, ImageOps
+
+from .imaging import (
+    CompositionManifest,
+    ImageArtifact,
+    encode_png,
+    sha256_bytes,
+)
+from .preprocessing import PositionCrop, PreprocessParams, PreprocessResult
+
+
+def preprocess_phrase_image(
+    phrase_image_bytes: bytes,
+    manifest: CompositionManifest,
+    params: PreprocessParams | None = None,
+) -> PreprocessResult:
+    params = params or PreprocessParams()
+    img = load_phrase_image(phrase_image_bytes)
+    gray = ImageOps.grayscale(img)
+    if params.contrast_factor != 1.0:
+        gray = ImageOps.autocontrast(gray, cutoff=params.contrast_factor)
+    enhanced = gray.convert("L")
+    if params.threshold_value < 255:
+        table = [0 if i < params.threshold_value else 255 for i in range(256)]
+        enhanced = enhanced.point(table, mode="1").convert("L")
+    if params.noise_removal_blob_threshold > 0:
+        enhanced = _remove_noise(enhanced, params.noise_removal_blob_threshold)
+    if params.border_size > 0:
+        enhanced = ImageOps.expand(enhanced, border=params.border_size, fill=255)
+    if params.scale_factor > 1:
+        new_w = enhanced.width * params.scale_factor
+        new_h = enhanced.height * params.scale_factor
+        enhanced = enhanced.resize((new_w, new_h), Image.Resampling.NEAREST)
+    ocr_image_bytes = encode_png(enhanced.convert("RGBA"))
+    ocr_artifact = ImageArtifact(
+        object_key="",
+        width=enhanced.width,
+        height=enhanced.height,
+        sha256=sha256_bytes(ocr_image_bytes),
+        byte_count=len(ocr_image_bytes),
+    )
+    position_crops, crops_bytes = _make_crops(enhanced, manifest, params.scale_factor)
+    report = _build_report(enhanced, params, phrase_image_bytes)
+    return PreprocessResult(
+        ocr_image=ocr_artifact,
+        ocr_image_bytes=ocr_image_bytes,
+        position_crops=position_crops,
+        crops_bytes=crops_bytes,
+        report=report,
+    )
+
+
+def load_phrase_image(data: bytes) -> Image.Image:
+    return Image.open(io.BytesIO(data))
+
+
+def _remove_noise(img: Image.Image, threshold: int) -> Image.Image:
+    arr = np.array(img)
+    binary = arr < 128
+    rows, cols = binary.shape
+    component_id = 0
+    component_map = np.zeros_like(arr)
+    components: list[list[tuple[int, int]]] = []
+    for i in range(rows):
+        for j in range(cols):
+            if binary[i, j] and component_map[i, j] == 0:
+                stack = [(i, j)]
+                component: list[tuple[int, int]] = []
+                component_id += 1
+                while stack:
+                    ci, cj = stack.pop()
+                    if not (0 <= ci < rows and 0 <= cj < cols):
+                        continue
+                    if not binary[ci, cj] or component_map[ci, cj]:
+                        continue
+                    component_map[ci, cj] = component_id
+                    component.append((ci, cj))
+                    stack.extend([(ci + 1, cj), (ci - 1, cj), (ci, cj + 1), (ci, cj - 1)])
+                if len(component) >= threshold:
+                    components.append(component)
+    result = np.zeros_like(arr)
+    for comp in components:
+        for ci, cj in comp:
+            result[ci, cj] = arr[ci, cj]
+    return Image.fromarray(result)
+
+
+def _make_crops(
+    img: Image.Image,
+    manifest: CompositionManifest,
+    scale_factor: int,
+) -> tuple[list[PositionCrop], dict[int, bytes]]:
+    scale = scale_factor if scale_factor > 0 else 1
+    position_crops: list[PositionCrop] = []
+    crops_bytes: dict[int, bytes] = {}
+    for entry in manifest.layout:
+        x = entry.x * scale
+        y = entry.y * scale
+        w = max(1, entry.width * scale)
+        h = max(1, entry.height * scale)
+        crop_img = img.crop((x, y, x + w, y + h))
+        crop_bytes = encode_png(crop_img)
+        object_key = f"ocr-crop-position-{entry.position}.png"
+        position_crops.append(
+            PositionCrop(
+                position=entry.position,
+                object_key=object_key,
+                x=x,
+                y=y,
+                width=w,
+                height=h,
+            )
+        )
+        crops_bytes[entry.position] = crop_bytes
+    return position_crops, crops_bytes
+
+
+def _build_report(
+    img: Image.Image,
+    params: PreprocessParams,
+    original_bytes: bytes,
+) -> dict[str, Any]:
+    arr = np.array(img.convert("L"))
+    foreground = int(np.sum(arr < 128))
+    total = arr.size
+    ratio = foreground / total if total > 0 else 0.0
+    return {
+        "threshold": params.threshold_value,
+        "scale": params.scale_factor,
+        "foregroundRatio": float(ratio),
+        "connectedComponentCount": 0,
+        "originalSha256": sha256_bytes(original_bytes),
+        "preprocessedSha256": sha256_bytes(encode_png(img)),
+    }

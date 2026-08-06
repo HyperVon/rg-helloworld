@@ -15,7 +15,7 @@
 | 4 | SOAP planning (Java glyph catalog, `RUBE_SIMPLEX_V1`) | **COMPLETE** |
 | 5 | Geometry and vector artifacts (C++, Go) | **COMPLETE** |
 | 6 | gRPC rasterization (C#, ImageSharp) | **COMPLETE** |
-| 7 | Composition and preprocessing (Python) | not started |
+| 7 | Composition and preprocessing (Python) | **IN PROGRESS** |
 | 8 | OCR and adjudication (Node.js, Ruby) | not started |
 | 9 | Rust assembly and true final output | not started |
 | 10 | Mixed-framework UI (React Flow, Angular, HTMX) | not started |
@@ -72,7 +72,7 @@ any business functionality.
 
 | Directory | Language | Version gate | Unit test |
 | --- | --- | --- | --- |
-| `cmd/rghello` | Go | `go build` | `go test` |
+| `cmd/rghw` | Go | `go build` | `go test` |
 | `services/vector-normalizer-go` | Go | `go build` | `go test` |
 | `services/glyph-catalog-java` | Java 25 | Maven `package` | JUnit Jupiter |
 | `services/run-orchestrator-kotlin` | Kotlin 2.4 / JVM 21 | Gradle `assemble` | JUnit Jupiter |
@@ -143,14 +143,14 @@ installed.
   down/destroy` are interface stubs and report not implemented.
 - The integration harness covers skeleton artifacts only; platform-backed
   integration suites (Kafka, PostgreSQL, Redis, MinIO, SOAP, gRPC, SSE)
-  arrive in Milestones 2–3. The true e2e (`rghello run` printing
+  arrive in Milestones 2–3. The true e2e (`rghw run` printing
   `Hello World`) arrives in Milestone 9; the current e2e proves the gates
   plus the cross-language artifact contract.
 - Rust and C++ coverage gates run in CI (cargo-llvm-cov, gcovr); locally they
   report a skip when the tool or a GNU compiler is unavailable.
 - The .NET rasterizer project uses a 3-project structure (library, CLI,
   tests) to achieve proper Coverlet coverage instrumentation.
-- `rghello` does not accept `--message` or any other option yet.
+- `rghw` does not accept `--message` or any other option yet.
 - The Makefile skips a language whose toolchain is missing; CI runs strict
   with the full toolchain.
 
@@ -327,7 +327,7 @@ Milestone 2 acceptance passes.
 
 ### Acceptance conditions
 
-- CLI starts a run via `rghello run` (HTTP POST to orchestrator).
+- CLI starts a run via `rghw run` (HTTP POST to orchestrator).
 - SSE updates arrive during processing.
 - Terminal result prints to stdout (the requested plaintext).
 - Idempotency works (same idempotency key returns same run).
@@ -347,7 +347,7 @@ Milestone 2 acceptance passes.
 | 2026-08-04 | Integration tests | PASS (0 failures) |
 | 2026-08-04 | Image build + push (`localhost:5001`) | PASS (run-orchestrator:milestone3, temp-worker:milestone3) |
 | 2026-08-04 | Deploy to k3d (`rube-goldberg` namespace) | PASS (both deployments ready) |
-| 2026-08-04 | Vertical slice smoke test | PASS (`rghello run` printed `Hello World`, exit 0) |
+| 2026-08-04 | Vertical slice smoke test | PASS (`rghw run` printed `Hello World`, exit 0) |
 | 2026-08-04 | `make e2e` | PASS (all gates + integration + platform smoke tests + vertical slice) |
 
 ---
@@ -388,7 +388,7 @@ Milestone 2 acceptance passes.
 - `"Hello World"` produces eleven ordered blueprint records (positions 0..10).
 - Gap position exists (position 5, kind `GAP`, advance width, no primitives).
 - Downstream events (`rg.glyph-blueprints.v1`) exclude plaintext and code
-  points; `rghello run` still prints `Hello World` via the orchestrator.
+  points; `rghw run` still prints `Hello World` via the orchestrator.
 - Plans persist; `GetAlternateBlueprint` returns a different blueprint.
 - `make e2e` passes (gates + integration + platform smoke + SOAP planning).
 
@@ -404,7 +404,7 @@ Milestone 2 acceptance passes.
 | 2026-08-04 | `make format` / `make lint STRICT=1` | PASS |
 | 2026-08-04 | `make coverage STRICT=1` / `make build` | PASS |
 | 2026-08-04 | `make integration` | PASS (failures=0; SOAP round trip: 11 glyph records, positions 0..10, gap present) |
-| 2026-08-05 | `make e2e` | PASS (gates + integration + smoke; `rghello run` printed `Hello World`; 11 blueprint records, gap at 5, no prohibited fields) |
+| 2026-08-05 | `make e2e` | PASS (gates + integration + smoke; `rghw run` printed `Hello World`; 11 blueprint records, gap at 5, no prohibited fields) |
 | 2026-08-05 | Dependency upgrade sweep (ADR-0006) | PASS (Spring Boot 4.1.0 / Spring WS 5.0.2 / JDK 25 Temurin / Lettuce 7.6.0 / TypeScript 7.0.2 / Node 26 / Python 3.14 / Ruby 4.0 / Terraform providers helm 3.2.0, kubernetes 3.2.1, kubectl 1.19.0; CI actions SHA-pinned) |
 | 2026-08-05 | `make format` / `make lint STRICT=1` | PASS (new pins; ktlint 1.8.0, tsc 7.0.2 clean) |
 | 2026-08-05 | `make unit` / `make coverage` / `make build` | PASS (all language gates >= 90%; Java 26 tests on Boot 4.1.0, Kotlin 38, .NET 5/5, Python 4/4, Node 5+5, Ruby 5, Rust 5) |
@@ -477,7 +477,7 @@ assertions surface real PASS/FAIL output.
     `message`, `targetText`, `expectedCharacter`, `unicodeCodePoint`,
     `characterName`, `glyphLabel`)
   - Run completes from the private expected-text store only after all
-    positions are normalized (fan-in), preserving `rghello run` output
+    positions are normalized (fan-in), preserving `rghw run` output
 - Deploy geometry-engine and vector-normalizer to Kubernetes
   (`infra/k8s/milestone5/`), extend `scripts/build-images.sh` (milestone5
   tag), and extend `scripts/smoke-test.sh` with milestone-5 acceptance
@@ -528,7 +528,7 @@ assertions surface real PASS/FAIL output.
 - Eleven ordered `rg.geometry-expanded.v1` records (positions 0..10, gap at
   position 5) and eleven `rg.glyph-normalized.v1` records are produced for
   `"Hello World"` in the cluster; events contain no prohibited fields.
-- `rghello run` still prints `Hello World` (run completes after the
+- `rghw run` still prints `Hello World` (run completes after the
   normalized fan-in, from the private expected-text store).
 - `make format`, `make lint`, `make unit`, `make coverage`, `make build`
   (STRICT=1), `make integration`, and `make e2e` all pass.
@@ -544,10 +544,10 @@ assertions surface real PASS/FAIL output.
 | 2026-08-05 | Go `make coverage-go` | PASS (module total 90.9% >= 90%) |
 | 2026-08-05 | Kotlin `make unit-kotlin` | PASS (stage tracker PLANNING -> GENERATING_GEOMETRY -> NORMALIZING -> SUCCEEDED; maturity violation fails run; prohibited-field validator) |
 | 2026-08-05 | `make format` / `make lint STRICT=1` | PASS (all languages; `-Werror` clean) |
-| 2026-08-05 | `make unit` / `make coverage` / `make build` (STRICT=1) | PASS (cmd/rghello 91.5%, vector-normalizer 90.9%; Java/Kotlin/dotnet/python/node/ruby gates >= 90%; C++ gcovr + Rust llvm-cov skipped locally, CI enforces) |
+| 2026-08-05 | `make unit` / `make coverage` / `make build` (STRICT=1) | PASS (cmd/rghw 91.5%, vector-normalizer 90.9%; Java/Kotlin/dotnet/python/node/ruby gates >= 90%; C++ gcovr + Rust llvm-cov skipped locally, CI enforces) |
 | 2026-08-05 | `make contracts` / `make contract-test` | PASS (schemas unchanged; prohibited-field scans green) |
 | 2026-08-05 | `make integration` | PASS (geometry-engine --once deterministic; maturity 10 -> 20; vector-normalizer --once deterministic; maturity 20 -> 30; events validate against schemas; no prohibited fields; SVG has no text elements; SVG sha256 matches event svgSha256; 11 banners) |
-| 2026-08-05 | `make e2e` (cluster rube-goldberg) | PASS (all gates + integration; smoke Tests 1-6: Kafka/MinIO/PostgreSQL/Redis round trips, `rghello run` printed Hello World with 11 ordered blueprints + gap, eleven geometry-expanded + gap records mature 10 -> 20, eleven glyph-normalized records mature 20 -> 30, 88 geometry + 88 normalized + 88 SVG artifacts in MinIO, SVG no text elements and sha256 match) |
+| 2026-08-05 | `make e2e` (cluster rube-goldberg) | PASS (all gates + integration; smoke Tests 1-6: Kafka/MinIO/PostgreSQL/Redis round trips, `rghw run` printed Hello World with 11 ordered blueprints + gap, eleven geometry-expanded + gap records mature 10 -> 20, eleven glyph-normalized records mature 20 -> 30, 88 geometry + 88 normalized + 88 SVG artifacts in MinIO, SVG no text elements and sha256 match) |
 
 E2E debugging notes (2026-08-05): the geometry-engine image initially pinned
 `librdkafka-dev=2.2.0-1`, which Debian bookworm arm64 does not ship (candidate
@@ -685,7 +685,7 @@ evicted pods were force-deleted so `wait-ready.sh` sees only live pods.
 - Ten ordered `rg.glyph-rasterized.v1` records (positions 0..10, gap at
   position 5 excluded) are produced for `"Hello World"` in the cluster,
   mature 30 → 40, and contain no prohibited fields.
-- `rghello run` still prints `Hello World` (run completes only after the
+- `rghw run` still prints `Hello World` (run completes only after the
   rasterized fan-in, from the private expected-text store).
 - `make format`, `make lint`, `make unit`, `make coverage`, `make build`
   (STRICT=1), `make contracts`, `make integration`, and `make e2e` all pass.
@@ -699,7 +699,7 @@ evicted pods were force-deleted so `wait-ready.sh` sees only live pods.
 | 2026-08-05 | C# `make unit-dotnet` | PASS (63/63: validator, renderer determinism/crop/profiles, operation keys, stores, service; TestServerCallContext) |
 | 2026-08-05 | C# `make coverage-dotnet` | PASS (99.19% lines / 95.28% branches / 100% methods >= 90%; generated code excluded via ExcludeByFile) |
 | 2026-08-05 | C# `make format-dotnet` / `make lint-dotnet` | PASS (dotnet format whitespace + --verify-no-changes on library, cli, tests; generated/ skipped via generated_code) |
-| 2026-08-05 | Go `make coverage-go` | PASS (cmd/rghello 91.5%, vector-normalizer 90.5% >= 90%; generated rasterproto excluded in Makefile + CI) |
+| 2026-08-05 | Go `make coverage-go` | PASS (cmd/rghw 91.5%, vector-normalizer 90.5% >= 90%; generated rasterproto excluded in Makefile + CI) |
 | 2026-08-05 | Go rasterclient bufconn tests | PASS (deadline 10s, retry only Unavailable/ResourceExhausted/Aborted, 3 attempts, backoff; no retry on InvalidArgument/DeadlineExceeded) |
 | 2026-08-05 | Kotlin `./gradlew build` | PASS (ktlint + tests + JaCoCo 90%; RASTERIZING stage, drawable-count fan-in 10/11, maturity 30 -> 40, prohibited-field validator) |
 | 2026-08-05 | `make integration` | PASS (banners incl. rasterizer 0.1.0-milestone6; M6 block: local rasterizer server, --once --rasterizer-url emits normalized+rasterized events, byte-determinism, PNG magic bytes + sha256 match, schema validation, prohibited-field scan, gap skip) |
@@ -715,3 +715,132 @@ integration harness initially used a port above 65535 (Abort trap) and a
 heredoc that shadowed the schema-check pipe; both fixed. Grpc.Tools ships no
 macOS-arm64 protoc in any 2.8x version, which forced the committed C#
 generated code + container-based codegen approach (ADR-0008).
+
+---
+
+## Milestone 7 — Composition and preprocessing (Python)
+
+### Scope
+
+- Implement the Python image pipeline (`services/image-pipeline-python`) to
+  perform the first run-level fan-in stages (Stage 5 and Stage 6, section 6):
+  - **Stage 5: Phrase composition** — consume all rasterized glyph images
+    (`rg.glyph-rasterized.v1`) and gap layout records, compose a single
+    horizontal phrase PNG, write a composition manifest mapping each phrase
+    position to a pixel bounding box, store raw phrase image and manifest in
+    MinIO, publish `PhraseComposed` to `rg.phrase-composed.v1`.
+  - **Stage 6: OCR preprocessing** — consume the raw phrase image, convert to
+    grayscale, increase contrast, apply deterministic threshold, remove
+    isolated noise, add clean border, optionally scale by integer factor,
+    produce both full-phrase OCR image and individual position crops (from the
+    composition manifest), write OCR preprocessing report (threshold, scale,
+    estimated foreground ratio, connected-component count), store all outputs
+    in MinIO, publish `OcrImagePrepared` to `rg.ocr-images.v1`.
+- Extend the Kotlin orchestrator (section 17):
+  - Add `COMPOSING` and `PREPROCESSING` states to the run state machine.
+  - Schedule composition when every drawable glyph has a successful raster
+    artifact and every gap position has layout metadata (fan-in via database
+    proof).
+  - Schedule preprocessing after successful composition.
+  - Kafka consumer on `rg.phrase-composed.v1` and `rg.ocr-images.v1` with
+    maturity validation (40 → 50, 50 → 60) and prohibited-field validator.
+- Add event schemas for `phrase-composed.v1` and `ocr-image-prepared.v1`
+  in `contracts/events/` and examples in `contracts/examples/`.
+- Wire proto/contract generation to `make contracts` if new schemas added.
+- Deploy the image pipeline to Kubernetes (`infra/k8s/milestone7/`),
+  extend `scripts/build-images.sh` (milestone7 tag), and extend
+  `scripts/smoke-test.sh` with milestone-7 acceptance checks.
+- Host-level integration tests: `--once` modes that compose a phrase image
+  from fixture rasterized glyphs and preprocess it without Kafka or MinIO,
+  verifying artifact pipeline, schema conformance, determinism, and maturity
+  increases.
+- Pin new dependencies in `versions.env` (OpenCV, Pillow, aiokafka, etc.)
+  and update CI to install required system packages.
+
+### Tasks
+
+- [ ] Add event schemas `phrase-composed.v1.schema.json` and
+      `ocr-image-prepared.v1.schema.json` to `contracts/events/`
+- [ ] Add valid example payloads to `contracts/examples/`
+- [ ] Update `make contracts` and `make contract-test` to validate new schemas
+- [ ] Implement Python composition service:
+      - aiokafka consumer for `rg.glyph-rasterized.v1`
+      - Retrieve glyph PNGs from MinIO
+      - Sort by phrase position, align to baseline, apply advance widths and
+        gap widths, add phrase-level margins
+      - Create single horizontal phrase PNG
+      - Generate composition manifest (position → pixel bounding box)
+      - Store phrase image and manifest in MinIO with deterministic keys
+      - Publish `PhraseComposed` event (maturity 40 → 50)
+      - `--once` mode for integration harness
+- [ ] Implement Python preprocessing service:
+      - aiokafka consumer for `rg.phrase-composed.v1`
+      - Retrieve raw phrase image from MinIO
+      - Convert to grayscale, increase contrast, adaptive/deterministic
+        threshold, noise removal, clean border, optional integer scaling
+      - Produce full-phrase OCR image and individual position crops from
+        manifest
+      - Write preprocessing report (threshold, scale, foreground ratio,
+        connected-component count)
+      - Store all outputs in MinIO
+      - Publish `OcrImagePrepared` event (maturity 50 → 60)
+      - `--once` mode for integration harness
+- [ ] Extend Kotlin orchestrator:
+      - Add COMPOSING and PREPROCESSING states
+      - Fan-in logic for composition trigger (database proof)
+      - Kafka consumers for phrase-composed and ocr-images with maturity
+        validation and prohibited-field scan
+      - Update HttpApiTest to the new state flow
+- [ ] Dockerfile for image pipeline; `infra/k8s/milestone7/` manifests
+- [ ] Extend `scripts/build-images.sh` (milestone7 tag) and
+      `scripts/smoke-test.sh` (composition + preprocessing checks)
+- [ ] Integration harness: fixture rasterized glyphs + `--once` pipeline
+      validation against event schemas
+- [ ] Pin new Python dependencies in `versions.env` and `requirements.txt`
+- [ ] Update docs: ADR for composition/preprocessing choices, service README,
+      verification log
+
+### Acceptance conditions
+
+- Every run produces a deterministic raw phrase image (identical input
+  rasterized glyphs → byte-identical phrase PNG; verified by unit,
+  integration, and cluster smoke tests).
+- Composition manifest maps each drawable position to a pixel bounding box;
+  gaps represented as zero-width boxes with advance width.
+- OCR preprocessing yields a full-phrase OCR image and individual position
+  crops; preprocessing report contains threshold, scale, foreground ratio,
+  connected-component count.
+- Maturity increases: rasterized 40 → phrase-composed 50 → ocr-prepared 60,
+  with orchestrator rejecting backward/equal-rank events.
+- Eleven `rg.phrase-composed.v1` records (one per run) and eleven
+  `rg.ocr-images.v1` records for `"Hello World"` in the cluster; events
+  contain no prohibited fields.
+- `rghw run` still prints `Hello World` (run completes after later
+  stages, from private expected-text store).
+- `make format`, `make lint`, `make unit`, `make coverage`, `make build`
+  (STRICT=1), `make contracts`, `make contract-test`, `make integration`,
+  and `make e2e` all pass.
+
+### Verification log
+
+| Date | Check | Result |
+| --- | --- | --- |
+| 2026-08-05 | Milestone 7 scope/tasks/acceptance recorded | PASS (written before implementation) |
+| 2026-08-05 | Event schemas `phrase-composed.v1.schema.json` and `ocr-image-prepared.v1.schema.json` verified | PASS (already present, validated against JSON Schema draft 2020-12) |
+| 2026-08-05 | Example payloads verified | PASS (already present, validate against schemas) |
+| 2026-08-05 | Contract validation (`make contracts` / `make contract-test`) | PASS (schemas parse, examples validate, prohibited fields detected) |
+| 2026-08-05 | Python composition service implementation | PASS (compose_phrase produces deterministic phrase images with composition manifest) |
+| 2026-08-05 | Python preprocessing service implementation | PASS (preprocess_phrase_image produces OCR images, position crops, and preprocessing report) |
+| 2026-08-05 | CLI `--once` modes for compose and preprocess | PASS (CLI accepts JSON glyph inputs, produces output artifacts) |
+| 2026-08-05 | Unit tests (35 tests) | PASS (27 existing + 8 new, covering imaging, composition, preprocessing, events, CLI) |
+| 2026-08-05 | Coverage gate (--fail-under 90) | PASS (99% line coverage across all Python source modules) |
+| 2026-08-05 | Ruff format + lint | PASS (all 9 source/test files clean, 0 errors) |
+| 2026-08-05 | Python compileall | PASS (no syntax errors) |
+| 2026-08-05 | Dependency pins updated in versions.env | PASS (Python packages pinned) |
+
+M7 implementation notes (2026-08-05): Contracts were already committed in the
+skeleton; this implementation provides the Python image pipeline core modules
+(composition, preprocessing, events, imaging) with 99% coverage. Full Kafka
+consumer integration and Kubernetes deployment are deferred to later phases of
+Milestone 7 but the `--once` CLI modes enable integration harness testing
+without Kafka or MinIO.
