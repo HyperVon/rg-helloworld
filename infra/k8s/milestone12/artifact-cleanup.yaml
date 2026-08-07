@@ -1,0 +1,65 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: artifact-cleanup
+  namespace: rube-goldberg
+  labels:
+    app: artifact-cleanup
+    milestone: "12"
+spec:
+  schedule: "0 2 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 600
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: cleanup
+              image: alpine:3.21
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  apk add --no-cache mc
+                  mc alias set myminio "${MINIO_ENDPOINT}" "${MINIO_ACCESS_KEY}" "${MINIO_SECRET_KEY}"
+                  mc ls myminio/rube-goldberg-artifacts || true
+                  find_old_objects() {
+                    mc find myminio/rube-goldberg-artifacts \
+                      --name "*.json" \
+                      --older-than 168h \
+                      --exec "mc rm {}" 2>/dev/null || true
+                  }
+                  find_old_objects
+              env:
+                - name: MINIO_ENDPOINT
+                  value: "http://minio.rube-goldberg.svc.cluster.local:9000"
+                - name: MINIO_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: minio-credentials
+                      key: root-user
+                - name: MINIO_SECRET_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: minio-credentials
+                      key: root-password
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  memory: 128Mi
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: artifact-cleanup
+  namespace: rube-goldberg
+  labels:
+    app: artifact-cleanup
+    milestone: "12"

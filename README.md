@@ -30,28 +30,33 @@ vector glyph blueprints
 
 ## Status
 
-**Milestone 0 (repository skeleton) is the current milestone.**
+**Milestone 11 (Observability) is complete.**
 
-The repository contains compilable, unit-tested skeleton projects for every
-required language, but **no business functionality is implemented yet**. There is
-no Kafka, Kubernetes, SOAP, gRPC, OCR, UI, or "Hello World" pipeline in this
-milestone.
+The system now includes:
+- Full pipeline: CLI → orchestrator → glyph catalog → geometry → rasterization → composition → OCR → adjudication → assembly → SSE
+- 10 programming languages (Go, Kotlin, Java, C++, C#, Python, TypeScript, Ruby, Rust)
+- Kafka, Redis Streams, PostgreSQL, MinIO, Kubernetes (k3d)
+- OpenTelemetry tracing, Prometheus metrics, Grafana dashboards
+- Whitespace provenance attestation and Brainfuck integrity guards
+- Complete test suites, integration tests, and e2e smoke tests
 
 See [docs/implementation-status.md](docs/implementation-status.md) for the
 authoritative status and [docs/architecture.md](docs/architecture.md) for the
 full architecture.
 
-## Quick start (current milestone)
+## Quick start
 
 ```bash
 make prerequisites   # check toolchains and install language-level dependencies
 make format          # format every language
 make lint            # lint every language
-make unit            # unit-test every skeleton service
-make coverage        # unit tests + 90% coverage gates per language
-make build           # compile every skeleton service
+make unit            # unit-test every service
+make coverage        # unit tests + 90% coverage gates
+make build           # compile everything
 make integration     # cross-language artifact integration tests
 make e2e             # full milestone acceptance (gates + integration)
+make chaos           # chaos tests (Milestone 12)
+make diagnostics     # collect stack diagnostics
 ```
 
 All implemented gates (`format`, `lint`, `unit`, `coverage`, `build`,
@@ -74,15 +79,12 @@ All implemented gates (`format`, `lint`, `unit`, `coverage`, `build`,
 ## Repository layout
 
 ```text
-cmd/                 Go CLI binary
+cmd/                 Go CLI binary (rghw)
 services/            one directory per service, one language each
-contracts/           OpenAPI, AsyncAPI, JSON Schema, protobuf, SOAP (Milestone 1)
-web/                 React shell, Angular telemetry element, shared contracts
-libraries/           event testkit, fixtures, generated contracts
+contracts/           OpenAPI, AsyncAPI, JSON Schema, protobuf, SOAP
 infra/               k3d, Terraform, Helm values, Kubernetes manifests
-observability/       dashboards, alerts, OTel, Prometheus, Loki, Tempo
-tests/               contract, integration, end-to-end, chaos, anti-cheating
-scripts/             prerequisites and environment scripts
+tests/                contract, integration, end-to-end, chaos, anti-cheating
+scripts/             prerequisites, build, smoke, diagnostics scripts
 docs/                architecture, status, runbook, troubleshooting, ADRs
 ```
 

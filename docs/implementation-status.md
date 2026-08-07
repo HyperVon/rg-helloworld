@@ -1147,3 +1147,45 @@ and deployment scaffolding are complete.
 | Date | Check | Result |
 | --- | --- | --- |
 | 2026-08-06 | Milestone 11 scope/tasks/acceptance recorded | PASS |
+
+---
+
+## Milestone 12 — Hardening and demonstration
+
+### Scope
+
+- Chaos test: validate system behavior under component failures.
+- Low-memory profile: ensure services run within constrained resource limits.
+- Cleanup CronJob: automated artifact and run data cleanup in Kubernetes.
+- Runbook: operational procedures for starting, stopping, and debugging the stack.
+- Troubleshooting guide: common failure modes and remediation steps.
+- Final README: comprehensive project documentation with diagrams and usage examples.
+- Recorded example screenshots or GIFs: visual acceptance evidence.
+- Full acceptance test: end-to-end test proving `rghw run` prints exactly `Hello World`.
+
+### Tasks
+
+- [ ] Chaos test: kill random pods, verify recovery and data consistency
+- [ ] Low-memory profile: tune resource limits for all services
+- [ ] Cleanup CronJob: implement and test artifact lifecycle management
+- [ ] Runbook: document startup, shutdown, log access, and common operations
+- [ ] Troubleshooting guide: document known issues and fixes
+- [ ] Final README: update with current architecture, setup, and usage
+- [ ] Example screenshots/GIFs: capture acceptance test run and UI screenshots
+- [ ] Full acceptance test: `make e2e` passes on clean cluster
+
+### Acceptance conditions
+
+- Chaos test passes with zero data loss
+- All services start and run within documented memory limits
+- CronJob successfully cleans up expired artifacts
+- Runbook enables a new operator to run the stack without assistance
+- Troubleshooting guide covers all known failure modes
+- README is complete and accurate
+- `make e2e` passes on a fresh k3d cluster
+
+### Verification log
+
+| Date | Check | Result |
+| --- | --- | --- |
+| 2026-08-06 | Milestone 12 scope/tasks/acceptance recorded | PENDING |

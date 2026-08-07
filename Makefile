@@ -456,7 +456,7 @@ wait:
 	@bash scripts/wait-ready.sh
 
 run:
-	@cd cmd/rghello && go run . run --api-url "http://localhost:8080"
+	@cd cmd/rghw && go run . run --api-url "http://localhost:8080"
 
 demo: wait
 	@bash scripts/smoke-test.sh
@@ -465,10 +465,10 @@ e2e:
 	@bash tests/end-to-end/run_e2e.sh
 
 chaos:
-	@echo "NOT IMPLEMENTED: chaos tests land in Milestone 12."
+	@bash tests/chaos/chaos.sh
 
 diagnostics:
-	@echo "NOT IMPLEMENTED: diagnostics collection lands in Milestone 12."
+	@bash scripts/collect-diagnostics.sh
 
 down:
 	@bash scripts/k3d-delete.sh
