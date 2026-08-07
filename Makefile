@@ -470,6 +470,9 @@ chaos:
 diagnostics:
 	@bash scripts/collect-diagnostics.sh
 
+low-memory:
+	@bash scripts/low-memory-profile.sh
+
 down:
 	@bash scripts/k3d-delete.sh
 
