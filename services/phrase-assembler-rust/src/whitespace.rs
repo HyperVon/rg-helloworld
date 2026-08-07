@@ -47,7 +47,7 @@ mod tests {
     #[test]
     fn encode_single_char() {
         let encoded = encode("A");
-        let expected = " \t     \t\n";
+        let expected = include_str!("fixtures/a.ws");
         assert_eq!(encoded, expected);
     }
 

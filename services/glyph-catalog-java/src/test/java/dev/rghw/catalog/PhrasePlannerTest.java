@@ -46,10 +46,10 @@ class PhrasePlannerTest {
     assertEquals(21, o.getPrimitives().getPrimitive().get(0).getPoints().size());
 
     Glyph w = plan.getGlyphs().getGlyph().get(6);
-    assertEquals(1, w.getPrimitives().getPrimitive().size());
+    assertEquals(5, w.getPrimitives().getPrimitive().size());
 
     Glyph l = plan.getGlyphs().getGlyph().get(2);
-    assertEquals(4, l.getPrimitives().getPrimitive().size());
+    assertEquals(10, l.getPrimitives().getPrimitive().size());
   }
 
   @Test

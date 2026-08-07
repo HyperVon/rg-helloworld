@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"context"
 	"crypto/rand"
-	"encoding/base64"
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -46,14 +46,16 @@ type streamEvent struct {
 	AssembledText string `json:"assembledText,omitempty"`
 }
 
-const defaultMessage = "SEVMTE8gV09STEQ="
+//go:embed internal/brainfuck/default.bf
+var brainfuckDefaultProgram string
 
 func decodeDefaultMessage() string {
-	data, err := base64.StdEncoding.DecodeString(defaultMessage)
+	vm := brainfuck.NewVM([]byte(brainfuckDefaultProgram))
+	out, err := vm.Run()
 	if err != nil {
 		return ""
 	}
-	return string(data)
+	return string(out)
 }
 
 func newRunOptions() runOptions {

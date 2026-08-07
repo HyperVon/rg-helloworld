@@ -195,6 +195,27 @@ pub fn build_assembly_event(
     output_artifacts: Vec<String>,
 ) -> String {
     let operation_id = build_operation_id(&run_id, &step_id, attempt, sha256);
+    let manifest_stub = AssemblyManifest {
+        positions: vec![],
+        total_bytes: assembled_text.len(),
+        sha256: sha256.to_string(),
+    };
+    let provenance_ws = build_provenance_attestation(
+        &run_id,
+        &step_id,
+        attempt,
+        &manifest_stub,
+        &input_artifacts,
+        &output_artifacts,
+    );
+    let mut hasher = Sha256::new();
+    hasher.update(provenance_ws.as_bytes());
+    let provenance_sha256 = format!("{:x}", hasher.finalize());
+    if let Err(e) =
+        verify_provenance_attestation(&provenance_ws, &manifest_stub, &run_id, &step_id, attempt)
+    {
+        eprintln!("warning: provenance self-check failed: {}", e);
+    }
     let event = serde_json::json!({
         "specversion": "1.0",
         "id": operation_id,
@@ -220,7 +241,9 @@ pub fn build_assembly_event(
                 "version": "1.0"
             },
             "assembledText": assembled_text,
-            "sha256": sha256
+            "sha256": sha256,
+            "provenanceAttestation": provenance_ws,
+            "provenanceSha256": provenance_sha256
         }
     });
     serde_json::to_string_pretty(&event).unwrap_or_default()
@@ -288,6 +311,27 @@ pub fn run_assemble_once(
     if let Some(path) = event_output_path {
         let input_artifacts: Vec<String> =
             tokens.iter().map(|t| t.input_artifact.clone()).collect();
+        let provenance_ws = build_provenance_attestation(
+            "test-run",
+            "test-step",
+            1,
+            &manifest,
+            &input_artifacts,
+            &[path.to_string()],
+        );
+        verify_provenance_attestation(&provenance_ws, &manifest, "test-run", "test-step", 1)
+            .map_err(|e| format!("provenance validation failed: {}", e))?;
+        let provenance_path = format!("{}.ws", path);
+        std::fs::write(&provenance_path, &provenance_ws).map_err(|e| e.to_string())?;
+        let mut sidecar_hasher = Sha256::new();
+        sidecar_hasher.update(provenance_ws.as_bytes());
+        let sidecar_sha = format!("{:x}", sidecar_hasher.finalize());
+        eprintln!(
+            "provenance sidecar: {} (sha256={}, key={})",
+            provenance_path,
+            sidecar_sha,
+            provenance_sidecar_object_key("test-run", "test-step", 1, &manifest.sha256)
+        );
         let event = build_assembly_event(
             "test-run".to_string(),
             "test-step".to_string(),
@@ -301,6 +345,45 @@ pub fn run_assemble_once(
     }
 
     Ok(text)
+}
+
+pub fn verify_provenance_attestation(
+    ws: &str,
+    manifest: &AssemblyManifest,
+    run_id: &str,
+    step_id: &str,
+    attempt: i32,
+) -> Result<(), String> {
+    if ws.len() > 8192 {
+        return Err("provenance attestation exceeds max size".into());
+    }
+    let decoded = whitespace::decode(ws).map_err(|e| e.to_string())?;
+    if !decoded.contains(&format!("runId={}", run_id)) {
+        return Err("provenance runId mismatch".into());
+    }
+    if !decoded.contains(&format!("stepId={}", step_id)) {
+        return Err("provenance stepId mismatch".into());
+    }
+    if !decoded.contains(&format!("attempt={}", attempt)) {
+        return Err("provenance attempt mismatch".into());
+    }
+    if !decoded.contains(&format!("sha256={}", manifest.sha256)) {
+        return Err("provenance sha256 mismatch".into());
+    }
+    if !decoded.contains(&format!("maturity={}->{}", INPUT_MATURITY, OUTPUT_MATURITY)) {
+        return Err("provenance maturity mismatch".into());
+    }
+    Ok(())
+}
+
+pub fn provenance_sidecar_object_key(
+    run_id: &str,
+    step_id: &str,
+    attempt: i32,
+    sha256: &str,
+) -> String {
+    let suffix = build_operation_id(run_id, step_id, attempt, sha256);
+    format!("runs/{}/provenance/{}.ws", run_id, suffix)
 }
 
 pub mod whitespace;
@@ -371,6 +454,16 @@ pub fn flush_run_buffer(
         .map(|p| p.evidence_artifact.clone())
         .collect();
     let output_artifacts = vec![manifest.sha256.clone()];
+    let provenance_ws = build_provenance_attestation(
+        &run_id,
+        "assembled-step",
+        1,
+        &manifest,
+        &input_artifacts,
+        &output_artifacts,
+    );
+    verify_provenance_attestation(&provenance_ws, &manifest, &run_id, "assembled-step", 1)
+        .map_err(|e| format!("provenance validation failed: {}", e))?;
     let event_json = build_assembly_event(
         run_id.clone(),
         "assembled-step".to_string(),
@@ -686,5 +779,179 @@ mod tests {
         assert!(!attestation.is_empty());
         let decoded = whitespace::decode(&attestation).unwrap_or_default();
         assert!(decoded.contains("runId=run-1"));
+    }
+
+    #[test]
+    fn verify_provenance_attestation_valid() {
+        let manifest = AssemblyManifest {
+            positions: vec![],
+            total_bytes: 11,
+            sha256: "deadbeef".to_string(),
+        };
+        let ws = build_provenance_attestation("run-1", "step-1", 1, &manifest, &[], &[]);
+        assert!(verify_provenance_attestation(&ws, &manifest, "run-1", "step-1", 1).is_ok());
+    }
+
+    #[test]
+    fn verify_provenance_attestation_runid_mismatch() {
+        let manifest = AssemblyManifest {
+            positions: vec![],
+            total_bytes: 0,
+            sha256: "abc".to_string(),
+        };
+        let ws = build_provenance_attestation("run-1", "step-1", 1, &manifest, &[], &[]);
+        let err =
+            verify_provenance_attestation(&ws, &manifest, "other-run", "step-1", 1).unwrap_err();
+        assert!(err.contains("runId"));
+    }
+
+    #[test]
+    fn verify_provenance_attestation_stepid_mismatch() {
+        let manifest = AssemblyManifest {
+            positions: vec![],
+            total_bytes: 0,
+            sha256: "abc".to_string(),
+        };
+        let ws = build_provenance_attestation("run-1", "step-1", 1, &manifest, &[], &[]);
+        let err =
+            verify_provenance_attestation(&ws, &manifest, "run-1", "other-step", 1).unwrap_err();
+        assert!(err.contains("stepId"));
+    }
+
+    #[test]
+    fn verify_provenance_attestation_attempt_mismatch() {
+        let manifest = AssemblyManifest {
+            positions: vec![],
+            total_bytes: 0,
+            sha256: "abc".to_string(),
+        };
+        let ws = build_provenance_attestation("run-1", "step-1", 1, &manifest, &[], &[]);
+        let err = verify_provenance_attestation(&ws, &manifest, "run-1", "step-1", 2).unwrap_err();
+        assert!(err.contains("attempt"));
+    }
+
+    #[test]
+    fn verify_provenance_attestation_sha_mismatch() {
+        let manifest = AssemblyManifest {
+            positions: vec![],
+            total_bytes: 0,
+            sha256: "abc".to_string(),
+        };
+        let ws = build_provenance_attestation("run-1", "step-1", 1, &manifest, &[], &[]);
+        let bad_manifest = AssemblyManifest {
+            positions: vec![],
+            total_bytes: 0,
+            sha256: "different".to_string(),
+        };
+        let err =
+            verify_provenance_attestation(&ws, &bad_manifest, "run-1", "step-1", 1).unwrap_err();
+        assert!(err.contains("sha256"));
+    }
+
+    #[test]
+    fn verify_provenance_attestation_maturity_mismatch() {
+        let manifest = AssemblyManifest {
+            positions: vec![],
+            total_bytes: 0,
+            sha256: "abc".to_string(),
+        };
+        let ws = whitespace::encode(
+            "runId=run-1 stepId=step-1 attempt=1 maturity=0->0 sha256=abc input_count=0 output_count=0",
+        );
+        let err = verify_provenance_attestation(&ws, &manifest, "run-1", "step-1", 1).unwrap_err();
+        assert!(err.contains("maturity"));
+    }
+
+    #[test]
+    fn verify_provenance_attestation_too_large() {
+        let manifest = AssemblyManifest {
+            positions: vec![],
+            total_bytes: 0,
+            sha256: "abc".to_string(),
+        };
+        let large_ws = " ".repeat(8193);
+        let err =
+            verify_provenance_attestation(&large_ws, &manifest, "run-1", "step-1", 1).unwrap_err();
+        assert!(err.contains("exceeds"));
+    }
+
+    #[test]
+    fn verify_provenance_attestation_invalid_whitespace() {
+        let manifest = AssemblyManifest {
+            positions: vec![],
+            total_bytes: 0,
+            sha256: "abc".to_string(),
+        };
+        let err =
+            verify_provenance_attestation("invalid", &manifest, "run-1", "step-1", 1).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn provenance_sidecar_object_key_deterministic() {
+        let k1 = provenance_sidecar_object_key("run-1", "step-1", 1, "abc");
+        let k2 = provenance_sidecar_object_key("run-1", "step-1", 1, "abc");
+        assert_eq!(k1, k2);
+        assert!(k1.starts_with("runs/run-1/provenance/"));
+        assert!(k1.ends_with(".ws"));
+    }
+
+    #[test]
+    fn provenance_sidecar_object_key_differs_on_input() {
+        let k1 = provenance_sidecar_object_key("run-1", "step-1", 1, "abc");
+        let k2 = provenance_sidecar_object_key("run-1", "step-1", 1, "def");
+        assert_ne!(k1, k2);
+    }
+
+    #[test]
+    fn build_assembly_event_contains_provenance() {
+        let event = build_assembly_event(
+            "run-1".to_string(),
+            "step-1".to_string(),
+            1,
+            "HELLO",
+            "abc123",
+            vec!["in1".to_string()],
+            vec!["out1".to_string()],
+        );
+        let v: serde_json::Value = serde_json::from_str(&event).unwrap();
+        assert_eq!(v["data"]["assembledText"], "HELLO");
+        assert!(v["data"]["provenanceAttestation"].is_string());
+        assert!(v["data"]["provenanceSha256"].is_string());
+        assert_eq!(v["data"]["provenanceSha256"].as_str().unwrap().len(), 64);
+    }
+
+    #[test]
+    fn run_assemble_once_writes_outputs() {
+        let dir = std::env::temp_dir();
+        let input_path = dir.join(format!("rghw_test_input_{}.json", uuid::Uuid::new_v4()));
+        let output_path = dir.join(format!("rghw_test_output_{}.json", uuid::Uuid::new_v4()));
+        let event_path = dir.join(format!("rghw_test_event_{}.json", uuid::Uuid::new_v4()));
+        let tokens = serde_json::json!([
+            {"position": 0, "tokenType": "Symbol", "utf8": "H", "confidence": 0.9, "inputArtifact": "a1"},
+            {"position": 1, "tokenType": "Symbol", "utf8": "I", "confidence": 0.9, "inputArtifact": "a2"}
+        ]);
+        std::fs::write(&input_path, serde_json::to_string(&tokens).unwrap()).unwrap();
+        let text = run_assemble_once(
+            input_path.to_str().unwrap(),
+            Some(output_path.to_str().unwrap()),
+            Some(event_path.to_str().unwrap()),
+        )
+        .unwrap();
+        assert_eq!(text, "HI");
+        assert!(output_path.exists());
+        assert!(event_path.exists());
+        let ws_path = format!("{}.ws", event_path.to_str().unwrap());
+        assert!(std::path::Path::new(&ws_path).exists());
+        let _ = std::fs::remove_file(&input_path);
+        let _ = std::fs::remove_file(&output_path);
+        let _ = std::fs::remove_file(&event_path);
+        let _ = std::fs::remove_file(&ws_path);
+    }
+
+    #[test]
+    fn run_assemble_once_missing_input_fails() {
+        let result = run_assemble_once("/tmp/nonexistent_rghw_test_input.json", None, None);
+        assert!(result.is_err());
     }
 }
