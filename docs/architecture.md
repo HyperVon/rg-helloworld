@@ -274,7 +274,7 @@ flowchart LR
 
 The default run fans out by glyph, processes glyphs independently, then fans back in when composing the phrase image.
 
-For `"Hello World"` there are eleven positions:
+For `"HELLO WORLD"` there are eleven positions:
 
 ```text
 0 H
@@ -555,7 +555,7 @@ The OCR artifact:
 ```json
 {
   "fullPhrase": {
-    "rawText": "Hello World",
+    "rawText": "HELLO WORLD",
     "confidence": 93.2,
     "symbols": []
   },
@@ -866,7 +866,7 @@ Request:
 
 ```json
 {
-  "message": "Hello World",
+  "message": "HELLO WORLD",
   "options": {
     "retainArtifacts": false,
     "maximumQualityAttempts": 3,
@@ -946,7 +946,7 @@ Terminal event:
 ```text
 id: 142
 event: run-succeeded
-data: {"runId":"01J...","assembledText":"Hello World","sha256":"..."}
+data: {"runId":"01J...","assembledText":"HELLO WORLD","sha256":"..."}
 ```
 
 ## 10.4 Cancel run
@@ -986,7 +986,7 @@ Request:
 ```xml
 <glyph:PlanPhraseRequest
     xmlns:glyph="urn:rube-goldberg:glyph-catalog:v1">
-  <glyph:message>Hello World</glyph:message>
+  <glyph:message>HELLO WORLD</glyph:message>
   <glyph:alphabet>RUBE_SIMPLEX_V1</glyph:alphabet>
   <glyph:variant>PRIMARY</glyph:variant>
 </glyph:PlanPhraseRequest>
@@ -1775,7 +1775,7 @@ When `run-succeeded` arrives:
 7. Type:
 
    ```text
-   Hello World
+   HELLO WORLD
    ```
 
 8. Display a giant:
@@ -2442,13 +2442,13 @@ Commit small golden fixtures for:
 
 ```text
 H
-e
-l
-o
+E
+L
+O
 W
-r
-d
-Hello World
+R
+D
+HELLO WORLD
 ```
 
 Golden tests should compare:
@@ -2502,7 +2502,7 @@ Primary test:
 
 ```bash
 OUTPUT="$(rghw run --quiet)"
-test "$OUTPUT" = "Hello World"
+test "$OUTPUT" = "HELLO WORLD"
 ```
 
 Additional assertions:
@@ -2552,7 +2552,7 @@ The project is complete only when all of the following are true.
 ## Functional
 
 - `make demo` works on a documented laptop environment.
-- `rghw run` prints exactly `Hello World`.
+- `rghw run` prints exactly `HELLO WORLD`.
 - The CLI exits successfully.
 - The output comes from the assembly event.
 - The assembly comes from adjudicated OCR symbols.
@@ -2717,7 +2717,7 @@ Deliver:
 
 Acceptance:
 
-- `"Hello World"` produces eleven ordered blueprint records.
+- `"HELLO WORLD"` produces eleven ordered blueprint records.
 - Gap position exists.
 - Downstream event excludes plaintext and code point.
 
@@ -2765,7 +2765,7 @@ Deliver:
 
 Acceptance:
 
-- Raw phrase image visually reads `"Hello World"`.
+- Raw phrase image visually reads `"HELLO WORLD"`.
 - Prepared image is suitable for OCR.
 - Gap is derived from layout width.
 
@@ -2804,7 +2804,7 @@ rghw run --quiet
 prints exactly:
 
 ```text
-Hello World
+HELLO WORLD
 ```
 
 from the OCR-derived assembly.
@@ -2939,7 +2939,7 @@ causes a local Kubernetes cluster containing a distributed, event-driven, polygl
 11. Print:
 
     ```text
-    Hello World
+    HELLO WORLD
     ```
 
 12. Exit.

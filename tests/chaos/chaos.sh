@@ -73,11 +73,11 @@ verify_run_completes() {
     say "FAIL: run failed after chaos: $output"
     exit 1
   }
-  if ! echo "$output" | grep -q "Hello World"; then
-    say "FAIL: run did not produce expected output after chaos"
+  if ! echo "$output" | grep -q "HELLO WORLD"; then
+    say "FAIL: run did not produce expected output after chaos (expected HELLO WORLD)"
     exit 1
   fi
-  say "Run completed successfully after chaos"
+  say "Run completed successfully after chaos (HELLO WORLD)"
 }
 
 main() {

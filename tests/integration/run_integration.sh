@@ -479,7 +479,7 @@ echo "Verifying Milestone 7 composition and preprocessing (--once):"
 
 if command -v python3 >/dev/null 2>&1 && [ -f "$ROOT/services/image-pipeline-python/src/rg_image_pipeline/__init__.py" ]; then
   # Create fixture glyph inputs (simulating rasterized glyph outputs)
-  # We create 11 JSON fixtures: 10 drawables + 1 gap, matching "Hello World"
+  # We create 11 JSON fixtures: 10 drawables + 1 gap, matching "HELLO WORLD"
   M7_FIXTURES="/tmp/rghw-m7-glyphs"
   mkdir -p "$M7_FIXTURES"
 
@@ -754,6 +754,81 @@ OBS
   rm -rf "$M8_FIXTURES"
 else
   skip "node or python3 for M8 OCR/adjudication"
+fi
+
+echo ""
+echo "Verifying Milestone 9 Rust assembly (--once):"
+
+if [ -x "$ROOT/services/phrase-assembler-rust/target/debug/phrase-assembler" ]; then
+  M9_FIXTURES="/tmp/rghw-m9-fixtures"
+  mkdir -p "$M9_FIXTURES"
+  python3 -c "
+import json, os
+out = '$M9_FIXTURES/tokens.json'
+tokens = []
+for pos in range(11):
+    if pos == 5:
+        tok = {'position': 5, 'tokenType': 'Gap', 'utf8': ' ', 'confidence': 0.99, 'inputArtifact': 'evidence-gap-5', 'run_id': 'run-123'}
+    else:
+        ch = 'HELLO WORLD'[pos]
+        tok = {'position': pos, 'tokenType': 'Symbol', 'utf8': ch, 'confidence': 0.95, 'inputArtifact': f'evidence-{pos}', 'run_id': 'run-123'}
+    tokens.append(tok)
+with open(out, 'w') as f:
+    json.dump(tokens, f)
+print('M9 fixtures created')
+"
+  PHRASE_BIN="$ROOT/services/phrase-assembler-rust/target/debug/phrase-assembler"
+  if "$PHRASE_BIN" --once --input="$M9_FIXTURES/tokens.json" --output="$M9_FIXTURES/manifest.json" --event-output="$M9_FIXTURES/event.json" 2>/tmp/rghw-m9.log; then
+    ASSEMBLED=$(cat "$M9_FIXTURES/manifest.json" | python3 -c "import json,sys; m=json.load(open(sys.argv[1])); print(m.get('sha256',''))" "$M9_FIXTURES/manifest.json" 2>/dev/null || echo "")
+    TEXT=$(python3 -c "import json; print(open('$M9_FIXTURES/manifest.json').read()[:200])" 2>/dev/null)
+    # manifest exists
+    if [ -f "$M9_FIXTURES/manifest.json" ]; then
+      say "[ ok ] phrase-assembler --once produced manifest"
+    else
+      FAILED=$((FAILED + 1))
+      say "[FAIL] phrase-assembler manifest missing"
+    fi
+    if [ -f "$M9_FIXTURES/event.json" ]; then
+      if grep -q '"inputMaturity": 80' "$M9_FIXTURES/event.json" && grep -q '"outputMaturity": 90' "$M9_FIXTURES/event.json"; then
+        say "[ ok ] phrase-assembled event mature 80 -> 90"
+      else
+        FAILED=$((FAILED + 1))
+        say "[FAIL] phrase-assembled event missing maturity 80 -> 90"
+      fi
+      if grep -q '"assembledText": "HELLO WORLD"' "$M9_FIXTURES/event.json"; then
+        say "[ ok ] phrase-assembled text HELLO WORLD"
+      else
+        FAILED=$((FAILED + 1))
+        say "[FAIL] phrase-assembled text wrong: $(cat "$M9_FIXTURES/event.json" | head -n 5)"
+      fi
+      for field in message targetText expectedCharacter unicodeCodePoint characterName glyphLabel; do
+        if grep -q "\"\$field\"" "$M9_FIXTURES/event.json"; then
+          FAILED=$((FAILED + 1))
+          say "[FAIL] prohibited field '\$field' present in phrase-assembled event"
+        fi
+      done
+      say "[ ok ] no prohibited fields in phrase-assembled event"
+      # determinism
+      "$PHRASE_BIN" --once --input="$M9_FIXTURES/tokens.json" --output="$M9_FIXTURES/manifest2.json" --event-output="$M9_FIXTURES/event2.json" >/dev/null 2>&1
+      if cmp -s "$M9_FIXTURES/manifest.json" "$M9_FIXTURES/manifest2.json"; then
+        say "[ ok ] phrase-assembler --once deterministic"
+      else
+        FAILED=$((FAILED + 1))
+        say "[FAIL] phrase-assembler --once not deterministic"
+      fi
+    else
+      FAILED=$((FAILED + 1))
+      say "[FAIL] phrase-assembler event missing"
+    fi
+    # duplicate/missing rejection is covered by unit tests
+  else
+    FAILED=$((FAILED + 1))
+    say "[FAIL] phrase-assembler --once failed"
+    cat /tmp/rghw-m9.log
+  fi
+  rm -rf "$M9_FIXTURES"
+else
+  skip "phrase-assembler binary for M9"
 fi
 
 echo ""

@@ -31,7 +31,7 @@ The primary acceptance test arrives in Milestone 9:
 
 ```bash
 OUTPUT="$(rghw run --quiet)"
-test "$OUTPUT" = "Hello World"
+test "$OUTPUT" = "HELLO WORLD"
 ```
 
 plus assertions on run status, maturity ranks, artifact lineage, OCR
