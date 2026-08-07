@@ -49,6 +49,15 @@
       "type": "string",
       "description": "The assembled UTF-8 phrase. Not present in any downstream event before final validation (section 7.1)"
     },
-    "sha256": { "type": "string" }
+    "sha256": { "type": "string" },
+    "provenanceAttestation": {
+      "type": "string",
+      "description": "Whitespace-encoded provenance attestation (runId, stepId, attempt, maturity, sha256, artifact counts)"
+    },
+    "provenanceSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 of the provenance attestation"
+    }
   }
 }
