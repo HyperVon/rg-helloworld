@@ -35,13 +35,13 @@ const (
 
 // Rasterizer geometry knobs (mirror the C# rasterizer constants): the
 // normalized em-square maps onto a 512x512 canvas with the baseline at
-// 400 px; the default render profile is a 28-unit round-cap stroke at 2x
+// 400 px; the default render profile is a 80-unit round-cap stroke at 2x
 // supersampling.
 const (
 	rasterCanvasSize     = 512
 	rasterBaseline       = 400.0
 	rasterEmSize         = 1024.0
-	defaultStrokeWidth   = 28.0
+	defaultStrokeWidth   = 80.0
 	defaultSupersampling = 2
 )
 

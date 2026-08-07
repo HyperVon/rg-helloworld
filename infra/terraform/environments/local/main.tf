@@ -67,7 +67,7 @@ resource "kubernetes_secret" "redis_credentials" {
     namespace = local.namespace
   }
   data = {
-    password = "RedisPassw0rd!"
+    redis-password = "RedisPassw0rd!"
   }
 }
 

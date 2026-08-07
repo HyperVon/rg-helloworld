@@ -44,10 +44,10 @@ namespace Rghw.Rasterizer.V1 {
             "aGVpZ2h0GAUgASgNEhIKCmJ5dGVfY291bnQYBiABKAQSFAoMY29udGVudF90",
             "eXBlGAcgASgJMmgKClJhc3Rlcml6ZXISWgoLUmVuZGVyR2x5cGgSJC5yZy5y",
             "YXN0ZXJpemVyLnYxLlJlbmRlckdseXBoUmVxdWVzdBolLnJnLnJhc3Rlcml6",
-            "ZXIudjEuUmVuZGVyR2x5cGhSZXNwb25zZUJzChlkZXYucmdoZWxsby5yYXN0",
-            "ZXJpemVyLnYxWj5yZ2hlbGxvLmRldi92ZWN0b3Itbm9ybWFsaXplci9pbnRl",
-            "cm5hbC9yYXN0ZXJwcm90bztyYXN0ZXJwcm90b6oCFVJnSGVsbG8uUmFzdGVy",
-            "aXplci5WMWIGcHJvdG8z"));
+            "ZXIudjEuUmVuZGVyR2x5cGhSZXNwb25zZUJqChZkZXYucmdody5yYXN0ZXJp",
+            "emVyLnYxWjtyZ2h3LmRldi92ZWN0b3Itbm9ybWFsaXplci9pbnRlcm5hbC9y",
+            "YXN0ZXJwcm90bztyYXN0ZXJwcm90b6oCElJnaHcuUmFzdGVyaXplci5WMWIG",
+            "cHJvdG8z"));
       descriptor = pbr::FileDescriptor.FromGeneratedCode(descriptorData,
           new pbr::FileDescriptor[] { },
           new pbr::GeneratedClrTypeInfo(null, null, new pbr::GeneratedClrTypeInfo[] {

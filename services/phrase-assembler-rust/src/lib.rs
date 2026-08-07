@@ -338,13 +338,11 @@ pub fn input_topic() -> String {
 }
 
 pub fn output_topic() -> String {
-    std::env::var("ASSEMBLER_OUTPUT_TOPIC")
-        .unwrap_or_else(|_| "rg.phrase-assembled.v1".to_string())
+    std::env::var("ASSEMBLER_OUTPUT_TOPIC").unwrap_or_else(|_| "rg.phrase-assembled.v1".to_string())
 }
 
 pub fn group_id() -> String {
-    std::env::var("KAFKA_GROUP_ID")
-        .unwrap_or_else(|_| "phrase-assembler-v1".to_string())
+    std::env::var("KAFKA_GROUP_ID").unwrap_or_else(|_| "phrase-assembler-v1".to_string())
 }
 
 pub fn process_adjudicated_payload(payload: &[u8]) -> Result<AdjudicatedToken, String> {
@@ -367,8 +365,11 @@ pub fn flush_run_buffer(
     tokens: Vec<AdjudicatedToken>,
 ) -> Result<(String, String), String> {
     let (text, manifest) = assemble(tokens).map_err(|e| e.to_string())?;
-    let input_artifacts: Vec<String> =
-        manifest.positions.iter().map(|p| p.evidence_artifact.clone()).collect();
+    let input_artifacts: Vec<String> = manifest
+        .positions
+        .iter()
+        .map(|p| p.evidence_artifact.clone())
+        .collect();
     let output_artifacts = vec![manifest.sha256.clone()];
     let event_json = build_assembly_event(
         run_id.clone(),
@@ -393,61 +394,88 @@ mod tests {
     #[test]
     fn kafka_bootstrap_default() {
         let _guard = ENV_LOCK.lock().unwrap();
-        unsafe { env::remove_var("KAFKA_BOOTSTRAP"); }
-        assert_eq!(kafka_bootstrap(), "kafka.rube-goldberg.svc.cluster.local:9092");
+        unsafe {
+            env::remove_var("KAFKA_BOOTSTRAP");
+        }
+        assert_eq!(
+            kafka_bootstrap(),
+            "kafka.rube-goldberg.svc.cluster.local:9092"
+        );
     }
 
     #[test]
     fn kafka_bootstrap_override() {
         let _guard = ENV_LOCK.lock().unwrap();
-        unsafe { env::set_var("KAFKA_BOOTSTRAP", "custom:9092"); }
+        unsafe {
+            env::set_var("KAFKA_BOOTSTRAP", "custom:9092");
+        }
         assert_eq!(kafka_bootstrap(), "custom:9092");
-        unsafe { env::remove_var("KAFKA_BOOTSTRAP"); }
+        unsafe {
+            env::remove_var("KAFKA_BOOTSTRAP");
+        }
     }
 
     #[test]
     fn input_topic_default() {
         let _guard = ENV_LOCK.lock().unwrap();
-        unsafe { env::remove_var("ASSEMBLER_INPUT_TOPIC"); }
+        unsafe {
+            env::remove_var("ASSEMBLER_INPUT_TOPIC");
+        }
         assert_eq!(input_topic(), "rg.symbols-adjudicated.v1");
     }
 
     #[test]
     fn input_topic_override() {
         let _guard = ENV_LOCK.lock().unwrap();
-        unsafe { env::set_var("ASSEMBLER_INPUT_TOPIC", "custom-topic"); }
+        unsafe {
+            env::set_var("ASSEMBLER_INPUT_TOPIC", "custom-topic");
+        }
         assert_eq!(input_topic(), "custom-topic");
-        unsafe { env::remove_var("ASSEMBLER_INPUT_TOPIC"); }
+        unsafe {
+            env::remove_var("ASSEMBLER_INPUT_TOPIC");
+        }
     }
 
     #[test]
     fn output_topic_default() {
         let _guard = ENV_LOCK.lock().unwrap();
-        unsafe { env::remove_var("ASSEMBLER_OUTPUT_TOPIC"); }
+        unsafe {
+            env::remove_var("ASSEMBLER_OUTPUT_TOPIC");
+        }
         assert_eq!(output_topic(), "rg.phrase-assembled.v1");
     }
 
     #[test]
     fn output_topic_override() {
         let _guard = ENV_LOCK.lock().unwrap();
-        unsafe { env::set_var("ASSEMBLER_OUTPUT_TOPIC", "custom-out"); }
+        unsafe {
+            env::set_var("ASSEMBLER_OUTPUT_TOPIC", "custom-out");
+        }
         assert_eq!(output_topic(), "custom-out");
-        unsafe { env::remove_var("ASSEMBLER_OUTPUT_TOPIC"); }
+        unsafe {
+            env::remove_var("ASSEMBLER_OUTPUT_TOPIC");
+        }
     }
 
     #[test]
     fn group_id_default() {
         let _guard = ENV_LOCK.lock().unwrap();
-        unsafe { env::remove_var("KAFKA_GROUP_ID"); }
+        unsafe {
+            env::remove_var("KAFKA_GROUP_ID");
+        }
         assert_eq!(group_id(), "phrase-assembler-v1");
     }
 
     #[test]
     fn group_id_override() {
         let _guard = ENV_LOCK.lock().unwrap();
-        unsafe { env::set_var("KAFKA_GROUP_ID", "custom-group"); }
+        unsafe {
+            env::set_var("KAFKA_GROUP_ID", "custom-group");
+        }
         assert_eq!(group_id(), "custom-group");
-        unsafe { env::remove_var("KAFKA_GROUP_ID"); }
+        unsafe {
+            env::remove_var("KAFKA_GROUP_ID");
+        }
     }
 
     #[test]
@@ -599,5 +627,64 @@ mod tests {
             },
         ];
         assert!(flush_run_buffer("run-1".to_string(), tokens).is_err());
+    }
+
+    #[test]
+    fn build_operation_id_deterministic() {
+        let id = build_operation_id("run-1", "step-1", 1, "abc");
+        assert_eq!(id.len(), 64);
+        assert!(id.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    #[test]
+    fn check_prohibited_fields_detects_violations() {
+        let event = r#"{"targetText":"Hello","expectedCharacter":"H"}"#;
+        let found = check_prohibited_fields(event);
+        assert!(found.contains(&"targetText".to_string()));
+        assert!(found.contains(&"expectedCharacter".to_string()));
+    }
+
+    #[test]
+    fn check_prohibited_fields_clean_event() {
+        let event = r#"{"specversion":"1.0","data":{"assembledText":"Hi"}}"#;
+        let found = check_prohibited_fields(event);
+        assert!(found.is_empty());
+    }
+
+    #[test]
+    fn assemble_missing_position() {
+        let tokens = vec![
+            AdjudicatedToken {
+                position: 0,
+                token_type: TokenType::Symbol,
+                utf8: "H".to_string(),
+                confidence: 0.9,
+                input_artifact: "a1".to_string(),
+                run_id: None,
+            },
+            AdjudicatedToken {
+                position: 2,
+                token_type: TokenType::Symbol,
+                utf8: "i".to_string(),
+                confidence: 0.9,
+                input_artifact: "a2".to_string(),
+                run_id: None,
+            },
+        ];
+        let result = assemble(tokens);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn build_provenance_attestation_whitespace() {
+        let manifest = AssemblyManifest {
+            positions: vec![],
+            total_bytes: 0,
+            sha256: "abc".to_string(),
+        };
+        let attestation = build_provenance_attestation("run-1", "step-1", 1, &manifest, &[], &[]);
+        assert!(!attestation.is_empty());
+        let decoded = whitespace::decode(&attestation).unwrap_or_default();
+        assert!(decoded.contains("runId=run-1"));
     }
 }

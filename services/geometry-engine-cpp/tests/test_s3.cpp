@@ -125,7 +125,7 @@ int main() {
       "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
   std::string signature =
       rghw::signV4("wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY", "20130524T000000Z", "20130524",
-                      "us-east-1", "s3", canonicalRequest);
+                   "us-east-1", "s3", canonicalRequest);
   // Verified against an independent Python implementation of the AWS
   // algorithm (raw-digest signing chain).
   if (signature != "67fe34c8530db585abddc51067328adfedb6e42487d2566dc7d927d6e2722900") {
@@ -144,7 +144,7 @@ int main() {
   // PUT against the in-process server: path, signed headers, body, ETag.
   TestServer server;
   rghw::S3Client client("http://127.0.0.1:" + std::to_string(server.port()), "minioadmin",
-                           "minioadmin", 3000);
+                        "minioadmin", 3000);
   std::string body = "{\"kind\":\"DRAWABLE_GEOMETRY\"}";
   std::string etag;
   bool ok =
@@ -204,8 +204,8 @@ int main() {
     std::thread thread_;
   };
   FailingServer failing;
-  rghw::S3Client failingClient("http://127.0.0.1:" + std::to_string(failing.port()),
-                                  "minioadmin", "minioadmin", 3000);
+  rghw::S3Client failingClient("http://127.0.0.1:" + std::to_string(failing.port()), "minioadmin",
+                               "minioadmin", 3000);
   expect(!failingClient.putObject("bucket", "key", "{}"), "non-2xx response fails the PUT");
 
   if (failures == 0) {

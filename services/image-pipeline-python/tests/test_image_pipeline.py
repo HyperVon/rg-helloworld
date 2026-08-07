@@ -30,6 +30,7 @@ from rg_image_pipeline.imaging import (
 )
 from rg_image_pipeline.preprocessing import PreprocessParams
 from rg_image_pipeline.preprocessing_impl import preprocess_phrase_image
+from rg_image_pipeline.worker import _build_glyphs, _preprocess_and_publish
 
 
 def make_test_png(width: int, height: int, color=(255, 255, 255, 255)) -> bytes:
@@ -229,6 +230,48 @@ class TestComposition(unittest.TestCase):
         result = compose_phrase(inputs, scale_factor=2.0)
         self.assertGreater(result.phrase_image.width, 0)
 
+    def test_compose_phrase_scales_oversized_glyph_to_em(self):
+        glyph = make_test_png(284, 433)
+        inputs = [
+            RasterizedGlyphInput(
+                position=0,
+                object_key="a",
+                minio_uri=None,
+                sha256=sha256_bytes(glyph),
+                width=284,
+                height=433,
+                advance_width=1.0,
+                kind="DRAWABLE",
+                image_bytes=glyph,
+                pixel_density=1024.0 / 433.0,
+            ),
+        ]
+        result = compose_phrase(inputs)
+        entry = result.manifest.layout[0]
+        self.assertLessEqual(entry.height, 148)
+        self.assertLessEqual(entry.x + entry.width, result.phrase_image.width)
+        self.assertLessEqual(entry.y + entry.height, result.phrase_image.height)
+
+    def test_compose_phrase_scales_oversized_glyph_without_density(self):
+        glyph = make_test_png(284, 433)
+        inputs = [
+            RasterizedGlyphInput(
+                position=0,
+                object_key="a",
+                minio_uri=None,
+                sha256=sha256_bytes(glyph),
+                width=284,
+                height=433,
+                advance_width=1.0,
+                kind="DRAWABLE",
+                image_bytes=glyph,
+            ),
+        ]
+        result = compose_phrase(inputs)
+        entry = result.manifest.layout[0]
+        self.assertLessEqual(entry.height, 148)
+        self.assertLessEqual(entry.y + entry.height, result.phrase_image.height)
+
     def test_deterministic_operation_id(self):
         op1 = deterministic_operation_id("run-1", "step-1", 1, ["hash1"])
         op2 = deterministic_operation_id("run-1", "step-1", 1, ["hash1"])
@@ -268,6 +311,44 @@ class TestPreprocessing(unittest.TestCase):
         self.assertIsInstance(prep.ocr_image, ImageArtifact)
         self.assertGreater(prep.ocr_image.width, 0)
         self.assertGreater(prep.ocr_image.height, 0)
+
+    def test_preprocess_flattens_transparent_background(self):
+        import io
+
+        from PIL import Image as PILImage
+
+        glyph = make_test_png(32, 64, (0, 0, 0, 255))
+        canvas = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+        glyph_img = PILImage.open(io.BytesIO(glyph))
+        canvas.paste(glyph_img, (0, 0), glyph_img)
+        phrase_bytes = encode_png(canvas)
+        manifest = CompositionManifest(
+            layout=[
+                LayoutEntry(
+                    position=0,
+                    x=0,
+                    y=0,
+                    width=32,
+                    height=64,
+                    advance_width=1.0,
+                    baseline=51,
+                )
+            ],
+            total_width=64,
+            total_height=64,
+        )
+        params = PreprocessParams(
+            contrast_factor=1.0,
+            threshold_value=128,
+            border_size=0,
+            scale_factor=1,
+            noise_removal_blob_threshold=0,
+        )
+        prep = preprocess_phrase_image(phrase_bytes, manifest, params)
+        ocr = Image.open(io.BytesIO(prep.ocr_image_bytes)).convert("L")
+        pixels = list(ocr.getdata())
+        self.assertGreater(sum(1 for p in pixels if p > 128), 0)
+        self.assertIn(255, pixels)
         self.assertGreater(len(prep.ocr_image_bytes), 0)
         self.assertGreater(len(prep.position_crops), 0)
         self.assertIn("threshold", prep.report)
@@ -317,6 +398,146 @@ class TestPreprocessing(unittest.TestCase):
             self.assertEqual(crop.object_key, f"ocr-crop-position-{crop.position}.png")
             self.assertIn(crop.position, prep.crops_bytes)
             self.assertTrue(prep.crops_bytes[crop.position].startswith(PNG_MAGIC))
+
+    def test_preprocess_gap_positions(self):
+        glyph = make_test_png(32, 64, (0, 0, 0, 255))
+        inputs = [
+            RasterizedGlyphInput(
+                position=pos,
+                object_key=f"k{pos}",
+                minio_uri=None,
+                sha256=sha256_bytes(glyph),
+                width=32,
+                height=64,
+                advance_width=1.0,
+                kind="DRAWABLE",
+                image_bytes=glyph,
+            )
+            for pos in [0, 1, 2, 3, 4, 6, 7, 8, 9, 10]
+        ]
+        result = compose_phrase(inputs)
+        params = PreprocessParams(
+            threshold_value=128,
+            border_size=5,
+            scale_factor=1,
+            contrast_factor=1.0,
+            noise_removal_blob_threshold=0,
+        )
+        prep = preprocess_phrase_image(result.image_bytes, result.manifest, params)
+        self.assertNotIn(5, prep.crops_bytes)
+        self.assertIn(10, prep.crops_bytes)
+        self.assertEqual(len(prep.position_crops), 10)
+        self.assertEqual(prep.position_crops[-1].position, 10)
+
+    def test_preprocess_publish_gap_positions(self):
+        import asyncio
+
+        from rg_image_pipeline import worker as worker_module
+
+        glyph = make_test_png(32, 64, (0, 0, 0, 255))
+        inputs = [
+            RasterizedGlyphInput(
+                position=pos,
+                object_key=f"k{pos}",
+                minio_uri=None,
+                sha256=sha256_bytes(glyph),
+                width=32,
+                height=64,
+                advance_width=1.0,
+                kind="DRAWABLE",
+                image_bytes=glyph,
+            )
+            for pos in [0, 1, 2, 3, 4, 6, 7, 8, 9, 10]
+        ]
+        result = compose_phrase(inputs)
+        layout = [
+            {
+                "position": e.position,
+                "bbox": {"x": e.x, "y": e.y, "width": e.width, "height": e.height},
+            }
+            for e in result.manifest.layout
+        ]
+
+        stored = {}
+
+        class FakeMinio:
+            def get_object(self, bucket, key):
+                class Resp:
+                    def read(self):
+                        return stored[key]
+
+                    def close(self):
+                        pass
+
+                    def release_conn(self):
+                        pass
+
+                return Resp()
+
+            def put_object(self, bucket, key, data, length, content_type):
+                stored[key] = data.read()
+
+        published = []
+
+        async def fake_publish(producer, topic, event):
+            published.append((topic, event))
+
+        data = {
+            "runId": "run-gap",
+            "phraseImage": {"objectKey": "phrase-key"},
+            "compositionManifest": {"layout": layout},
+        }
+        stored["phrase-key"] = result.image_bytes
+
+        with patch.object(worker_module, "publish", side_effect=fake_publish):
+            asyncio.run(_preprocess_and_publish("run-gap", data, FakeMinio(), None))
+
+        self.assertEqual(len(published), 1)
+        topic, event = published[0]
+        self.assertEqual(topic, "rg.ocr-images.v1")
+        crop_positions = [c["position"] for c in event["data"]["positionCrops"]]
+        self.assertEqual(crop_positions, [0, 1, 2, 3, 4, 6, 7, 8, 9, 10])
+        for crop in event["data"]["positionCrops"]:
+            self.assertIn(crop["objectKey"], stored)
+
+    def test_build_glyphs_includes_gap_records(self):
+        glyph = make_test_png(10, 10)
+        records = [
+            {
+                "position": 0,
+                "raster": {"objectKey": "k0", "sha256": "a", "width": 10, "height": 10},
+            },
+            {
+                "position": 5,
+                "geometry": {"kind": "GAP_GEOMETRY", "advanceWidth": 0.6},
+            },
+            {
+                "position": 6,
+                "raster": {"objectKey": "k6", "sha256": "b", "width": 10, "height": 10},
+            },
+        ]
+
+        class FakeMinio:
+            def get_object(self, bucket, key):
+                class Resp:
+                    def read(self):
+                        return glyph
+
+                    def close(self):
+                        pass
+
+                    def release_conn(self):
+                        pass
+
+                return Resp()
+
+        glyphs = _build_glyphs(records, FakeMinio())
+        by_pos = {g.position: g for g in glyphs}
+        self.assertEqual(set(by_pos.keys()), {0, 5, 6})
+        self.assertEqual(by_pos[5].kind, "GAP")
+        self.assertEqual(by_pos[5].advance_width, 0.6)
+        self.assertIsNone(by_pos[5].image_bytes)
+        self.assertEqual(by_pos[0].kind, "DRAWABLE")
 
 
 class TestEvents(unittest.TestCase):

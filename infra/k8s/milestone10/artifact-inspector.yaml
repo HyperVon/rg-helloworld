@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: artifact-inspector
-          image: rghw-registry:5001/artifact-inspector:milestone10
+          image: rghello-registry:5001/artifact-inspector:milestone11
           imagePullPolicy: Always
           env:
             - name: EVENT_GATEWAY_URL

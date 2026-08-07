@@ -3,10 +3,8 @@ from __future__ import annotations
 import hashlib
 import io
 import os
-from typing import Any
 
 from minio import Minio
-from minio.error import S3Error
 
 
 def _default_bucket() -> str:

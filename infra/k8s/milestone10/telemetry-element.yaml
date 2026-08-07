@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: telemetry-element
-          image: rghw-registry:5001/telemetry-element:milestone10
+          image: rghello-registry:5001/telemetry-element:milestone11
           imagePullPolicy: Always
           env:
             - name: EVENT_GATEWAY_URL

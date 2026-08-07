@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: phrase-assembler
-          image: rghw-registry:5001/phrase-assembler:milestone9
+          image: rghello-registry:5001/phrase-assembler:milestone9
           imagePullPolicy: Always
           env:
             - name: KAFKA_BOOTSTRAP

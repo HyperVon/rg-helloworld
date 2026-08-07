@@ -5,7 +5,6 @@ import os
 from typing import Any
 
 from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
-from aiokafka.errors import KafkaError
 
 KAFKA_BOOTSTRAP = os.environ.get(
     "KAFKA_BOOTSTRAP_SERVERS", "kafka.rube-goldberg.svc.cluster.local:9092"

@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: image-pipeline
-          image: rghw-registry:5001/image-pipeline:milestone7
+          image: rghello-registry:5001/image-pipeline:milestone7
           imagePullPolicy: Always
           ports:
             - containerPort: 8080

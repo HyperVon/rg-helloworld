@@ -65,8 +65,7 @@ int main() {
 
   // Zero-length segments are removed.
   rghw::Primitive degenerate = polyline({{0.0, 0.0}, {0.0, 0.0}, {1.0, 0.0}});
-  std::vector<rghw::Segment> cleaned =
-      rghw::cleanSegments(rghw::expandPrimitive(degenerate, 12));
+  std::vector<rghw::Segment> cleaned = rghw::cleanSegments(rghw::expandPrimitive(degenerate, 12));
   expect(cleaned.size() == 1, "zero-length segment removed");
 
   // Non-finite coordinates are dropped.
@@ -107,8 +106,7 @@ int main() {
   std::vector<rghw::Segment> crossing = {{0.0, 0.0, 2.0, 2.0}, {0.0, 2.0, 2.0, 0.0}};
   expect(rghw::computeStats(crossing).intersectionCount == 1, "crossing segments intersect");
   std::vector<rghw::Segment> touching = {{0.0, 0.0, 2.0, 2.0}, {2.0, 2.0, 4.0, 4.0}};
-  expect(rghw::computeStats(touching).intersectionCount == 0,
-         "shared endpoints do not intersect");
+  expect(rghw::computeStats(touching).intersectionCount == 0, "shared endpoints do not intersect");
 
   // Empty segments produce an empty (zero) stats record.
   rghw::GeometryStats empty = rghw::computeStats({});

@@ -4,8 +4,8 @@ import (
 	"bufio"
 	"context"
 	"crypto/rand"
-	"encoding/json"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -49,11 +49,11 @@ type streamEvent struct {
 const defaultMessage = "SGVsbG8gV29ybGQ="
 
 func decodeDefaultMessage() string {
-    data, err := base64.StdEncoding.DecodeString(defaultMessage)
-    if err != nil {
-        return ""
-    }
-    return string(data)
+	data, err := base64.StdEncoding.DecodeString(defaultMessage)
+	if err != nil {
+		return ""
+	}
+	return string(data)
 }
 
 func newRunOptions() runOptions {

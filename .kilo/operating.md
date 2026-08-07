@@ -77,10 +77,13 @@ Do not leave the user waiting on a foreground command that never exits
 1. Start long-lived processes in the background.
 2. Wait for readiness with short polls / log patterns, not by awaiting the
    process itself.
-3. If blocked ~15–20s with no useful progress, say what you are waiting on.
-4. When done, kill the process and free ports; never leave orphan k3d, Docker,
+3. Poll running processes with SHORT sleeps (5–10s, never 60s+) and post a
+   visible one-line progress note in the chat after every poll, so the user
+   always sees the run is alive and where it is.
+4. If blocked ~15–20s with no useful progress, say what you are waiting on.
+5. When done, kill the process and free ports; never leave orphan k3d, Docker,
    Java, or Node processes.
-5. Clean up only your own temporary artifacts; preserve `.local/` persistent
+6. Clean up only your own temporary artifacts; preserve `.local/` persistent
    directories.
 
 ## 5. Complex-code comments

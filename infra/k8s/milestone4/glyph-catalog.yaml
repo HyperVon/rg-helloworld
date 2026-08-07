@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: glyph-catalog
-          image: rghw-registry:5001/glyph-catalog:milestone4
+          image: rghello-registry:5001/glyph-catalog:milestone4
           imagePullPolicy: Always
           ports:
             - containerPort: 8080

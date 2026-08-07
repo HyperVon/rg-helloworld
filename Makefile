@@ -325,7 +325,7 @@ coverage-ruby:
 coverage-rust:
 	@if command -v cargo-llvm-cov >/dev/null 2>&1; then \
 		echo ">> cargo llvm-cov (90% line gate) ($(RUST_DIR))"; \
-		cd $(RUST_DIR) && cargo llvm-cov --fail-under-lines 90; \
+		cd $(RUST_DIR) && cargo llvm-cov --lib --fail-under-lines 90; \
 	else \
 		echo "SKIP: cargo-llvm-cov not installed (CI enforces Rust coverage)"; \
 		exit 0; \
@@ -364,7 +364,7 @@ unit-dotnet:
 unit-python:
 	$(call guard_tool,python3,Python 3)
 	@echo ">> unittest ($(PYTHON_DIR))"
-	cd $(PYTHON_DIR) && PYTHONPATH=src python3 -m unittest discover -s tests -v
+	cd $(PYTHON_DIR) && PYTHONPATH=src $(VENV)/bin/python3 -m unittest discover -s tests -v
 
 unit-node:
 	@$(call node_task,test,node --test)

@@ -21,7 +21,7 @@ def preprocess_phrase_image(
     params: PreprocessParams | None = None,
 ) -> PreprocessResult:
     params = params or PreprocessParams()
-    img = load_phrase_image(phrase_image_bytes)
+    img = _flatten_on_white(load_phrase_image(phrase_image_bytes))
     gray = ImageOps.grayscale(img)
     if params.contrast_factor != 1.0:
         gray = ImageOps.autocontrast(gray, cutoff=params.contrast_factor)
@@ -45,7 +45,7 @@ def preprocess_phrase_image(
         sha256=sha256_bytes(ocr_image_bytes),
         byte_count=len(ocr_image_bytes),
     )
-    position_crops, crops_bytes = _make_crops(enhanced, manifest, params.scale_factor)
+    position_crops, crops_bytes = _make_crops(enhanced, manifest, params.scale_factor, params.border_size)
     report = _build_report(enhanced, params, phrase_image_bytes)
     return PreprocessResult(
         ocr_image=ocr_artifact,
@@ -60,13 +60,21 @@ def load_phrase_image(data: bytes) -> Image.Image:
     return Image.open(io.BytesIO(data))
 
 
+def _flatten_on_white(img: Image.Image) -> Image.Image:
+    if img.mode != "RGBA":
+        return img
+    background = Image.new("RGBA", img.size, (255, 255, 255, 255))
+    background.paste(img, mask=img.split()[3])
+    return background.convert("RGB")
+
+
 def _remove_noise(img: Image.Image, threshold: int) -> Image.Image:
     arr = np.array(img)
     binary = arr < 128
     rows, cols = binary.shape
     component_id = 0
     component_map = np.zeros_like(arr)
-    components: list[list[tuple[int, int]]] = []
+    kept_ids: set[int] = set()
     for i in range(rows):
         for j in range(cols):
             if binary[i, j] and component_map[i, j] == 0:
@@ -83,11 +91,9 @@ def _remove_noise(img: Image.Image, threshold: int) -> Image.Image:
                     component.append((ci, cj))
                     stack.extend([(ci + 1, cj), (ci - 1, cj), (ci, cj + 1), (ci, cj - 1)])
                 if len(component) >= threshold:
-                    components.append(component)
-    result = np.zeros_like(arr)
-    for comp in components:
-        for ci, cj in comp:
-            result[ci, cj] = arr[ci, cj]
+                    kept_ids.add(component_id)
+    result = arr.copy()
+    result[(binary & ~np.isin(component_map, list(kept_ids)))] = 255
     return Image.fromarray(result)
 
 
@@ -95,15 +101,21 @@ def _make_crops(
     img: Image.Image,
     manifest: CompositionManifest,
     scale_factor: int,
+    border_size: int = 0,
+    crop_padding: int = 8,
 ) -> tuple[list[PositionCrop], dict[int, bytes]]:
     scale = scale_factor if scale_factor > 0 else 1
+    border = border_size * scale
+    pad = crop_padding * scale
     position_crops: list[PositionCrop] = []
     crops_bytes: dict[int, bytes] = {}
     for entry in manifest.layout:
-        x = entry.x * scale
-        y = entry.y * scale
-        w = max(1, entry.width * scale)
-        h = max(1, entry.height * scale)
+        x = entry.x * scale + border - pad
+        y = entry.y * scale + border - pad
+        w = max(1, entry.width * scale) + 2 * pad
+        h = max(1, entry.height * scale) + 2 * pad
+        x = max(0, x)
+        y = max(0, y)
         crop_img = img.crop((x, y, x + w, y + h))
         crop_bytes = encode_png(crop_img)
         object_key = f"ocr-crop-position-{entry.position}.png"

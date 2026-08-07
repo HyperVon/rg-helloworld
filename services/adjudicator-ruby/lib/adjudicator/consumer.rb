@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'kafka'
+require 'rdkafka'
 require 'json'
 require '/app/lib/adjudicator'
 
@@ -14,20 +14,25 @@ module AdjudicatorConsumer
   module_function
 
   def run
-    kafka = Kafka.new([KAFKA_BOOTSTRAP], client_id: Adjudicator::SERVICE_NAME)
-    consumer = kafka.consumer(group_id: KAFKA_GROUP_ID)
+    config = {
+      'bootstrap.servers' => KAFKA_BOOTSTRAP,
+      'group.id' => KAFKA_GROUP_ID,
+      'auto.offset.reset' => 'earliest'
+    }
+    consumer = Rdkafka::Config.new(config).consumer
+    producer = Rdkafka::Config.new(config).producer
 
     consumer.subscribe(OBSERVATIONS_TOPIC)
 
     puts "Consuming #{OBSERVATIONS_TOPIC} -> #{ADJUDICATED_TOPIC}"
 
-    consumer.each_message do |message|
-      process_message(kafka, message)
+    consumer.each do |message|
+      process_message(producer, message)
     end
   end
 
-  def process_message(kafka, message)
-    event = JSON.parse(message.value)
+  def process_message(producer, message)
+    event = JSON.parse(message.payload)
     data = event['data'] || event
 
     validate_no_prohibited_fields(event)
@@ -48,7 +53,7 @@ module AdjudicatorConsumer
       attempt: attempt
     )
 
-    publish_events(kafka, data, result)
+    publish_events(producer, data, result)
   rescue JSON::ParserError => e
     warn "Failed to parse message: #{e.message}"
   rescue StandardError => e
@@ -56,7 +61,7 @@ module AdjudicatorConsumer
   end
 
   def validate_no_prohibited_fields(event)
-    violations = Adjudicator.check_prohibited_fields(JSON.generate(event))
+    violations = Adjudicator::AdjudicatorImpl.check_prohibited_fields(JSON.generate(event))
     raise "Prohibited fields detected: #{violations.join(', ')}" unless violations.empty?
   end
 
@@ -68,25 +73,21 @@ module AdjudicatorConsumer
     raise "Invalid maturity: input=#{input_maturity}, output=#{output_maturity}"
   end
 
-  def publish_events(kafka, data, result)
+  def publish_events(producer, data, result)
     run_id = data['runId'] || 'unknown'
     step_id = data['stepId'] || 'unknown'
     attempt = data['attempt'] || 1
-
-    producer = kafka.producer
 
     result[:acceptedSymbols].each do |symbol|
       event = Adjudicator::AdjudicatorImpl.build_symbol_event(
         run_id, step_id, generate_glyph_instance_id(symbol[:position]), attempt, symbol[:position], symbol
       )
-      producer.produce(event, topic: ADJUDICATED_TOPIC)
+      producer.produce(topic: ADJUDICATED_TOPIC, payload: JSON.generate(event))
     end
 
     result[:retryEvents].each do |event|
-      producer.produce(event, topic: QUALITY_RETRY_TOPIC)
+      producer.produce(topic: QUALITY_RETRY_TOPIC, payload: JSON.generate(event))
     end
-
-    producer.deliver_messages
   end
 
   def generate_glyph_instance_id(position)

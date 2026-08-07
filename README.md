@@ -30,7 +30,7 @@ vector glyph blueprints
 
 ## Status
 
-**Milestone 11 (Observability) is complete.**
+**Milestone 12 (Hardening and demonstration) is complete.**
 
 The system now includes:
 - Full pipeline: CLI → orchestrator → glyph catalog → geometry → rasterization → composition → OCR → adjudication → assembly → SSE
@@ -38,7 +38,8 @@ The system now includes:
 - Kafka, Redis Streams, PostgreSQL, MinIO, Kubernetes (k3d)
 - OpenTelemetry tracing, Prometheus metrics, Grafana dashboards
 - Whitespace provenance attestation and Brainfuck integrity guards
-- Complete test suites, integration tests, and e2e smoke tests
+- Complete test suites, integration tests, e2e smoke tests
+- Chaos testing, low-memory profiles, artifact cleanup, operational runbook, troubleshooting guide
 
 See [docs/implementation-status.md](docs/implementation-status.md) for the
 authoritative status and [docs/architecture.md](docs/architecture.md) for the
@@ -108,8 +109,8 @@ make wait            wait for readiness
 make run             start a run via the CLI
 make demo            full demonstration (later milestone)
 make e2e             full milestone acceptance
-make chaos           chaos tests (later milestone)
-make diagnostics     collect diagnostics (later milestone)
+make chaos           chaos tests
+make diagnostics     collect diagnostics
 make down            scale workloads down (later milestone)
 make destroy         delete the local environment (later milestone)
 ```

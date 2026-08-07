@@ -1,22 +1,20 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import os
 from collections import defaultdict
 from typing import Any
 
-from aiokafka import AIOKafkaConsumer
-
-from . import __version__
-from .composition import compose_phrase, deterministic_operation_id
+from .composition import compose_phrase
 from .events import CloudEvent, build_operation_id, validate_no_prohibited_fields
-from .imaging import ImageArtifact, sha256_bytes
 from .kafka_client import create_consumer, create_producer, publish
 from .minio_store import create_client, get_bytes, object_key_for, put_bytes
 from .preprocessing_impl import preprocess_phrase_image
 
 INPUT_TOPIC = os.environ.get("KAFKA_RASTERIZED_TOPIC", "rg.glyph-rasterized.v1")
+GEOMETRY_TOPIC = os.environ.get("KAFKA_GEOMETRY_TOPIC", "rg.geometry-expanded.v1")
 OUTPUT_TOPIC = os.environ.get("KAFKA_PHRASE_COMPOSED_TOPIC", "rg.phrase-composed.v1")
 OCR_INPUT_TOPIC = os.environ.get("KAFKA_PHRASE_COMPOSED_TOPIC", "rg.phrase-composed.v1")
 OCR_OUTPUT_TOPIC = os.environ.get("KAFKA_OCR_IMAGES_TOPIC", "rg.ocr-images.v1")
@@ -25,7 +23,9 @@ SOURCE = "image-pipeline"
 
 
 async def run_worker() -> None:
-    compose_consumer = await create_consumer([INPUT_TOPIC], group_id=GROUP_ID + "-compose")
+    compose_consumer = await create_consumer(
+        [INPUT_TOPIC, GEOMETRY_TOPIC], group_id=GROUP_ID + "-compose"
+    )
     preprocess_consumer = await create_consumer(
         [OCR_INPUT_TOPIC], group_id=GROUP_ID + "-preprocess"
     )
@@ -61,16 +61,21 @@ async def run_worker() -> None:
                 run_id = data.get("runId")
                 if not run_id:
                     continue
-                if event.get("type") == "rg.glyph-rasterized.v1":
+                is_rasterized = event.get("type") == "rg.glyph-rasterized.v1"
+                is_gap = (
+                    event.get("type") == "rg.geometry-expanded.v1"
+                    and data.get("geometry", {}).get("kind") == "GAP_GEOMETRY"
+                )
+                if is_rasterized or is_gap:
                     pending[run_id].append(data)
                     on_rasterized(run_id)
             except Exception as e:
                 print(f"image-pipeline compose consumer error: {e}")
-                try:
+                with contextlib.suppress(Exception):
                     await consumer.stop()
-                except Exception:
-                    pass
-                consumer = await create_consumer([INPUT_TOPIC], group_id=GROUP_ID + "-compose")
+                consumer = await create_consumer(
+                    [INPUT_TOPIC, GEOMETRY_TOPIC], group_id=GROUP_ID + "-compose"
+                )
 
     async def consume_preprocess() -> None:
         consumer = preprocess_consumer
@@ -86,10 +91,8 @@ async def run_worker() -> None:
                     await _preprocess_and_publish(run_id, data, minio, producer)
             except Exception as e:
                 print(f"image-pipeline preprocess consumer error: {e}")
-                try:
+                with contextlib.suppress(Exception):
                     await consumer.stop()
-                except Exception:
-                    pass
                 consumer = await create_consumer(
                     [OCR_INPUT_TOPIC], group_id=GROUP_ID + "-preprocess"
                 )
@@ -122,6 +125,11 @@ def _build_glyphs(records: list[dict[str, Any]], minio: Any) -> list[Any] | None
     from .composition import RasterizedGlyphInput
 
     drawable = [r for r in records if r.get("position") is not None and r.get("raster")]
+    gaps = [
+        r
+        for r in records
+        if r.get("position") is not None and r.get("geometry", {}).get("kind") == "GAP_GEOMETRY"
+    ]
     if not drawable:
         return None
 
@@ -147,6 +155,22 @@ def _build_glyphs(records: list[dict[str, Any]], minio: Any) -> list[Any] | None
                 baseline=0.0,
                 kind="DRAWABLE",
                 image_bytes=image_bytes,
+                pixel_density=raster.get("pixelDensity"),
+            )
+        )
+    for r in gaps:
+        glyphs.append(
+            RasterizedGlyphInput(
+                position=r["position"],
+                object_key="",
+                minio_uri=None,
+                sha256="",
+                width=0,
+                height=0,
+                advance_width=r.get("geometry", {}).get("advanceWidth", 0.0),
+                baseline=0.0,
+                kind="GAP",
+                image_bytes=None,
             )
         )
     return glyphs
@@ -245,17 +269,19 @@ async def _preprocess_and_publish(
     put_bytes(minio, BUCKET, ocr_key, result.ocr_image_bytes, "image/png")
 
     crop_keys = []
+    crop_by_position = {c.position: c for c in result.position_crops}
     for pos, crop_bytes in result.crops_bytes.items():
+        crop = crop_by_position[pos]
         crop_key = object_key_for(run_id, result.ocr_image.sha256, f"crop-{pos}.png")
         put_bytes(minio, BUCKET, crop_key, crop_bytes, "image/png")
         crop_keys.append(
             {
                 "position": pos,
                 "objectKey": crop_key,
-                "x": result.position_crops[pos].x,
-                "y": result.position_crops[pos].y,
-                "width": result.position_crops[pos].width,
-                "height": result.position_crops[pos].height,
+                "x": crop.x,
+                "y": crop.y,
+                "width": crop.width,
+                "height": crop.height,
             }
         )
 

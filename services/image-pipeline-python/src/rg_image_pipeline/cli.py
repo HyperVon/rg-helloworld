@@ -252,6 +252,7 @@ def main(argv: list[str] | None = None) -> int:
         return run_preprocess_once(args)
     if args.command == "serve":
         import asyncio
+
         from .worker import run_worker
 
         asyncio.run(run_worker())

@@ -199,7 +199,7 @@ int main() {
   std::string directory = "runs/" + runId + "/glyphs/0-" + glyphId;
   std::string operationId =
       rghw::sha256Hex(runId + "expand-geometry" + glyphId + "1" +
-                         rghw::sha256Hex(rghw::Json::parse(input).at("data").serialize()));
+                      rghw::sha256Hex(rghw::Json::parse(input).at("data").serialize()));
   expectEq(outcome.blueprintArtifactKey, directory + "/blueprint.json", "blueprint artifact key");
   expectEq(outcome.geometryArtifactKey, directory + "/geometry-attempt-1-" + operationId + ".json",
            "geometry artifact key embeds the operation id");
@@ -209,8 +209,8 @@ int main() {
            "output artifact reference");
   expectEq(outcome.blueprintArtifactJson, rghw::Json::parse(input).at("data").serialize(),
            "blueprint snapshot is the data payload");
-  expectEq(geometry.at("geometrySha256").asString(),
-           rghw::sha256Hex(outcome.geometryArtifactJson), "geometry checksum matches artifact");
+  expectEq(geometry.at("geometrySha256").asString(), rghw::sha256Hex(outcome.geometryArtifactJson),
+           "geometry checksum matches artifact");
 
   // Determinism: identical input yields byte-identical output.
   expectEq(rghw::processBlueprint(input, {}).outputEventJson, outcome.outputEventJson,

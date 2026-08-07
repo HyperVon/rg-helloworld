@@ -60,8 +60,8 @@ int runWorker() {
   kafka.subscribe({inputTopic});
 
   rghw::S3Client s3(envOr("MINIO_ENDPOINT", "http://localhost:9000"),
-                       envOr("MINIO_ACCESS_KEY", "minioadmin"),
-                       envOr("MINIO_SECRET_KEY", "minioadmin"), 5000);
+                    envOr("MINIO_ACCESS_KEY", "minioadmin"),
+                    envOr("MINIO_SECRET_KEY", "minioadmin"), 5000);
 
   rghw::GeometryConfig config;
   config.outputTopic = envOr("GEOMETRY_OUTPUT_TOPIC", config.outputTopic);

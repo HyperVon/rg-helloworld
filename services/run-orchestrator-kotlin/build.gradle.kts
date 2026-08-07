@@ -150,7 +150,7 @@ tasks.jacocoTestReport {
         files(
             classDirectories.files.map {
                 fileTree(it) {
-                    exclude("dev/rghello/soap/generated/**")
+                    exclude("dev/rghw/soap/generated/**")
                 }
             },
         ),
@@ -172,7 +172,7 @@ tasks.jacocoTestCoverageVerification {
         files(
             classDirectories.files.map {
                 fileTree(it) {
-                    exclude("dev/rghello/soap/generated/**")
+                    exclude("dev/rghw/soap/generated/**")
                 }
             },
         ),

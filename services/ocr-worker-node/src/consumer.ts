@@ -1,5 +1,5 @@
 import { Kafka, logLevel, Producer } from 'kafkajs';
-import { readFileSync, existsSync, mkdirSync, unlinkSync } from 'node:fs';
+import { readFileSync, existsSync, mkdirSync, unlinkSync, renameSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, basename } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -97,11 +97,13 @@ export async function runConsumer(): Promise<void> {
         tmpFiles.push(phraseImagePath);
 
         for (const crop of positionCrops) {
-          const cropPath = await downloadToTemp(
+          const cropPath = join(cropsDir, `crop-position-${crop.position}.png`);
+          const tmpPath = await downloadToTemp(
             minio,
             minioConfig.bucket,
             crop.objectKey as string,
           );
+          renameSync(tmpPath, cropPath);
           tmpFiles.push(cropPath);
         }
 
@@ -148,8 +150,14 @@ export async function runConsumer(): Promise<void> {
 }
 
 if (process.argv[1] && process.argv[1].endsWith('consumer.js')) {
-  runConsumer().catch((err) => {
-    console.error('ocr-worker consumer error:', err);
-    process.exit(1);
-  });
+  (async () => {
+    while (true) {
+      try {
+        await runConsumer();
+      } catch (err) {
+        console.error('ocr-worker consumer error:', err);
+        await new Promise((r) => setTimeout(r, 5000));
+      }
+    }
+  })();
 }

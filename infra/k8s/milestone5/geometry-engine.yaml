@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: geometry-engine
-          image: rghw-registry:5001/geometry-engine:milestone5
+          image: rghello-registry:5001/geometry-engine:milestone5
           imagePullPolicy: Always
           env:
             - name: KAFKA_BOOTSTRAP

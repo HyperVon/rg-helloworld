@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: rasterizer
-          image: rghw-registry:5001/rasterizer:milestone6
+          image: rghello-registry:5001/rasterizer:milestone6
           imagePullPolicy: Always
           ports:
             - containerPort: 50051

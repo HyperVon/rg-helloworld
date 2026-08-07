@@ -122,7 +122,11 @@ async fn run_kafka_consumer() -> Result<(), Box<dyn std::error::Error>> {
 #[derive(Debug)]
 enum RunMode {
     Version,
-    Once { input: String, output: Option<String>, event_output: Option<String> },
+    Once {
+        input: String,
+        output: Option<String>,
+        event_output: Option<String>,
+    },
     Run,
     Banner,
 }
@@ -166,7 +170,11 @@ async fn run_mode(mode: RunMode) -> Result<(), String> {
             println!("{}", banner());
             Ok(())
         }
-        RunMode::Once { input, output, event_output } => {
+        RunMode::Once {
+            input,
+            output,
+            event_output,
+        } => {
             let text = run_assemble_once(&input, output.as_deref(), event_output.as_deref())?;
             if output.is_none() && event_output.is_none() {
                 println!("{}", text);

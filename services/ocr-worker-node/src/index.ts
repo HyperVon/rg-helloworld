@@ -213,7 +213,7 @@ export function performOcr(
     if (entry.width === 0 && entry.height === 0) continue;
     const cropPath = resolve(cropsDir, `crop-position-${entry.position}.png`);
     if (!existsSync(cropPath)) continue;
-    const cropResult = ocrExecutor(cropPath, 10, ALLOWED_ALPHABET);
+    const cropResult = ocrExecutor(cropPath, 8, ALLOWED_ALPHABET);
     const candidates = cropResult.symbols
       .map((s) => s.text)
       .filter((c) => c.length > 0)
@@ -335,13 +335,14 @@ export async function runCli(argv: string[]): Promise<number> {
   const cmd = argv[2];
   if (cmd === 'run') {
     console.log(banner());
-    try {
-      const { runConsumer } = await import('./consumer.js');
-      await runConsumer();
-      return 0;
-    } catch (err) {
-      console.error('ocr-worker consumer error:', err);
-      return 1;
+    while (true) {
+      try {
+        const { runConsumer } = await import('./consumer.js');
+        await runConsumer();
+      } catch (err) {
+        console.error('ocr-worker consumer error:', err);
+        await new Promise((r) => setTimeout(r, 5000));
+      }
     }
   } else if (cmd === 'once') {
     const ocrImage = argv[3];

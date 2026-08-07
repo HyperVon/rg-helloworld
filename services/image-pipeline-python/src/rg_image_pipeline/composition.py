@@ -29,6 +29,7 @@ class RasterizedGlyphInput:
     baseline: float = 0.0
     kind: str = "DRAWABLE"
     image_bytes: bytes | None = None
+    pixel_density: float | None = None
 
 
 @dataclass
@@ -87,10 +88,18 @@ def compose_phrase(
         if glyph.kind == "DRAWABLE" and glyph.image_bytes is not None:
             img = load_png_bytes(glyph.image_bytes)
             img_width, img_height = img.size
-            if scale_factor != 1.0:
+            scale = _glyph_scale(
+                img_width,
+                img_height,
+                glyph.pixel_density,
+                pixels_per_em,
+                em_square,
+                scale_factor,
+            )
+            if scale != 1.0:
                 new_size = (
-                    max(1, int(img_width * scale_factor)),
-                    max(1, int(img_height * scale_factor)),
+                    max(1, int(round(img_width * scale))),
+                    max(1, int(round(img_height * scale))),
                 )
                 img = img.resize(new_size, Image.Resampling.LANCZOS)
                 img_width, img_height = new_size
@@ -108,7 +117,8 @@ def compose_phrase(
             )
         layout.append(entry)
         advance_pixels = max(1, int(glyph.advance_width * pixels_per_em))
-        x_offset += advance_pixels
+        actual_width = entry.width if glyph.kind == "DRAWABLE" and glyph.image_bytes is not None else advance_pixels
+        x_offset += max(advance_pixels, actual_width)
 
     manifest = CompositionManifest(
         layout=layout,
@@ -137,6 +147,22 @@ def compose_phrase(
         image_bytes=image_bytes,
         manifest_bytes=manifest_bytes,
     )
+
+
+def _glyph_scale(
+    img_width: int,
+    img_height: int,
+    pixel_density: float | None,
+    pixels_per_em: int,
+    em_square: float,
+    scale_factor: float,
+) -> float:
+    if pixel_density and pixel_density > 0:
+        base = pixels_per_em * pixel_density / em_square
+    else:
+        max_dim = max(img_width, img_height)
+        base = pixels_per_em / max_dim if max_dim > pixels_per_em else 1.0
+    return base * scale_factor
 
 
 def _entry_to_dict(entry: LayoutEntry) -> dict[str, Any]:

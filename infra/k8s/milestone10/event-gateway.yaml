@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: event-gateway
-          image: rghw-registry:5001/event-gateway:milestone10
+          image: rghello-registry:5001/event-gateway:milestone11
           imagePullPolicy: Always
           env:
             - name: REDIS_URL

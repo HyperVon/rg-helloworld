@@ -25,9 +25,9 @@ final class GlyphDefinitions {
         'H',
         drawable(
             1.0, line(0.1, 0.0, 0.1, 1.0), line(0.9, 0.0, 0.9, 1.0), line(0.1, 0.5, 0.9, 0.5)));
-    glyphs.put('e', drawable(1.0, polygon(0.55, 0.45, 0.35, 16), line(0.35, 0.5, 0.85, 0.5)));
+    glyphs.put('e', drawable(1.0, polygon(0.55, 0.45, 0.35, 8), line(0.35, 0.5, 0.75, 0.5)));
     glyphs.put('l', drawable(1.0, line(0.5, 0.0, 0.5, 1.0), line(0.35, 0.0, 0.65, 0.0)));
-    glyphs.put('o', drawable(1.0, polygon(0.5, 0.5, 0.4, 16)));
+    glyphs.put('o', drawable(1.0, polygon(0.5, 0.5, 0.4, 8)));
     glyphs.put(
         'W',
         drawable(
@@ -43,7 +43,7 @@ final class GlyphDefinitions {
             line(0.35, 0.0, 0.35, 1.0),
             line(0.35, 0.65, 0.75, 0.65),
             line(0.75, 0.65, 0.65, 0.35)));
-    glyphs.put('d', drawable(1.0, line(0.65, 0.0, 0.65, 1.0), polygon(0.4, 0.35, 0.3, 16)));
+    glyphs.put('d', drawable(1.0, line(0.65, 0.0, 0.65, 1.0), polygon(0.4, 0.35, 0.3, 8)));
     return glyphs;
   }
 
