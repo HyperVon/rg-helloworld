@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://rghello.dev/schemas/events/dead-letter.v1.schema.json",
+  "$id": "https://rghw.dev/schemas/events/dead-letter.v1.schema.json",
   "title": "DeadLetter",
   "description": "Event published to the dead-letter topic after transient retries are exhausted (topic rg.dead-letter.v1, section 13.6)",
   "type": "object",

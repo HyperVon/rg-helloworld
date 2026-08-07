@@ -1,12 +1,12 @@
 using System.Security.Cryptography;
-using RgHello.Rasterizer.V1;
+using Rghw.Rasterizer.V1;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Drawing;
 using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 
-namespace RgHello.Rasterizer;
+namespace Rghw.Rasterizer;
 
 public sealed record RasterResult(byte[] Bytes, string Sha256Hex, int Width, int Height, double PixelDensity);
 

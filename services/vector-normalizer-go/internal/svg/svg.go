@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"rghello.dev/vector-normalizer/internal/geom"
+	"rghw.dev/vector-normalizer/internal/geom"
 )
 
 // Build renders segments as a single polyline. Only polyline elements are

@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-collector
+  namespace: rube-goldberg
+  labels:
+    app: otel-collector
+    milestone: "11"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: otel-collector
+  template:
+    metadata:
+      labels:
+        app: otel-collector
+    spec:
+      containers:
+        - name: otel-collector
+          image: otel/opentelemetry-collector-contrib:0.128.0
+          command:
+            - "/otelcol-contrib"
+            - "--config=/conf/config.yaml"
+            - "--set=service.telemetry.logs.level=info"
+          ports:
+            - containerPort: 4317
+              name: otlp-grpc
+            - containerPort: 4318
+              name: otlp-http
+            - containerPort: 8888
+              name: metrics
+            - containerPort: 8889
+              name: prometheus
+          volumeMounts:
+            - name: config
+              mountPath: /conf
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 512Mi
+      volumes:
+        - name: config
+          configMap:
+            name: otel-collector-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+  namespace: rube-goldberg
+  labels:
+    app: otel-collector
+    milestone: "11"
+spec:
+  selector:
+    app: otel-collector
+  ports:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+    - name: metrics
+      port: 8888
+      targetPort: 8888
+    - name: prometheus
+      port: 8889
+      targetPort: 8889

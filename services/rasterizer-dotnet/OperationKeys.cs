@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace RgHello.Rasterizer;
+namespace Rghw.Rasterizer;
 
 // Deterministic identity for raster artifacts (architecture section 13.5):
 // the operation ID is SHA-256 over run, step, glyph, attempt, and the input

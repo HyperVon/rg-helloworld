@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: image-pipeline
-          image: localhost:5001/image-pipeline:milestone7
+          image: rghw-registry:5001/image-pipeline:milestone7
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
@@ -43,16 +43,22 @@ spec:
               value: image-pipeline-v1
             - name: TRACEPARENT_HEADER
               value: "00-00000000000000000000000000000000-0000000000000000-00"
+          command: ["python3", "-m", "rg_image_pipeline.cli", "serve"]
+          args: []
           readinessProbe:
-            httpGet:
-              path: /health
-              port: 8080
+            exec:
+              command:
+                - python3
+                - -c
+                - "import rg_image_pipeline"
             initialDelaySeconds: 5
             periodSeconds: 10
           livenessProbe:
-            httpGet:
-              path: /health
-              port: 8080
+            exec:
+              command:
+                - python3
+                - -c
+                - "import rg_image_pipeline"
             initialDelaySeconds: 10
             periodSeconds: 15
           resources:

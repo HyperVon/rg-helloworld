@@ -24,7 +24,8 @@ RUN pip install --no-cache-dir \
     scikit-image==0.25.2 \
     aiokafka==0.12.0 \
     minio==7.2.12 \
-    jsonschema==4.25.0
+    jsonschema==4.25.0 \
+    python-snappy==0.7.3
 
 COPY src/ ./src/
 

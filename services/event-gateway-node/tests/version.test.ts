@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import { SERVICE_NAME, SERVICE_VERSION, banner } from '../src/index.js';
 
 test('version matches skeleton', () => {
-  assert.equal(SERVICE_VERSION, '0.0.0-skeleton');
+  assert.equal(SERVICE_VERSION, '0.5.0-milestone11');
 });
 
 test('version is not empty', () => {
@@ -16,7 +16,7 @@ test('service name is set', () => {
 });
 
 test('banner includes service and version', () => {
-  assert.match(banner(), /^event-gateway 0\.0\.0-skeleton/);
+  assert.match(banner(), /^event-gateway 0.5.0-milestone11/);
 });
 
 test('banner is deterministic', () => {

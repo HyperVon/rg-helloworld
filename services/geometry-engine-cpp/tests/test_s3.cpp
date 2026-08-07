@@ -124,7 +124,7 @@ int main() {
       "host;range;x-amz-content-sha256;x-amz-date\n"
       "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
   std::string signature =
-      rghello::signV4("wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY", "20130524T000000Z", "20130524",
+      rghw::signV4("wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY", "20130524T000000Z", "20130524",
                       "us-east-1", "s3", canonicalRequest);
   // Verified against an independent Python implementation of the AWS
   // algorithm (raw-digest signing chain).
@@ -135,7 +135,7 @@ int main() {
 
   // Endpoint parsing rejects non-HTTP schemes.
   try {
-    rghello::S3Client invalid("https://minio:9000", "a", "b", 1000);
+    rghw::S3Client invalid("https://minio:9000", "a", "b", 1000);
     std::cerr << "FAIL: https endpoint should be rejected\n";
     ++failures;
   } catch (const std::invalid_argument&) {
@@ -143,7 +143,7 @@ int main() {
 
   // PUT against the in-process server: path, signed headers, body, ETag.
   TestServer server;
-  rghello::S3Client client("http://127.0.0.1:" + std::to_string(server.port()), "minioadmin",
+  rghw::S3Client client("http://127.0.0.1:" + std::to_string(server.port()), "minioadmin",
                            "minioadmin", 3000);
   std::string body = "{\"kind\":\"DRAWABLE_GEOMETRY\"}";
   std::string etag;
@@ -157,7 +157,7 @@ int main() {
                  "request line");
   expectContains(request, "Host: 127.0.0.1:" + std::to_string(server.port()), "host header");
   expectContains(request, "x-amz-date:", "amz date header");
-  expectContains(request, "x-amz-content-sha256: " + rghello::sha256Hex(body),
+  expectContains(request, "x-amz-content-sha256: " + rghw::sha256Hex(body),
                  "content sha256 header");
   expectContains(request, "Authorization: AWS4-HMAC-SHA256 Credential=minioadmin/", "auth header");
   expectContains(request, "SignedHeaders=content-type;host;x-amz-content-sha256;x-amz-date",
@@ -204,7 +204,7 @@ int main() {
     std::thread thread_;
   };
   FailingServer failing;
-  rghello::S3Client failingClient("http://127.0.0.1:" + std::to_string(failing.port()),
+  rghw::S3Client failingClient("http://127.0.0.1:" + std::to_string(failing.port()),
                                   "minioadmin", "minioadmin", 3000);
   expect(!failingClient.putObject("bucket", "key", "{}"), "non-2xx response fails the PUT");
 

@@ -53,7 +53,7 @@ mod tests {
 
     #[test]
     fn encode_decode_roundtrip() {
-        let cases = ["", "A", "Hi", "Hello World", "\n\t"];
+        let cases = ["", "A", "Hi", "RGHW", "\n\t"];
         for case in cases.iter() {
             let encoded = encode(case);
             let decoded = decode(&encoded).unwrap();

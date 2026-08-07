@@ -24,10 +24,10 @@ void expectEq(const std::string& actual, const std::string& expected, const std:
 
 void expectThrows(const std::string& text) {
   try {
-    rghello::Json::parse(text);
+    rghw::Json::parse(text);
     std::cerr << "FAIL: expected parse error for: " << text << '\n';
     ++failures;
-  } catch (const rghello::JsonError&) {
+  } catch (const rghw::JsonError&) {
   }
 }
 
@@ -35,15 +35,15 @@ void expectThrows(const std::string& text) {
 
 int main() {
   // Round trip of a nested document.
-  rghello::Json doc = rghello::Json::object();
-  doc.objectItems()["name"] = rghello::Json::str("H");
-  doc.objectItems()["count"] = rghello::Json::number(11.0);
-  doc.objectItems()["ratio"] = rghello::Json::number(0.5);
-  doc.objectItems()["enabled"] = rghello::Json::boolean(true);
-  doc.objectItems()["missing"] = rghello::Json::null();
-  rghello::Json items = rghello::Json::array();
-  items.arrayItems().push_back(rghello::Json::number(1.0));
-  items.arrayItems().push_back(rghello::Json::str("two"));
+  rghw::Json doc = rghw::Json::object();
+  doc.objectItems()["name"] = rghw::Json::str("H");
+  doc.objectItems()["count"] = rghw::Json::number(11.0);
+  doc.objectItems()["ratio"] = rghw::Json::number(0.5);
+  doc.objectItems()["enabled"] = rghw::Json::boolean(true);
+  doc.objectItems()["missing"] = rghw::Json::null();
+  rghw::Json items = rghw::Json::array();
+  items.arrayItems().push_back(rghw::Json::number(1.0));
+  items.arrayItems().push_back(rghw::Json::str("two"));
   doc.objectItems()["items"] = items;
 
   std::string serialized = doc.serialize();
@@ -52,7 +52,7 @@ int main() {
            "\"ratio\":0.5}",
            "canonical serialization with sorted keys");
 
-  rghello::Json reparsed = rghello::Json::parse(serialized);
+  rghw::Json reparsed = rghw::Json::parse(serialized);
   expectEq(reparsed.serialize(), serialized, "parse round trip");
   expect(reparsed.at("name").isString() && reparsed.at("name").asString() == "H", "string value");
   expect(reparsed.at("count").asInt64() == 11, "integer value");
@@ -64,25 +64,25 @@ int main() {
 
   // Key ordering is canonical regardless of input order.
   std::string reordered = "{\"z\":1,\"a\":{\"y\":2,\"b\":3},\"m\":[1,2]}";
-  expectEq(rghello::Json::parse(reordered).serialize(),
+  expectEq(rghw::Json::parse(reordered).serialize(),
            "{\"a\":{\"b\":3,\"y\":2},\"m\":[1,2],\"z\":1}", "nested canonical ordering");
 
   // String escaping round trip.
-  rghello::Json escaped = rghello::Json::str("a\"b\\c\nd\te\u0001f");
-  rghello::Json escapedBack = rghello::Json::parse(escaped.serialize());
+  rghw::Json escaped = rghw::Json::str("a\"b\\c\nd\te\u0001f");
+  rghw::Json escapedBack = rghw::Json::parse(escaped.serialize());
   expectEq(escapedBack.asString(), "a\"b\\c\nd\te\u0001f", "escape round trip");
 
   // Unicode escape parsing.
-  rghello::Json unicode = rghello::Json::parse("\"\\u0041\\u00e9\"");
+  rghw::Json unicode = rghw::Json::parse("\"\\u0041\\u00e9\"");
   expectEq(unicode.asString(), "A\u00e9", "unicode escapes");
 
   // Negative and exponent numbers.
-  expectEq(rghello::Json::parse("-2.5").serialize(), "-2.5", "negative number");
-  expectEq(rghello::Json::parse("1e3").serialize(), "1000", "exponent number");
+  expectEq(rghw::Json::parse("-2.5").serialize(), "-2.5", "negative number");
+  expectEq(rghw::Json::parse("1e3").serialize(), "1000", "exponent number");
 
   // Empty containers.
-  expectEq(rghello::Json::parse("[]").serialize(), "[]", "empty array");
-  expectEq(rghello::Json::parse("{}").serialize(), "{}", "empty object");
+  expectEq(rghw::Json::parse("[]").serialize(), "[]", "empty array");
+  expectEq(rghw::Json::parse("{}").serialize(), "{}", "empty object");
 
   // Malformed input.
   expectThrows("{");
@@ -95,15 +95,15 @@ int main() {
   expectThrows("{\"a\":\"\\x\"}");
 
   // Serialization errors: NaN must not serialize.
-  rghello::Json nan = rghello::Json::number(0.0);
-  nan.objectItems()["x"] = rghello::Json::number(0.0 / 0.0);
-  nan = rghello::Json::object();
-  nan.objectItems()["x"] = rghello::Json::number(0.0 / 0.0);
+  rghw::Json nan = rghw::Json::number(0.0);
+  nan.objectItems()["x"] = rghw::Json::number(0.0 / 0.0);
+  nan = rghw::Json::object();
+  nan.objectItems()["x"] = rghw::Json::number(0.0 / 0.0);
   try {
     nan.serialize();
     std::cerr << "FAIL: expected NaN serialization error\n";
     ++failures;
-  } catch (const rghello::JsonError&) {
+  } catch (const rghw::JsonError&) {
   }
 
   // Pretty output.
@@ -115,7 +115,7 @@ int main() {
     doc.at("name").asNumber();
     std::cerr << "FAIL: expected type error reading string as number\n";
     ++failures;
-  } catch (const rghello::JsonError&) {
+  } catch (const rghw::JsonError&) {
   }
 
   if (failures == 0) {

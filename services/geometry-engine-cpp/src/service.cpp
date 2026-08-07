@@ -9,7 +9,7 @@
 #include "geometry_engine/json.hpp"
 #include "geometry_engine/sha256.hpp"
 
-namespace rghello {
+namespace rghw {
 
 namespace {
 
@@ -211,4 +211,4 @@ bool WorkerLoop::processOne() {
   return true;
 }
 
-}  // namespace rghello
+}  // namespace rghw

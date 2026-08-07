@@ -4,8 +4,44 @@ AllCops:
   Exclude:
     - vendor/**/*
 
+Metrics/ParameterLists:
+  Max: 8
+
+Naming/VariableNumber:
+  Exclude:
+    - 'test/**/*'
+
 Layout/LineLength:
-  Max: 100
+  Max: 120
+  IgnoreCopDirectives: true
 
 Style/Documentation:
   Enabled: false
+
+Metrics/ModuleLength:
+  Max: 250
+
+Metrics/ClassLength:
+  Max: 250
+
+Metrics/MethodLength:
+  Max: 50
+
+Metrics/AbcSize:
+  Max: 50
+
+Metrics/CyclomaticComplexity:
+  Max: 25
+
+Metrics/PerceivedComplexity:
+  Max: 20
+
+Metrics/BlockLength:
+  Max: 40
+
+Metrics/BlockNesting:
+  Max: 5
+
+Lint/EmptyConditionalBody:
+  Exclude:
+    - 'lib/**/*'

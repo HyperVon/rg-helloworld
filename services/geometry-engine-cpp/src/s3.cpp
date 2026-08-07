@@ -14,7 +14,7 @@
 
 #include "geometry_engine/sha256.hpp"
 
-namespace rghello {
+namespace rghw {
 
 namespace {
 
@@ -198,4 +198,4 @@ bool S3Client::putObject(const std::string& bucket, const std::string& key, cons
   return true;
 }
 
-}  // namespace rghello
+}  // namespace rghw

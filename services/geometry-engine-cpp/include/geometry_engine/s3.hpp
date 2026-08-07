@@ -5,7 +5,7 @@
 
 #include "geometry_engine/service.hpp"
 
-namespace rghello {
+namespace rghw {
 
 // Computes the AWS Signature Version 4 request signature for a canonical
 // request (AWS docs "Signature Calculations for the Authorization Header").
@@ -36,6 +36,6 @@ class S3Client : public ObjectStore {
   int timeoutMs_;
 };
 
-}  // namespace rghello
+}  // namespace rghw
 
 #endif  // RGHELLO_GEOMETRY_ENGINE_S3_HPP_

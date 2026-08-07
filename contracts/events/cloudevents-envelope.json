@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://rghello.dev/schemas/events/cloudevents-envelope.json",
+  "$id": "https://rghw.dev/schemas/events/cloudevents-envelope.json",
   "title": "CloudEvents Envelope",
-  "description": "CloudEvents-shaped JSON envelope for all rghello Kafka events (section 13.4)",
+  "description": "CloudEvents-shaped JSON envelope for all rghw Kafka events (section 13.4)",
   "type": "object",
   "required": [
     "specversion",

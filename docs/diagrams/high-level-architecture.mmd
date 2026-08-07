@@ -1,0 +1,40 @@
+flowchart LR
+    CLI[Go CLI: rghw] -->|REST POST /runs| ORCH[Kotlin Orchestrator]
+
+    ORCH -->|SOAP| CATALOG[Java Glyph Catalog]
+    CATALOG -->|Glyph blueprints| ORCH
+
+    ORCH -->|Kafka| CPP[C++ Geometry Engine]
+    CPP -->|Kafka| NORM[Go Vector Normalizer]
+    NORM -->|gRPC| DOTNET[C# Rasterizer]
+    NORM -->|Kafka artifact event| ORCH
+
+    DOTNET -->|PNG to MinIO| MINIO[(MinIO)]
+    DOTNET -->|gRPC response| NORM
+    NORM -->|Kafka| PY[Python Composer and Preprocessor]
+
+    PY -->|Read glyph PNGs| MINIO
+    PY -->|Write phrase images| MINIO
+    PY -->|Kafka| OCR[Node.js TypeScript OCR Worker]
+
+    OCR -->|Read OCR image| MINIO
+    OCR -->|Kafka observations| RUBY[Ruby Adjudicator]
+    RUBY -->|Kafka accepted symbols| RUST[Rust Phrase Assembler]
+    RUST -->|Kafka assembled phrase| ORCH
+
+    ORCH -->|Validate and persist| PG[(PostgreSQL)]
+    ORCH -->|UI projection| REDIS[(Redis Streams)]
+    ORCH -->|SSE result| CLI
+
+    REDIS --> GATEWAY[TypeScript Event Gateway]
+    GATEWAY --> REACT[React Flow UI]
+    GATEWAY --> ANGULAR[Angular Telemetry Element]
+    RUBY --> HTMX[HTMX Artifact Inspector]
+
+    SERVICES[All services] --> OTEL[OpenTelemetry Collector]
+    OTEL --> PROM[Prometheus]
+    OTEL --> TEMPO[Tempo]
+    SERVICES --> LOKI[Loki]
+    PROM --> GRAFANA[Grafana]
+    TEMPO --> GRAFANA
+    LOKI --> GRAFANA

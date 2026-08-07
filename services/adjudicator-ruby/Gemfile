@@ -4,7 +4,12 @@ source 'https://rubygems.org'
 
 ruby '>= 3.4.0'
 
+gem 'base64'
+gem 'bigdecimal'
+gem 'delegate'
+gem 'logger'
 gem 'minitest', '6.0.6'
 gem 'rake', '13.4.2'
 gem 'rubocop', '1.89.0'
+gem 'ruby-kafka', '>= 0.7.10'
 gem 'simplecov', '1.0.3'

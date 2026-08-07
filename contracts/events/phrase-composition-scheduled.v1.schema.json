@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://rghello.dev/schemas/events/phrase-composition-scheduled.v1.schema.json",
+  "$id": "https://rghw.dev/schemas/events/phrase-composition-scheduled.v1.schema.json",
   "title": "PhraseCompositionScheduled",
   "description": "Event published by the orchestrator to schedule phrase composition (topic rg.phrase-composition.v1)",
   "type": "object",

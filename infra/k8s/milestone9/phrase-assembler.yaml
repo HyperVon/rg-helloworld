@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: phrase-assembler
-          image: rghello-registry:5001/phrase-assembler:milestone9
+          image: rghw-registry:5001/phrase-assembler:milestone9
           imagePullPolicy: Always
           env:
             - name: KAFKA_BOOTSTRAP
@@ -45,12 +45,12 @@ spec:
               value: "00-00000000000000000000000000000000-0000000000000000-00"
           readinessProbe:
             exec:
-              command: ["phrase-assembler", "version"]
+              command: ["/app/phrase-assembler", "version"]
             initialDelaySeconds: 5
             periodSeconds: 10
           livenessProbe:
             exec:
-              command: ["phrase-assembler", "version"]
+              command: ["/app/phrase-assembler", "version"]
             initialDelaySeconds: 10
             periodSeconds: 15
           resources:

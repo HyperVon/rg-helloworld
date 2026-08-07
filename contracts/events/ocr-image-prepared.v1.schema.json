@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://rghello.dev/schemas/events/ocr-image-prepared.v1.schema.json",
+  "$id": "https://rghw.dev/schemas/events/ocr-image-prepared.v1.schema.json",
   "title": "OcrImagePrepared",
   "description": "Event published by Python image pipeline after OCR preprocessing (topic rg.ocr-images.v1)",
   "type": "object",

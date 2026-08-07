@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: vector-normalizer
-          image: rghello-registry:5001/vector-normalizer:milestone5
+          image: rghw-registry:5001/vector-normalizer:milestone5
           imagePullPolicy: Always
           env:
             - name: KAFKA_BOOTSTRAP

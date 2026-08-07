@@ -9,7 +9,7 @@ using pb = global::Google.Protobuf;
 using pbc = global::Google.Protobuf.Collections;
 using pbr = global::Google.Protobuf.Reflection;
 using scg = global::System.Collections.Generic;
-namespace RgHello.Rasterizer.V1 {
+namespace Rghw.Rasterizer.V1 {
 
   /// <summary>Holder for reflection information generated from rasterizer/v1/rasterizer.proto</summary>
   public static partial class RasterizerReflection {
@@ -51,12 +51,12 @@ namespace RgHello.Rasterizer.V1 {
       descriptor = pbr::FileDescriptor.FromGeneratedCode(descriptorData,
           new pbr::FileDescriptor[] { },
           new pbr::GeneratedClrTypeInfo(null, null, new pbr::GeneratedClrTypeInfo[] {
-            new pbr::GeneratedClrTypeInfo(typeof(global::RgHello.Rasterizer.V1.RenderGlyphRequest), global::RgHello.Rasterizer.V1.RenderGlyphRequest.Parser, new[]{ "RunId", "StepId", "GlyphInstanceId", "Position", "Attempt", "Canvas", "Profile", "Segments", "TraceContext", "InputArtifactSha256" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::RgHello.Rasterizer.V1.Canvas), global::RgHello.Rasterizer.V1.Canvas.Parser, new[]{ "Width", "Height", "Baseline" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::RgHello.Rasterizer.V1.Segment), global::RgHello.Rasterizer.V1.Segment.Parser, new[]{ "X1", "Y1", "X2", "Y2" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::RgHello.Rasterizer.V1.RenderProfile), global::RgHello.Rasterizer.V1.RenderProfile.Parser, new[]{ "StrokeWidth", "Antialias", "LineCap", "Supersampling" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::RgHello.Rasterizer.V1.TraceContext), global::RgHello.Rasterizer.V1.TraceContext.Parser, new[]{ "Traceparent", "Tracestate" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::RgHello.Rasterizer.V1.RenderGlyphResponse), global::RgHello.Rasterizer.V1.RenderGlyphResponse.Parser, new[]{ "ArtifactId", "ObjectKey", "Sha256", "Width", "Height", "ByteCount", "ContentType" }, null, null, null, null)
+            new pbr::GeneratedClrTypeInfo(typeof(global::Rghw.Rasterizer.V1.RenderGlyphRequest), global::Rghw.Rasterizer.V1.RenderGlyphRequest.Parser, new[]{ "RunId", "StepId", "GlyphInstanceId", "Position", "Attempt", "Canvas", "Profile", "Segments", "TraceContext", "InputArtifactSha256" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Rghw.Rasterizer.V1.Canvas), global::Rghw.Rasterizer.V1.Canvas.Parser, new[]{ "Width", "Height", "Baseline" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Rghw.Rasterizer.V1.Segment), global::Rghw.Rasterizer.V1.Segment.Parser, new[]{ "X1", "Y1", "X2", "Y2" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Rghw.Rasterizer.V1.RenderProfile), global::Rghw.Rasterizer.V1.RenderProfile.Parser, new[]{ "StrokeWidth", "Antialias", "LineCap", "Supersampling" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Rghw.Rasterizer.V1.TraceContext), global::Rghw.Rasterizer.V1.TraceContext.Parser, new[]{ "Traceparent", "Tracestate" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Rghw.Rasterizer.V1.RenderGlyphResponse), global::Rghw.Rasterizer.V1.RenderGlyphResponse.Parser, new[]{ "ArtifactId", "ObjectKey", "Sha256", "Width", "Height", "ByteCount", "ContentType" }, null, null, null, null)
           }));
     }
     #endregion
@@ -78,7 +78,7 @@ namespace RgHello.Rasterizer.V1 {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::RgHello.Rasterizer.V1.RasterizerReflection.Descriptor.MessageTypes[0]; }
+      get { return global::Rghw.Rasterizer.V1.RasterizerReflection.Descriptor.MessageTypes[0]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -179,10 +179,10 @@ namespace RgHello.Rasterizer.V1 {
 
     /// <summary>Field number for the "canvas" field.</summary>
     public const int CanvasFieldNumber = 6;
-    private global::RgHello.Rasterizer.V1.Canvas canvas_;
+    private global::Rghw.Rasterizer.V1.Canvas canvas_;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public global::RgHello.Rasterizer.V1.Canvas Canvas {
+    public global::Rghw.Rasterizer.V1.Canvas Canvas {
       get { return canvas_; }
       set {
         canvas_ = value;
@@ -191,10 +191,10 @@ namespace RgHello.Rasterizer.V1 {
 
     /// <summary>Field number for the "profile" field.</summary>
     public const int ProfileFieldNumber = 7;
-    private global::RgHello.Rasterizer.V1.RenderProfile profile_;
+    private global::Rghw.Rasterizer.V1.RenderProfile profile_;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public global::RgHello.Rasterizer.V1.RenderProfile Profile {
+    public global::Rghw.Rasterizer.V1.RenderProfile Profile {
       get { return profile_; }
       set {
         profile_ = value;
@@ -203,21 +203,21 @@ namespace RgHello.Rasterizer.V1 {
 
     /// <summary>Field number for the "segments" field.</summary>
     public const int SegmentsFieldNumber = 8;
-    private static readonly pb::FieldCodec<global::RgHello.Rasterizer.V1.Segment> _repeated_segments_codec
-        = pb::FieldCodec.ForMessage(66, global::RgHello.Rasterizer.V1.Segment.Parser);
-    private readonly pbc::RepeatedField<global::RgHello.Rasterizer.V1.Segment> segments_ = new pbc::RepeatedField<global::RgHello.Rasterizer.V1.Segment>();
+    private static readonly pb::FieldCodec<global::Rghw.Rasterizer.V1.Segment> _repeated_segments_codec
+        = pb::FieldCodec.ForMessage(66, global::Rghw.Rasterizer.V1.Segment.Parser);
+    private readonly pbc::RepeatedField<global::Rghw.Rasterizer.V1.Segment> segments_ = new pbc::RepeatedField<global::Rghw.Rasterizer.V1.Segment>();
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public pbc::RepeatedField<global::RgHello.Rasterizer.V1.Segment> Segments {
+    public pbc::RepeatedField<global::Rghw.Rasterizer.V1.Segment> Segments {
       get { return segments_; }
     }
 
     /// <summary>Field number for the "trace_context" field.</summary>
     public const int TraceContextFieldNumber = 9;
-    private global::RgHello.Rasterizer.V1.TraceContext traceContext_;
+    private global::Rghw.Rasterizer.V1.TraceContext traceContext_;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public global::RgHello.Rasterizer.V1.TraceContext TraceContext {
+    public global::Rghw.Rasterizer.V1.TraceContext TraceContext {
       get { return traceContext_; }
       set {
         traceContext_ = value;
@@ -451,20 +451,20 @@ namespace RgHello.Rasterizer.V1 {
       }
       if (other.canvas_ != null) {
         if (canvas_ == null) {
-          Canvas = new global::RgHello.Rasterizer.V1.Canvas();
+          Canvas = new global::Rghw.Rasterizer.V1.Canvas();
         }
         Canvas.MergeFrom(other.Canvas);
       }
       if (other.profile_ != null) {
         if (profile_ == null) {
-          Profile = new global::RgHello.Rasterizer.V1.RenderProfile();
+          Profile = new global::Rghw.Rasterizer.V1.RenderProfile();
         }
         Profile.MergeFrom(other.Profile);
       }
       segments_.Add(other.segments_);
       if (other.traceContext_ != null) {
         if (traceContext_ == null) {
-          TraceContext = new global::RgHello.Rasterizer.V1.TraceContext();
+          TraceContext = new global::Rghw.Rasterizer.V1.TraceContext();
         }
         TraceContext.MergeFrom(other.TraceContext);
       }
@@ -512,14 +512,14 @@ namespace RgHello.Rasterizer.V1 {
           }
           case 50: {
             if (canvas_ == null) {
-              Canvas = new global::RgHello.Rasterizer.V1.Canvas();
+              Canvas = new global::Rghw.Rasterizer.V1.Canvas();
             }
             input.ReadMessage(Canvas);
             break;
           }
           case 58: {
             if (profile_ == null) {
-              Profile = new global::RgHello.Rasterizer.V1.RenderProfile();
+              Profile = new global::Rghw.Rasterizer.V1.RenderProfile();
             }
             input.ReadMessage(Profile);
             break;
@@ -530,7 +530,7 @@ namespace RgHello.Rasterizer.V1 {
           }
           case 74: {
             if (traceContext_ == null) {
-              TraceContext = new global::RgHello.Rasterizer.V1.TraceContext();
+              TraceContext = new global::Rghw.Rasterizer.V1.TraceContext();
             }
             input.ReadMessage(TraceContext);
             break;
@@ -580,14 +580,14 @@ namespace RgHello.Rasterizer.V1 {
           }
           case 50: {
             if (canvas_ == null) {
-              Canvas = new global::RgHello.Rasterizer.V1.Canvas();
+              Canvas = new global::Rghw.Rasterizer.V1.Canvas();
             }
             input.ReadMessage(Canvas);
             break;
           }
           case 58: {
             if (profile_ == null) {
-              Profile = new global::RgHello.Rasterizer.V1.RenderProfile();
+              Profile = new global::Rghw.Rasterizer.V1.RenderProfile();
             }
             input.ReadMessage(Profile);
             break;
@@ -598,7 +598,7 @@ namespace RgHello.Rasterizer.V1 {
           }
           case 74: {
             if (traceContext_ == null) {
-              TraceContext = new global::RgHello.Rasterizer.V1.TraceContext();
+              TraceContext = new global::Rghw.Rasterizer.V1.TraceContext();
             }
             input.ReadMessage(TraceContext);
             break;
@@ -629,7 +629,7 @@ namespace RgHello.Rasterizer.V1 {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::RgHello.Rasterizer.V1.RasterizerReflection.Descriptor.MessageTypes[1]; }
+      get { return global::Rghw.Rasterizer.V1.RasterizerReflection.Descriptor.MessageTypes[1]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -901,7 +901,7 @@ namespace RgHello.Rasterizer.V1 {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::RgHello.Rasterizer.V1.RasterizerReflection.Descriptor.MessageTypes[2]; }
+      get { return global::Rghw.Rasterizer.V1.RasterizerReflection.Descriptor.MessageTypes[2]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -1210,7 +1210,7 @@ namespace RgHello.Rasterizer.V1 {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::RgHello.Rasterizer.V1.RasterizerReflection.Descriptor.MessageTypes[3]; }
+      get { return global::Rghw.Rasterizer.V1.RasterizerReflection.Descriptor.MessageTypes[3]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -1519,7 +1519,7 @@ namespace RgHello.Rasterizer.V1 {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::RgHello.Rasterizer.V1.RasterizerReflection.Descriptor.MessageTypes[4]; }
+      get { return global::Rghw.Rasterizer.V1.RasterizerReflection.Descriptor.MessageTypes[4]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -1754,7 +1754,7 @@ namespace RgHello.Rasterizer.V1 {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::RgHello.Rasterizer.V1.RasterizerReflection.Descriptor.MessageTypes[5]; }
+      get { return global::Rghw.Rasterizer.V1.RasterizerReflection.Descriptor.MessageTypes[5]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]

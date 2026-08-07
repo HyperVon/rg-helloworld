@@ -7,7 +7,7 @@
 #include <string>
 #include <utility>
 #include <vector>
-namespace rghello {
+namespace rghw {
 
 class JsonError : public std::runtime_error {
  public:
@@ -92,6 +92,6 @@ class Json {
   std::map<std::string, Json> object_;
 };
 
-}  // namespace rghello
+}  // namespace rghw
 
 #endif  // RGHELLO_GEOMETRY_ENGINE_JSON_HPP_

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://rghello.dev/schemas/events/quality-retry.v1.schema.json",
+  "$id": "https://rghw.dev/schemas/events/quality-retry.v1.schema.json",
   "title": "QualityRetry",
   "description": "Event published by the Ruby adjudicator when retry is needed (topic rg.quality-retry.v1)",
   "type": "object",

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://rghello.dev/schemas/events/run-completed.v1.schema.json",
+  "$id": "https://rghw.dev/schemas/events/run-completed.v1.schema.json",
   "title": "RunCompleted",
   "description": "Terminal run event published by the orchestrator when a run completes (topic rg.run-events.v1)",
   "type": "object",

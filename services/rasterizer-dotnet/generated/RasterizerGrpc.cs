@@ -7,7 +7,7 @@
 
 using grpc = global::Grpc.Core;
 
-namespace RgHello.Rasterizer.V1 {
+namespace Rghw.Rasterizer.V1 {
   public static partial class Rasterizer
   {
     static readonly string __ServiceName = "rg.rasterizer.v1.Rasterizer";
@@ -46,12 +46,12 @@ namespace RgHello.Rasterizer.V1 {
     }
 
     [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
-    static readonly grpc::Marshaller<global::RgHello.Rasterizer.V1.RenderGlyphRequest> __Marshaller_rg_rasterizer_v1_RenderGlyphRequest = grpc::Marshallers.Create(__Helper_SerializeMessage, context => __Helper_DeserializeMessage(context, global::RgHello.Rasterizer.V1.RenderGlyphRequest.Parser));
+    static readonly grpc::Marshaller<global::Rghw.Rasterizer.V1.RenderGlyphRequest> __Marshaller_rg_rasterizer_v1_RenderGlyphRequest = grpc::Marshallers.Create(__Helper_SerializeMessage, context => __Helper_DeserializeMessage(context, global::Rghw.Rasterizer.V1.RenderGlyphRequest.Parser));
     [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
-    static readonly grpc::Marshaller<global::RgHello.Rasterizer.V1.RenderGlyphResponse> __Marshaller_rg_rasterizer_v1_RenderGlyphResponse = grpc::Marshallers.Create(__Helper_SerializeMessage, context => __Helper_DeserializeMessage(context, global::RgHello.Rasterizer.V1.RenderGlyphResponse.Parser));
+    static readonly grpc::Marshaller<global::Rghw.Rasterizer.V1.RenderGlyphResponse> __Marshaller_rg_rasterizer_v1_RenderGlyphResponse = grpc::Marshallers.Create(__Helper_SerializeMessage, context => __Helper_DeserializeMessage(context, global::Rghw.Rasterizer.V1.RenderGlyphResponse.Parser));
 
     [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
-    static readonly grpc::Method<global::RgHello.Rasterizer.V1.RenderGlyphRequest, global::RgHello.Rasterizer.V1.RenderGlyphResponse> __Method_RenderGlyph = new grpc::Method<global::RgHello.Rasterizer.V1.RenderGlyphRequest, global::RgHello.Rasterizer.V1.RenderGlyphResponse>(
+    static readonly grpc::Method<global::Rghw.Rasterizer.V1.RenderGlyphRequest, global::Rghw.Rasterizer.V1.RenderGlyphResponse> __Method_RenderGlyph = new grpc::Method<global::Rghw.Rasterizer.V1.RenderGlyphRequest, global::Rghw.Rasterizer.V1.RenderGlyphResponse>(
         grpc::MethodType.Unary,
         __ServiceName,
         "RenderGlyph",
@@ -61,7 +61,7 @@ namespace RgHello.Rasterizer.V1 {
     /// <summary>Service descriptor</summary>
     public static global::Google.Protobuf.Reflection.ServiceDescriptor Descriptor
     {
-      get { return global::RgHello.Rasterizer.V1.RasterizerReflection.Descriptor.Services[0]; }
+      get { return global::Rghw.Rasterizer.V1.RasterizerReflection.Descriptor.Services[0]; }
     }
 
     /// <summary>Base class for server-side implementations of Rasterizer</summary>
@@ -69,7 +69,7 @@ namespace RgHello.Rasterizer.V1 {
     public abstract partial class RasterizerBase
     {
       [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
-      public virtual global::System.Threading.Tasks.Task<global::RgHello.Rasterizer.V1.RenderGlyphResponse> RenderGlyph(global::RgHello.Rasterizer.V1.RenderGlyphRequest request, grpc::ServerCallContext context)
+      public virtual global::System.Threading.Tasks.Task<global::Rghw.Rasterizer.V1.RenderGlyphResponse> RenderGlyph(global::Rghw.Rasterizer.V1.RenderGlyphRequest request, grpc::ServerCallContext context)
       {
         throw new grpc::RpcException(new grpc::Status(grpc::StatusCode.Unimplemented, ""));
       }
@@ -104,22 +104,22 @@ namespace RgHello.Rasterizer.V1 {
       }
 
       [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
-      public virtual global::RgHello.Rasterizer.V1.RenderGlyphResponse RenderGlyph(global::RgHello.Rasterizer.V1.RenderGlyphRequest request, grpc::Metadata headers = null, global::System.DateTime? deadline = null, global::System.Threading.CancellationToken cancellationToken = default(global::System.Threading.CancellationToken))
+      public virtual global::Rghw.Rasterizer.V1.RenderGlyphResponse RenderGlyph(global::Rghw.Rasterizer.V1.RenderGlyphRequest request, grpc::Metadata headers = null, global::System.DateTime? deadline = null, global::System.Threading.CancellationToken cancellationToken = default(global::System.Threading.CancellationToken))
       {
         return RenderGlyph(request, new grpc::CallOptions(headers, deadline, cancellationToken));
       }
       [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
-      public virtual global::RgHello.Rasterizer.V1.RenderGlyphResponse RenderGlyph(global::RgHello.Rasterizer.V1.RenderGlyphRequest request, grpc::CallOptions options)
+      public virtual global::Rghw.Rasterizer.V1.RenderGlyphResponse RenderGlyph(global::Rghw.Rasterizer.V1.RenderGlyphRequest request, grpc::CallOptions options)
       {
         return CallInvoker.BlockingUnaryCall(__Method_RenderGlyph, null, options, request);
       }
       [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
-      public virtual grpc::AsyncUnaryCall<global::RgHello.Rasterizer.V1.RenderGlyphResponse> RenderGlyphAsync(global::RgHello.Rasterizer.V1.RenderGlyphRequest request, grpc::Metadata headers = null, global::System.DateTime? deadline = null, global::System.Threading.CancellationToken cancellationToken = default(global::System.Threading.CancellationToken))
+      public virtual grpc::AsyncUnaryCall<global::Rghw.Rasterizer.V1.RenderGlyphResponse> RenderGlyphAsync(global::Rghw.Rasterizer.V1.RenderGlyphRequest request, grpc::Metadata headers = null, global::System.DateTime? deadline = null, global::System.Threading.CancellationToken cancellationToken = default(global::System.Threading.CancellationToken))
       {
         return RenderGlyphAsync(request, new grpc::CallOptions(headers, deadline, cancellationToken));
       }
       [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
-      public virtual grpc::AsyncUnaryCall<global::RgHello.Rasterizer.V1.RenderGlyphResponse> RenderGlyphAsync(global::RgHello.Rasterizer.V1.RenderGlyphRequest request, grpc::CallOptions options)
+      public virtual grpc::AsyncUnaryCall<global::Rghw.Rasterizer.V1.RenderGlyphResponse> RenderGlyphAsync(global::Rghw.Rasterizer.V1.RenderGlyphRequest request, grpc::CallOptions options)
       {
         return CallInvoker.AsyncUnaryCall(__Method_RenderGlyph, null, options, request);
       }
@@ -147,7 +147,7 @@ namespace RgHello.Rasterizer.V1 {
     [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
     public static void BindService(grpc::ServiceBinderBase serviceBinder, RasterizerBase serviceImpl)
     {
-      serviceBinder.AddMethod(__Method_RenderGlyph, serviceImpl == null ? null : new grpc::UnaryServerMethod<global::RgHello.Rasterizer.V1.RenderGlyphRequest, global::RgHello.Rasterizer.V1.RenderGlyphResponse>(serviceImpl.RenderGlyph));
+      serviceBinder.AddMethod(__Method_RenderGlyph, serviceImpl == null ? null : new grpc::UnaryServerMethod<global::Rghw.Rasterizer.V1.RenderGlyphRequest, global::Rghw.Rasterizer.V1.RenderGlyphResponse>(serviceImpl.RenderGlyph));
     }
 
   }

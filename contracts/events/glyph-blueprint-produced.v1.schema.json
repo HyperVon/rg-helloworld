@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://rghello.dev/schemas/events/glyph-blueprint-produced.v1.schema.json",
+  "$id": "https://rghw.dev/schemas/events/glyph-blueprint-produced.v1.schema.json",
   "title": "GlyphBlueprintProduced",
   "description": "Event published by the orchestrator when the SOAP glyph catalog returns a glyph blueprint (section 9, topic rg.glyph-blueprints.v1)",
   "type": "object",

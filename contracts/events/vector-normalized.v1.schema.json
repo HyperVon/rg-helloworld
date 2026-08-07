@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://rghello.dev/schemas/events/vector-normalized.v1.schema.json",
+  "$id": "https://rghw.dev/schemas/events/vector-normalized.v1.schema.json",
   "title": "VectorNormalized",
   "description": "Event published by the Go vector-normalizer after normalizing geometry and generating SVG (topic rg.glyph-normalized.v1 — note: architecture lists rg.glyph-rasterized.v1 as next topic but vector-normalized is the intermediate step)",
   "type": "object",

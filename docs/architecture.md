@@ -263,6 +263,11 @@ flowchart LR
     LOKI --> GRAFANA
 ```
 
+![High-Level Architecture](diagrams/high-level-architecture.png)
+
+> **Note:** If you update the diagram above, regenerate the image with:
+> `mmdc -i docs/diagrams/high-level-architecture.mmd -o docs/diagrams/high-level-architecture.png`
+
 ---
 
 # 6. Primary Processing Pipeline
@@ -1525,6 +1530,11 @@ stateDiagram-v2
     ADJUDICATING --> CANCELLED
     ASSEMBLING --> CANCELLED
 ```
+
+![Orchestrator State Machine](diagrams/orchestrator-state-machine.png)
+
+> **Note:** If you update the diagram above, regenerate the image with:
+> `mmdc -i docs/diagrams/orchestrator-state-machine.mmd -o docs/diagrams/orchestrator-state-machine.png`
 
 ## 17.2 Step states
 

@@ -2,7 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Xunit;
 
-namespace RgHello.Rasterizer.Tests;
+namespace Rghw.Rasterizer.Tests;
 
 public class OperationKeysTests
 {

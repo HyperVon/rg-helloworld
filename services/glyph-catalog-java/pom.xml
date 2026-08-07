@@ -11,7 +11,7 @@
     <relativePath/>
   </parent>
 
-  <groupId>dev.rghello</groupId>
+  <groupId>dev.rghw</groupId>
   <artifactId>glyph-catalog-java</artifactId>
   <version>0.1.0-milestone4</version>
   <name>glyph-catalog-java</name>
@@ -90,7 +90,7 @@
           <schemaIncludes>
             <include>glyph-catalog.xsd</include>
           </schemaIncludes>
-          <generatePackage>dev.rghello.catalog.contract</generatePackage>
+          <generatePackage>dev.rghw.catalog.contract</generatePackage>
           <cleanPackageDirectories>true</cleanPackageDirectories>
         </configuration>
         <executions>
@@ -128,7 +128,7 @@
             </goals>
             <configuration>
               <excludes>
-                <exclude>dev/rghello/catalog/contract/**</exclude>
+                <exclude>dev/rghw/catalog/contract/**</exclude>
               </excludes>
             </configuration>
           </execution>
@@ -140,7 +140,7 @@
             </goals>
             <configuration>
               <excludes>
-                <exclude>dev/rghello/catalog/contract/**</exclude>
+                <exclude>dev/rghw/catalog/contract/**</exclude>
               </excludes>
               <rules>
                 <rule>

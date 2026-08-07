@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"rghello.dev/vector-normalizer/internal/geom"
+	"rghw.dev/vector-normalizer/internal/geom"
 )
 
 func TestBuildEmitsPolylineOnly(t *testing.T) {

@@ -3,7 +3,7 @@ info:
   title: Rube Goldberg Hello World Domain Events
   version: 1.0.0
   description: |
-    AsyncAPI specification for all Kafka domain events in the rghello pipeline.
+    AsyncAPI specification for all Kafka domain events in the rghw pipeline.
     All events use the CloudEvents-shaped JSON envelope from section 13.4.
     Prohibited fields (targetText, expectedCharacter, unicodeCodePoint, characterName, glyphLabel, message)
     must never appear after glyph planning.

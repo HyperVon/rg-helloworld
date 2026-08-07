@@ -31,11 +31,11 @@ int envIntOr(const char* name, int fallback) {
 
 int runOnce(const std::string& artifactsDir) {
   std::string input((std::istreambuf_iterator<char>(std::cin)), std::istreambuf_iterator<char>());
-  rghello::GeometryConfig config;
+  rghw::GeometryConfig config;
   config.outputTopic = envOr("GEOMETRY_OUTPUT_TOPIC", config.outputTopic);
   config.arcSubdivisions = envIntOr("GEOMETRY_ARC_SUBDIVISIONS", config.arcSubdivisions);
   config.minioBucket = envOr("MINIO_BUCKET", config.minioBucket);
-  rghello::GeometryOutcome outcome = rghello::processBlueprint(input, config);
+  rghw::GeometryOutcome outcome = rghw::processBlueprint(input, config);
   if (!artifactsDir.empty()) {
     std::filesystem::create_directories(artifactsDir);
     auto write = [&](const std::string& key, const std::string& body) {
@@ -56,19 +56,19 @@ int runWorker() {
   std::string inputTopic = envOr("GEOMETRY_INPUT_TOPIC", kInputTopicDefault);
   int pollTimeoutMs = envIntOr("KAFKA_POLL_TIMEOUT_MS", 1000);
 
-  rghello::KafkaClient kafka(bootstrap, groupId, pollTimeoutMs);
+  rghw::KafkaClient kafka(bootstrap, groupId, pollTimeoutMs);
   kafka.subscribe({inputTopic});
 
-  rghello::S3Client s3(envOr("MINIO_ENDPOINT", "http://localhost:9000"),
+  rghw::S3Client s3(envOr("MINIO_ENDPOINT", "http://localhost:9000"),
                        envOr("MINIO_ACCESS_KEY", "minioadmin"),
                        envOr("MINIO_SECRET_KEY", "minioadmin"), 5000);
 
-  rghello::GeometryConfig config;
+  rghw::GeometryConfig config;
   config.outputTopic = envOr("GEOMETRY_OUTPUT_TOPIC", config.outputTopic);
   config.arcSubdivisions = envIntOr("GEOMETRY_ARC_SUBDIVISIONS", config.arcSubdivisions);
   config.minioBucket = envOr("MINIO_BUCKET", config.minioBucket);
 
-  rghello::WorkerLoop loop(kafka, s3, config);
+  rghw::WorkerLoop loop(kafka, s3, config);
   while (true) {
     try {
       if (loop.processOne()) {

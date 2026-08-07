@@ -47,9 +47,9 @@ request canvas, so render profiles survive canvas changes.
 
 ### Contract change: `go_package` and `input_artifact_sha256`
 
-The proto's `go_package` moved from `rghello.dev/rasterizer/proto/...` (a
+The proto's `go_package` moved from `rghw.dev/rasterizer/proto/...` (a
 module that does not exist in this repository) to
-`rghello.dev/vector-normalizer/internal/rasterproto;rasterproto`, the
+`rghw.dev/vector-normalizer/internal/rasterproto;rasterproto`, the
 package of the only Go consumer. `RenderGlyphRequest` gained
 `input_artifact_sha256 = 10`: the SHA-256 of the input normalized artifact,
 used as the §13.5 idempotency input hash. The C# service derives the

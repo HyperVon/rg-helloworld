@@ -1,7 +1,7 @@
 using Minio;
 using Minio.DataModel.Args;
 
-namespace RgHello.Rasterizer;
+namespace Rghw.Rasterizer;
 
 public interface IRasterStore
 {

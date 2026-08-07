@@ -1,10 +1,10 @@
 using System.Security.Cryptography;
-using RgHello.Rasterizer.V1;
+using Rghw.Rasterizer.V1;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using Xunit;
 
-namespace RgHello.Rasterizer.Tests;
+namespace Rghw.Rasterizer.Tests;
 
 public class RasterRendererTests
 {

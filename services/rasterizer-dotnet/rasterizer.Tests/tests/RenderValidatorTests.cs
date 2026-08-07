@@ -1,8 +1,8 @@
 using Grpc.Core;
-using RgHello.Rasterizer.V1;
+using Rghw.Rasterizer.V1;
 using Xunit;
 
-namespace RgHello.Rasterizer.Tests;
+namespace Rghw.Rasterizer.Tests;
 
 public class RenderValidatorTests
 {

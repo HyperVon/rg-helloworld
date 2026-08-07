@@ -3,7 +3,7 @@
 #include <array>
 #include <cstring>
 
-namespace rghello {
+namespace rghw {
 
 namespace {
 
@@ -177,4 +177,4 @@ std::string hmacSha256Hex(const std::string& key, const std::string& data) {
   return toHex(digest);
 }
 
-}  // namespace rghello
+}  // namespace rghw

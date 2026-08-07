@@ -7,7 +7,7 @@
 
 #include "geometry_engine/sha256.hpp"
 
-namespace rghello {
+namespace rghw {
 
 namespace {
 
@@ -249,4 +249,4 @@ bool sameGeometry(const std::vector<Segment>& a, const std::vector<Segment>& b) 
   return true;
 }
 
-}  // namespace rghello
+}  // namespace rghw

@@ -1,8 +1,8 @@
 using System.Globalization;
 using Grpc.Core;
-using RgHello.Rasterizer.V1;
+using Rghw.Rasterizer.V1;
 
-namespace RgHello.Rasterizer;
+namespace Rghw.Rasterizer;
 
 // Request validation at the gRPC trust boundary. The rasterizer receives
 // only geometric segments and opaque identifiers; every field is checked so

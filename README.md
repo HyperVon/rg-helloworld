@@ -61,7 +61,7 @@ All implemented gates (`format`, `lint`, `unit`, `coverage`, `build`,
 
 | Language | Responsibility | Skeleton |
 | --- | --- | --- |
-| Go | CLI, vector normalizer | `cmd/rghello`, `services/vector-normalizer-go` |
+| Go | CLI, vector normalizer | `cmd/rghw`, `services/vector-normalizer-go` |
 | Kotlin | run orchestrator | `services/run-orchestrator-kotlin` |
 | Java | SOAP glyph catalog | `services/glyph-catalog-java` |
 | C++ | geometry expansion | `services/geometry-engine-cpp` |

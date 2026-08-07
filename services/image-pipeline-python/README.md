@@ -20,6 +20,7 @@ python3 -m compileall -q src                           # syntax check
 ## Dependencies
 
 Runtime dependencies (pinned in `requirements-dev.txt`):
+
 - Pillow (image processing)
 - numpy (array operations)
 - scikit-image (image processing)
@@ -28,9 +29,11 @@ Runtime dependencies (pinned in `requirements-dev.txt`):
 - jsonschema (contract validation)
 
 Lint/format:
+
 - ruff (0.16.1)
 
 Testing:
+
 - coverage (7.15.3)
 
 ## CLI

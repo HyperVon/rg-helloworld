@@ -6,7 +6,7 @@
 
 #include "geometry_engine/service.hpp"
 
-namespace rghello {
+namespace rghw {
 
 // Thin librdkafka wrapper: one consumer group on the input topic and a
 // producer for the output topic. Blocking poll with manual offset commit so
@@ -30,6 +30,6 @@ class KafkaClient : public KafkaTransport {
   Impl* impl_;
 };
 
-}  // namespace rghello
+}  // namespace rghw
 
 #endif  // RGHELLO_GEOMETRY_ENGINE_KAFKA_HPP_

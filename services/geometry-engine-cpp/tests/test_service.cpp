@@ -28,24 +28,24 @@ void expectEq(const std::string& actual, const std::string& expected, const std:
 
 void expectThrows(const std::string& input) {
   try {
-    rghello::processBlueprint(input, {});
+    rghw::processBlueprint(input, {});
     std::cerr << "FAIL: expected processing error\n";
     ++failures;
   } catch (const std::exception&) {
   }
 }
 
-rghello::Json point(double x, double y) {
-  rghello::Json p = rghello::Json::object();
-  p.objectItems()["x"] = rghello::Json::number(x);
-  p.objectItems()["y"] = rghello::Json::number(y);
+rghw::Json point(double x, double y) {
+  rghw::Json p = rghw::Json::object();
+  p.objectItems()["x"] = rghw::Json::number(x);
+  p.objectItems()["y"] = rghw::Json::number(y);
   return p;
 }
 
-rghello::Json primitive(const std::string& type, std::vector<rghello::Json> points) {
-  rghello::Json p = rghello::Json::object();
-  p.objectItems()["type"] = rghello::Json::str(type);
-  rghello::Json array = rghello::Json::array();
+rghw::Json primitive(const std::string& type, std::vector<rghw::Json> points) {
+  rghw::Json p = rghw::Json::object();
+  p.objectItems()["type"] = rghw::Json::str(type);
+  rghw::Json array = rghw::Json::array();
   array.arrayItems() = std::move(points);
   p.objectItems()["points"] = std::move(array);
   return p;
@@ -53,37 +53,37 @@ rghello::Json primitive(const std::string& type, std::vector<rghello::Json> poin
 
 // Builds a glyph-blueprint CloudEvent with a single glyph.
 std::string blueprintEvent(const std::string& kind, int position, const std::string& glyphId,
-                           double advanceWidth, std::vector<rghello::Json> primitives) {
-  rghello::Json event = rghello::Json::object();
-  event.objectItems()["specversion"] = rghello::Json::str("1.0");
-  event.objectItems()["id"] = rghello::Json::str("11111111-1111-4111-8111-111111111111");
-  event.objectItems()["source"] = rghello::Json::str("run-orchestrator");
-  event.objectItems()["type"] = rghello::Json::str("rg.glyph-blueprints.v1");
-  event.objectItems()["subject"] = rghello::Json::str("runs/22222222-2222-4222-8222-222222222222");
-  event.objectItems()["time"] = rghello::Json::str("2026-08-05T00:00:00.000Z");
-  event.objectItems()["datacontenttype"] = rghello::Json::str("application/json");
-  event.objectItems()["correlationid"] = rghello::Json::str("22222222-2222-4222-8222-222222222222");
+                           double advanceWidth, std::vector<rghw::Json> primitives) {
+  rghw::Json event = rghw::Json::object();
+  event.objectItems()["specversion"] = rghw::Json::str("1.0");
+  event.objectItems()["id"] = rghw::Json::str("11111111-1111-4111-8111-111111111111");
+  event.objectItems()["source"] = rghw::Json::str("run-orchestrator");
+  event.objectItems()["type"] = rghw::Json::str("rg.glyph-blueprints.v1");
+  event.objectItems()["subject"] = rghw::Json::str("runs/22222222-2222-4222-8222-222222222222");
+  event.objectItems()["time"] = rghw::Json::str("2026-08-05T00:00:00.000Z");
+  event.objectItems()["datacontenttype"] = rghw::Json::str("application/json");
+  event.objectItems()["correlationid"] = rghw::Json::str("22222222-2222-4222-8222-222222222222");
 
-  rghello::Json data = rghello::Json::object();
-  data.objectItems()["runId"] = rghello::Json::str("22222222-2222-4222-8222-222222222222");
-  data.objectItems()["planId"] = rghello::Json::str("33333333-3333-4333-8333-333333333333");
-  data.objectItems()["stepId"] = rghello::Json::str("44444444-4444-4444-8444-444444444444");
-  data.objectItems()["attempt"] = rghello::Json::number(1.0);
-  data.objectItems()["inputArtifacts"] = rghello::Json::array();
-  data.objectItems()["outputArtifacts"] = rghello::Json::array();
-  rghello::Json transformation = rghello::Json::object();
-  transformation.objectItems()["name"] = rghello::Json::str("plan-glyphs");
-  transformation.objectItems()["version"] = rghello::Json::str("1.0.0");
+  rghw::Json data = rghw::Json::object();
+  data.objectItems()["runId"] = rghw::Json::str("22222222-2222-4222-8222-222222222222");
+  data.objectItems()["planId"] = rghw::Json::str("33333333-3333-4333-8333-333333333333");
+  data.objectItems()["stepId"] = rghw::Json::str("44444444-4444-4444-8444-444444444444");
+  data.objectItems()["attempt"] = rghw::Json::number(1.0);
+  data.objectItems()["inputArtifacts"] = rghw::Json::array();
+  data.objectItems()["outputArtifacts"] = rghw::Json::array();
+  rghw::Json transformation = rghw::Json::object();
+  transformation.objectItems()["name"] = rghw::Json::str("plan-glyphs");
+  transformation.objectItems()["version"] = rghw::Json::str("1.0.0");
   data.objectItems()["transformation"] = std::move(transformation);
-  rghello::Json glyph = rghello::Json::object();
-  glyph.objectItems()["glyphInstanceId"] = rghello::Json::str(glyphId);
-  glyph.objectItems()["position"] = rghello::Json::number(static_cast<double>(position));
-  glyph.objectItems()["kind"] = rghello::Json::str(kind);
-  glyph.objectItems()["advanceWidth"] = rghello::Json::number(advanceWidth);
-  rghello::Json primitivesArray = rghello::Json::array();
+  rghw::Json glyph = rghw::Json::object();
+  glyph.objectItems()["glyphInstanceId"] = rghw::Json::str(glyphId);
+  glyph.objectItems()["position"] = rghw::Json::number(static_cast<double>(position));
+  glyph.objectItems()["kind"] = rghw::Json::str(kind);
+  glyph.objectItems()["advanceWidth"] = rghw::Json::number(advanceWidth);
+  rghw::Json primitivesArray = rghw::Json::array();
   primitivesArray.arrayItems() = std::move(primitives);
   glyph.objectItems()["primitives"] = std::move(primitivesArray);
-  rghello::Json glyphs = rghello::Json::array();
+  rghw::Json glyphs = rghw::Json::array();
   glyphs.arrayItems().push_back(std::move(glyph));
   data.objectItems()["glyphs"] = std::move(glyphs);
   event.objectItems()["data"] = std::move(data);
@@ -109,7 +109,7 @@ bool isUuid(const std::string& value) {
 }
 
 // Fake transport and store for WorkerLoop tests.
-class FakeTransport : public rghello::KafkaTransport {
+class FakeTransport : public rghw::KafkaTransport {
  public:
   std::vector<std::string> messages;
   std::vector<std::string> publishedTopics;
@@ -135,7 +135,7 @@ class FakeTransport : public rghello::KafkaTransport {
   }
 };
 
-class FakeStore : public rghello::ObjectStore {
+class FakeStore : public rghw::ObjectStore {
  public:
   std::vector<std::string> keys;
   std::vector<std::string> bodies;
@@ -163,9 +163,9 @@ int main() {
                                       primitive("POLYLINE", {point(0.9, 0.0), point(0.9, 1.0)}),
                                       primitive("POLYLINE", {point(0.1, 0.5), point(0.9, 0.5)})});
 
-  rghello::GeometryOutcome outcome = rghello::processBlueprint(input, {});
-  rghello::Json event = rghello::Json::parse(outcome.outputEventJson);
-  rghello::Json data = event.at("data");
+  rghw::GeometryOutcome outcome = rghw::processBlueprint(input, {});
+  rghw::Json event = rghw::Json::parse(outcome.outputEventJson);
+  rghw::Json data = event.at("data");
 
   expectEq(event.at("specversion").asString(), "1.0", "envelope specversion");
   expectEq(event.at("source").asString(), "geometry-engine", "envelope source");
@@ -187,7 +187,7 @@ int main() {
            "transformation name");
   expectEq(data.at("transformation").at("version").asString(), "1.0.0", "transformation version");
 
-  rghello::Json geometry = data.at("geometry");
+  rghw::Json geometry = data.at("geometry");
   expectEq(geometry.at("kind").asString(), "DRAWABLE_GEOMETRY", "drawable geometry kind");
   expect(geometry.at("segments").arrayItems().size() == 3, "three segments for H");
   expect(geometry.at("segmentCount").asInt64() == 3, "segment count field");
@@ -198,8 +198,8 @@ int main() {
   // Artifact keys: deterministic directory + operation ID in the geometry key.
   std::string directory = "runs/" + runId + "/glyphs/0-" + glyphId;
   std::string operationId =
-      rghello::sha256Hex(runId + "expand-geometry" + glyphId + "1" +
-                         rghello::sha256Hex(rghello::Json::parse(input).at("data").serialize()));
+      rghw::sha256Hex(runId + "expand-geometry" + glyphId + "1" +
+                         rghw::sha256Hex(rghw::Json::parse(input).at("data").serialize()));
   expectEq(outcome.blueprintArtifactKey, directory + "/blueprint.json", "blueprint artifact key");
   expectEq(outcome.geometryArtifactKey, directory + "/geometry-attempt-1-" + operationId + ".json",
            "geometry artifact key embeds the operation id");
@@ -207,21 +207,21 @@ int main() {
            "input artifact reference");
   expectEq(data.at("outputArtifacts").arrayItems()[0].asString(), outcome.geometryArtifactKey,
            "output artifact reference");
-  expectEq(outcome.blueprintArtifactJson, rghello::Json::parse(input).at("data").serialize(),
+  expectEq(outcome.blueprintArtifactJson, rghw::Json::parse(input).at("data").serialize(),
            "blueprint snapshot is the data payload");
   expectEq(geometry.at("geometrySha256").asString(),
-           rghello::sha256Hex(outcome.geometryArtifactJson), "geometry checksum matches artifact");
+           rghw::sha256Hex(outcome.geometryArtifactJson), "geometry checksum matches artifact");
 
   // Determinism: identical input yields byte-identical output.
-  expectEq(rghello::processBlueprint(input, {}).outputEventJson, outcome.outputEventJson,
+  expectEq(rghw::processBlueprint(input, {}).outputEventJson, outcome.outputEventJson,
            "geometry processing is deterministic");
 
   // Gap glyphs produce GAP_GEOMETRY layout records, not empty drawables.
   std::string gapInput = blueprintEvent("GAP", 5, "66666666-6666-4666-8666-666666666666", 0.6, {});
 
-  rghello::GeometryOutcome gapOutcome = rghello::processBlueprint(gapInput, {});
-  rghello::Json gapData = rghello::Json::parse(gapOutcome.outputEventJson).at("data");
-  rghello::Json gapGeometry = gapData.at("geometry");
+  rghw::GeometryOutcome gapOutcome = rghw::processBlueprint(gapInput, {});
+  rghw::Json gapData = rghw::Json::parse(gapOutcome.outputEventJson).at("data");
+  rghw::Json gapGeometry = gapData.at("geometry");
   expectEq(gapGeometry.at("kind").asString(), "GAP_GEOMETRY", "gap geometry kind");
   expect(gapGeometry.at("segments").arrayItems().empty(), "gap has no segments");
   expectEq(gapGeometry.at("advanceWidth").serialize(), "0.6", "gap advance width preserved");
@@ -231,7 +231,7 @@ int main() {
            "{\"advanceWidth\":0.6,\"kind\":\"GAP_GEOMETRY\",\"leftBearing\":0,\"rightBearing\":0}",
            "gap artifact layout record");
   expectEq(gapGeometry.at("geometrySha256").asString(),
-           rghello::sha256Hex(gapOutcome.geometryArtifactJson), "gap checksum matches artifact");
+           rghw::sha256Hex(gapOutcome.geometryArtifactJson), "gap checksum matches artifact");
 
   // Invalid inputs are rejected.
   expectThrows("not json");
@@ -245,7 +245,7 @@ int main() {
   FakeTransport transport;
   transport.messages = {input};
   FakeStore store;
-  rghello::WorkerLoop loop(transport, store, {});
+  rghw::WorkerLoop loop(transport, store, {});
   expect(loop.processOne(), "first message processed");
   expect(!loop.processOne(), "poll timeout returns false");
   expect(store.keys.size() == 2, "two artifacts stored");
@@ -262,7 +262,7 @@ int main() {
   failingTransport.messages = {input};
   FakeStore failingStore;
   failingStore.putResult = false;
-  rghello::WorkerLoop failingLoop(failingTransport, failingStore, {});
+  rghw::WorkerLoop failingLoop(failingTransport, failingStore, {});
   try {
     failingLoop.processOne();
     std::cerr << "FAIL: store failure should throw\n";
@@ -275,7 +275,7 @@ int main() {
   produceFailingTransport.messages = {input};
   produceFailingTransport.produceResult = false;
   FakeStore okStore;
-  rghello::WorkerLoop produceFailingLoop(produceFailingTransport, okStore, {});
+  rghw::WorkerLoop produceFailingLoop(produceFailingTransport, okStore, {});
   try {
     produceFailingLoop.processOne();
     std::cerr << "FAIL: produce failure should throw\n";

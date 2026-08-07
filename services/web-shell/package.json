@@ -1,0 +1,33 @@
+{
+  "name": "rg-web-shell",
+  "version": "0.5.0-milestone11",
+  "private": true,
+  "description": "React Flow process graph for Rube Goldberg Hello World (Milestone 10)",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "prettier --check .",
+    "format": "prettier --write .",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test tests/*.test.mjs",
+    "coverage": "node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "reactflow": "11.11.4"
+  },
+  "devDependencies": {
+    "@types/react": "19.0.3",
+    "@types/react-dom": "19.0.1",
+    "@types/node": "26.1.2",
+    "typescript": "7.0.2",
+    "vite": "6.3.4",
+    "prettier": "3.9.6",
+    "@testing-library/dom": "10.4.0",
+    "@testing-library/react": "16.3.0",
+    "happy-dom": "20.11.1"
+  }
+}

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://rghello.dev/schemas/events/ocr-observations-produced.v1.schema.json",
+  "$id": "https://rghw.dev/schemas/events/ocr-observations-produced.v1.schema.json",
   "title": "OcrObservationsProduced",
   "description": "Event published by the Node OCR worker with raw OCR observations (topic rg.ocr-observations.v1). Must not contain expected characters (section 7.3)",
   "type": "object",

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"rghello.dev/vector-normalizer/internal/rasterproto"
+	"rghw.dev/vector-normalizer/internal/rasterproto"
 )
 
 type fakeRenderer struct {

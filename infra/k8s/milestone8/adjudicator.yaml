@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: adjudicator
-          image: rghello-registry:5001/adjudicator:milestone8
+          image: rghw-registry:5001/adjudicator:milestone8
           imagePullPolicy: Always
           command: ["bundle", "exec", "/usr/local/bin/adjudicator", "run"]
           ports:

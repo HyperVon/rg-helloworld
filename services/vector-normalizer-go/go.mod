@@ -1,4 +1,4 @@
-module rghello.dev/vector-normalizer
+module rghw.dev/vector-normalizer
 
 go 1.26.5
 

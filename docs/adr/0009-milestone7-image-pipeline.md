@@ -67,6 +67,7 @@ fixed `zlib_level`.
 ### Event Publishing
 
 Composition and preprocessing each publish a single run-level event:
+
 - `rg.phrase-composed.v1` (maturity 40 → 50)
 - `rg.ocr-images.v1` (maturity 50 → 60)
 

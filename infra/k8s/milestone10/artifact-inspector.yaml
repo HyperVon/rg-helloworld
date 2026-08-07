@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: artifact-inspector
+  namespace: rube-goldberg
+  labels:
+    app: artifact-inspector
+    milestone: "10"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: artifact-inspector
+  template:
+    metadata:
+      labels:
+        app: artifact-inspector
+    spec:
+      containers:
+        - name: artifact-inspector
+          image: rghw-registry:5001/artifact-inspector:milestone10
+          imagePullPolicy: Always
+          env:
+            - name: EVENT_GATEWAY_URL
+              value: "http://event-gateway.rube-goldberg.svc.cluster.local"
+          ports:
+            - containerPort: 4568
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4568
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4568
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: artifact-inspector
+  namespace: rube-goldberg
+  labels:
+    app: artifact-inspector
+    milestone: "10"
+spec:
+  selector:
+    app: artifact-inspector
+  ports:
+    - name: http
+      port: 80
+      targetPort: 4568

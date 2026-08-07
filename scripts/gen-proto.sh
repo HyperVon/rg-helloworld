@@ -66,9 +66,9 @@ fi
 
 PATH="$GOBIN:$PATH" "$PROTOC" \
     --go_out="$ROOT/services/vector-normalizer-go" \
-    --go_opt=module=rghello.dev/vector-normalizer \
+    --go_opt=module=rghw.dev/vector-normalizer \
     --go-grpc_out="$ROOT/services/vector-normalizer-go" \
-    --go-grpc_opt=module=rghello.dev/vector-normalizer \
+    --go-grpc_opt=module=rghw.dev/vector-normalizer \
     -I "$ROOT/contracts/proto" \
     "$ROOT/contracts/proto/rasterizer/v1/rasterizer.proto"
 

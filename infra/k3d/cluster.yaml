@@ -6,7 +6,7 @@ servers: 1
 agents: 0
 registries:
   create:
-    name: rghello-registry
+    name: rghw-registry
     host: "0.0.0.0"
     hostPort: "5001"
 options:

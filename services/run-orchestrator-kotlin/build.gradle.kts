@@ -6,8 +6,8 @@ plugins {
     jacoco
 }
 
-group = "dev.rghello"
-version = "0.2.0-milestone4"
+group = "dev.rghw"
+version = "0.2.0-milestone11"
 
 repositories {
     mavenCentral()
@@ -36,6 +36,10 @@ dependencies {
     implementation("com.sun.xml.ws:jaxws-rt:$jaxwsVersion")
     implementation("jakarta.xml.ws:jakarta.xml.ws-api:4.0.3")
     implementation("jakarta.jws:jakarta.jws-api:3.0.0")
+    implementation("io.opentelemetry:opentelemetry-api:1.54.0")
+    implementation("io.opentelemetry:opentelemetry-sdk:1.54.0")
+    implementation("io.opentelemetry:opentelemetry-sdk-trace:1.54.0")
+    implementation("io.opentelemetry:opentelemetry-exporter-otlp:1.54.0")
 
     wsimportTools("com.sun.xml.ws:jaxws-tools:$jaxwsVersion")
 
@@ -82,7 +86,7 @@ val wsimport by tasks.registering(JavaExec::class) {
         "-d",
         generatedSoapDir.get().asFile.absolutePath,
         "-p",
-        "dev.rghello.soap.generated",
+        "dev.rghw.soap.generated",
         "-wsdllocation",
         "/wsdl/glyph-catalog.wsdl",
         wsdlFile.absolutePath,
@@ -125,7 +129,7 @@ kotlin {
 }
 
 application {
-    mainClass.set("dev.rghello.orchestrator.ApplicationKt")
+    mainClass.set("dev.rghw.orchestrator.ApplicationKt")
 }
 
 tasks.test {

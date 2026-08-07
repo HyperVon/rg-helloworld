@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: ocr-worker
-          image: rghello-registry:5001/ocr-worker:milestone8
+          image: rghw-registry:5001/ocr-worker:milestone8
           imagePullPolicy: Always
           env:
             - name: KAFKA_BOOTSTRAP

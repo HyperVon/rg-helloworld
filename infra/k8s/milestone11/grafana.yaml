@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: rube-goldberg
+  labels:
+    app: grafana
+    milestone: "11"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana-enterprise:12.0.2
+          ports:
+            - containerPort: 3000
+              name: http
+          env:
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-credentials
+                  key: admin-password
+            - name: GF_LOKI_PUSH_API_URL
+              value: http://loki:3100/loki/api/v1/push
+            - name: GF_PROMETHEUS_URL
+              value: http://prometheus:9090
+            - name: GF_TEMPO_URL
+              value: http://tempo:3200
+          volumeMounts:
+            - name: grafana-dashboards
+              mountPath: /var/lib/grafana/dashboards
+            - name: grafana-provisioning
+              mountPath: /etc/grafana/provisioning
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 256Mi
+      volumes:
+        - name: grafana-dashboards
+          configMap:
+            name: grafana-dashboards
+        - name: grafana-provisioning
+          configMap:
+            name: grafana-provisioning
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: rube-goldberg
+  labels:
+    app: grafana
+    milestone: "11"
+spec:
+  selector:
+    app: grafana
+  ports:
+    - name: http
+      port: 80
+      targetPort: 3000

@@ -1,4 +1,4 @@
-namespace RgHello.Rasterizer;
+namespace Rghw.Rasterizer;
 
 // Trust-boundary limits for RenderGlyph requests (architecture section 12):
 // bounded segment count, bounded canvas, bounded stroke width, and closed

@@ -23,7 +23,7 @@ except ImportError:
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACTS = ROOT / "contracts"
 SCHEMA_DIR = CONTRACTS / "events"
-OPENAPI_FILE = CONTRACTS / "openapi" / "rghello.yaml"
+OPENAPI_FILE = CONTRACTS / "openapi" / "rghw.yaml"
 ASYNCAPI_FILE = CONTRACTS / "asyncapi" / "domain-events.yaml"
 PROTO_FILE = CONTRACTS / "proto" / "rasterizer" / "v1" / "rasterizer.proto"
 WSDL_FILE = CONTRACTS / "soap" / "glyph-catalog.wsdl"

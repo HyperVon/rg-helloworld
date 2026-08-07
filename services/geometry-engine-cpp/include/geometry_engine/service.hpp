@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-namespace rghello {
+namespace rghw {
 
 struct GeometryConfig {
   std::string outputTopic = "rg.geometry-expanded.v1";
@@ -57,6 +57,6 @@ class WorkerLoop {
   GeometryConfig config_;
 };
 
-}  // namespace rghello
+}  // namespace rghw
 
 #endif  // RGHELLO_GEOMETRY_ENGINE_SERVICE_HPP_

@@ -1,8 +1,8 @@
 use phrase_assembler::{SERVICE_NAME, VERSION, banner};
 
 #[test]
-fn version_matches_skeleton() {
-    assert_eq!(VERSION, "0.0.0-skeleton");
+fn version_matches_milestone_11() {
+    assert_eq!(VERSION, "0.5.0-milestone11");
 }
 
 #[test]
@@ -17,7 +17,7 @@ fn service_name_is_set() {
 
 #[test]
 fn banner_includes_service_and_version() {
-    assert!(banner().starts_with("phrase-assembler 0.0.0-skeleton"));
+    assert!(banner().starts_with("phrase-assembler 0.5.0-milestone11"));
 }
 
 #[test]

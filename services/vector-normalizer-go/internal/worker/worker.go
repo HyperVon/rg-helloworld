@@ -14,11 +14,11 @@ import (
 	"strconv"
 	"strings"
 
-	"rghello.dev/vector-normalizer/internal/geom"
-	"rghello.dev/vector-normalizer/internal/kafka"
-	"rghello.dev/vector-normalizer/internal/rasterproto"
-	"rghello.dev/vector-normalizer/internal/s3store"
-	"rghello.dev/vector-normalizer/internal/svg"
+	"rghw.dev/vector-normalizer/internal/geom"
+	"rghw.dev/vector-normalizer/internal/kafka"
+	"rghw.dev/vector-normalizer/internal/rasterproto"
+	"rghw.dev/vector-normalizer/internal/s3store"
+	"rghw.dev/vector-normalizer/internal/svg"
 )
 
 const (

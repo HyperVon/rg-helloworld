@@ -234,6 +234,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="Blob removal size threshold (default: 50, 0 to disable)",
     )
 
+    serve_cmd = sub.add_parser("serve", help="Run Kafka worker for composition and preprocessing")
+    serve_cmd.set_defaults(scale_factor=1)
+
     return parser
 
 
@@ -247,6 +250,12 @@ def main(argv: list[str] | None = None) -> int:
         return run_compose_once(args)
     if args.command == "preprocess":
         return run_preprocess_once(args)
+    if args.command == "serve":
+        import asyncio
+        from .worker import run_worker
+
+        asyncio.run(run_worker())
+        return 0
     parser.print_help()
     return 1
 

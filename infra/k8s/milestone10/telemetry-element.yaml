@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: telemetry-element
+  namespace: rube-goldberg
+  labels:
+    app: telemetry-element
+    milestone: "10"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: telemetry-element
+  template:
+    metadata:
+      labels:
+        app: telemetry-element
+    spec:
+      containers:
+        - name: telemetry-element
+          image: rghw-registry:5001/telemetry-element:milestone10
+          imagePullPolicy: Always
+          env:
+            - name: EVENT_GATEWAY_URL
+              value: "http://event-gateway.rube-goldberg.svc.cluster.local"
+          ports:
+            - containerPort: 3002
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3002
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3002
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: telemetry-element
+  namespace: rube-goldberg
+  labels:
+    app: telemetry-element
+    milestone: "10"
+spec:
+  selector:
+    app: telemetry-element
+  ports:
+    - name: http
+      port: 80
+      targetPort: 3002

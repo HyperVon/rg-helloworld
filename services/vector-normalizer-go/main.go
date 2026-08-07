@@ -8,11 +8,11 @@ import (
 	"path/filepath"
 	"time"
 
-	"rghello.dev/vector-normalizer/internal/kafka"
-	"rghello.dev/vector-normalizer/internal/rasterclient"
-	"rghello.dev/vector-normalizer/internal/s3store"
-	"rghello.dev/vector-normalizer/internal/version"
-	"rghello.dev/vector-normalizer/internal/worker"
+	"rghw.dev/vector-normalizer/internal/kafka"
+	"rghw.dev/vector-normalizer/internal/rasterclient"
+	"rghw.dev/vector-normalizer/internal/s3store"
+	"rghw.dev/vector-normalizer/internal/version"
+	"rghw.dev/vector-normalizer/internal/worker"
 )
 
 var exit = os.Exit

@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
-using RgHello.Rasterizer;
+using Rghw.Rasterizer;
 
 // Rasterizer host: `rasterizer version` prints the banner, `rasterizer serve`
 // runs the gRPC server. Store mode is selected by RASTERIZER_STORE

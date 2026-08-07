@@ -13,3 +13,6 @@ opentelemetry = { version = "0.27.0", default-features = false, features = ["tra
 opentelemetry_sdk = { version = "0.27.1", features = ["trace", "tokio"] }
 tracing = { version = "0.1.41", features = ["log"] }
 tracing-subscriber = "0.3.19"
+tokio = { version = "1.53.1", features = ["full"] }
+rdkafka = { version = "0.39.0", features = ["tokio"] }
+futures-util = "0.3.33"

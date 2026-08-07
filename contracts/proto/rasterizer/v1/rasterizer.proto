@@ -2,9 +2,9 @@ syntax = "proto3";
 
 package rg.rasterizer.v1;
 
-option go_package = "rghello.dev/vector-normalizer/internal/rasterproto;rasterproto";
-option java_package = "dev.rghello.rasterizer.v1";
-option csharp_namespace = "RgHello.Rasterizer.V1";
+option go_package = "rghw.dev/vector-normalizer/internal/rasterproto;rasterproto";
+option java_package = "dev.rghw.rasterizer.v1";
+option csharp_namespace = "Rghw.Rasterizer.V1";
 
 service Rasterizer {
   rpc RenderGlyph(RenderGlyphRequest) returns (RenderGlyphResponse);

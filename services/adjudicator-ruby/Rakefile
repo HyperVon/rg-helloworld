@@ -3,14 +3,20 @@
 require 'rake/testtask'
 
 Rake::TestTask.new(:test) do |t|
-  t.libs << 'test'
   t.libs << 'lib'
   t.test_files = FileList['test/**/*_test.rb']
 end
 
 desc 'Run tests with coverage and enforce the 90% minimum'
 task :coverage do
-  ruby '-Ilib', '-Itest', '-rsimplecov', 'test/adjudicator_test.rb'
+  ruby '-Ilib', '-Itest', '-e', <<~RUBY
+    require 'simplecov'
+    SimpleCov.start do
+      command_name 'Unit Tests'
+      minimum_coverage 90
+    end
+    Dir['test/**/*_test.rb'].sort.each { |f| require File.expand_path(f) }
+  RUBY
 end
 
 task default: :test

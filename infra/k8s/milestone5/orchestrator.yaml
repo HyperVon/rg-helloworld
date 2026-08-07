@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: orchestrator
-          image: rghello-registry:5001/run-orchestrator:milestone5
+          image: rghw-registry:5001/run-orchestrator:milestone5
           imagePullPolicy: Always
           ports:
             - containerPort: 8080

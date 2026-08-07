@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://rghello.dev/schemas/events/phrase-assembled.v1.schema.json",
+  "$id": "https://rghw.dev/schemas/events/phrase-assembled.v1.schema.json",
   "title": "PhraseAssembled",
   "description": "Event published by the Rust assembler with the final UTF-8 phrase (topic rg.phrase-assembled.v1). The assembler only uses accepted OCR-derived symbols (section 7.5)",
   "type": "object",

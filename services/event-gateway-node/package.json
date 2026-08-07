@@ -1,11 +1,16 @@
 {
   "name": "rg-event-gateway",
-  "version": "0.0.0-skeleton",
-  "description": "Browser event gateway (Milestone 0 skeleton)",
+  "version": "0.5.0-milestone10",
+  "description": "Browser event gateway: Redis Streams to SSE (Milestone 10)",
   "private": true,
   "type": "module",
   "engines": {
     "node": ">=24"
+  },
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "bin": {
+    "event-gateway": "out/src/index.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
@@ -13,12 +18,16 @@
     "test": "npm run build && tsc -p tsconfig.test.json && node --test \"out/tests/*.test.js\"",
     "coverage": "npm run build && tsc -p tsconfig.test.json && c8 node --test \"out/tests/*.test.js\"",
     "lint": "prettier --check . && npm run typecheck",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "start": "node out/src/index.js",
+    "version": "echo event-gateway 0.5.0-milestone10"
   },
   "devDependencies": {
     "@types/node": "26.1.2",
+    "@opentelemetry/api": "1.9.1",
     "c8": "12.0.0",
     "prettier": "3.9.6",
+    "redis": "4.7.1",
     "typescript": "7.0.2"
   }
 }

@@ -13,8 +13,8 @@ import (
 
 	"google.golang.org/grpc"
 
-	rgProto "rghello.dev/vector-normalizer/internal/rasterproto"
-	"rghello.dev/vector-normalizer/internal/worker"
+	rgProto "rghw.dev/vector-normalizer/internal/rasterproto"
+	"rghw.dev/vector-normalizer/internal/worker"
 )
 
 const geometryEventForMain = `{

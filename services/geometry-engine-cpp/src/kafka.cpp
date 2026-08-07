@@ -5,7 +5,7 @@
 #include <cstring>
 #include <stdexcept>
 
-namespace rghello {
+namespace rghw {
 
 struct KafkaClient::Impl {
   rd_kafka_t* consumer = nullptr;
@@ -104,4 +104,4 @@ bool KafkaClient::produce(const std::string& topic, const std::string& key,
   return true;
 }
 
-}  // namespace rghello
+}  // namespace rghw

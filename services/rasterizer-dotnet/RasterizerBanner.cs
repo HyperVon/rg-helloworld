@@ -1,4 +1,4 @@
-namespace RgHello.Rasterizer;
+namespace Rghw.Rasterizer;
 
 public static class RasterizerBanner
 {

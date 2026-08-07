@@ -13,7 +13,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 
-	"rghello.dev/vector-normalizer/internal/rasterproto"
+	"rghw.dev/vector-normalizer/internal/rasterproto"
 )
 
 // DefaultDeadline is the per-call client deadline (section 12: initially

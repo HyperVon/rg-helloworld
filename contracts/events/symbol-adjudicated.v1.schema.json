@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://rghello.dev/schemas/events/symbol-adjudicated.v1.schema.json",
+  "$id": "https://rghw.dev/schemas/events/symbol-adjudicated.v1.schema.json",
   "title": "SymbolAdjudicated",
   "description": "Event published by the Ruby adjudicator after consensus analysis (topic rg.symbols-adjudicated.v1). Must never substitute expected characters (section 5.4)",
   "type": "object",

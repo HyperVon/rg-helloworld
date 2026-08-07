@@ -32,14 +32,13 @@ adjudication -> assembly.
    clear-text phrase "Hello World" or variants. Use obfuscation languages
    like Whitespace or Brainfuck where needed for transformations. The CLI
    executable is named `rghw` (not `rghw` or any variant of "Hello World").
-7. Every output artifact records input artifact IDs and SHA-256 hashes.
-8. Kafka consumers must be idempotent (deterministic operation IDs).
-9. No paid service or external runtime API, ever.
-10. The whole acceptance environment runs on one laptop.
+8. Every output artifact records input artifact IDs and SHA-256 hashes.
+9. Kafka consumers must be idempotent (deterministic operation IDs).
+10. No paid service or external runtime API, ever.
+11. The whole acceptance environment runs on one laptop.
 
 ## Milestone workflow
 
-Implement one milestone at a time, in the order in
 `docs/architecture.md` section 29. Never start the next milestone while the
 current one's acceptance conditions fail.
 
@@ -111,6 +110,7 @@ optional focused-development aid.
   inter-service boundaries (`make contracts` regenerates clients and models;
   generated code is never hand-edited).
 - Pin every dependency and container version. Never use floating `latest`
+- All dependencies must use free and open-source licenses (MIT, Apache-2.0, BSD, ISC, MPL-2.0, LGPL, CC0, Unlicense, or Public Domain). No commercial or attribution-only licenses are permitted. See `docs/adr/0010-licensing.md` for the full policy.
   tags. Update `versions.env` and the per-language lockfiles.
 - Prefer deterministic outputs (fixed seeds, quantized floats, sorted output).
 - Use structured JSON logs in services (later milestones); never log the
@@ -129,7 +129,7 @@ commands and agents live in `.kilo/command/` and `.kilo/agent/`.
 
 | User intent | Skill / command |
 | --- | --- |
-| Implement / resume a milestone | `rghello-milestone` (`.kilo/skills/`) |
+| Implement / resume a milestone | `rghw-milestone` (`.kilo/skills/`) |
 | Run gates / evidence before changes | `/quality-gate` |
 | Review working-tree changes before commit | `/review-diff` |
 | Boot the acceptance stack and verify | `/acceptance-smoke` |
@@ -177,7 +177,7 @@ its output limit while reasoning and produced no actionable output":
   (retries usually succeed), switch models (`/models`) to one with a higher
   output cap, or toggle reasoning (`/thinking`) before retrying.
 - On resume after context compression, rely on `docs/implementation-status.md`
-  and the rghello-milestone skill instead of pasting large transcripts.
+  and the rghw-milestone skill instead of pasting large transcripts.
 - Never dump full file contents, dependency trees, or command output into a
   prompt; keep queries pointed at the files that changed.
 

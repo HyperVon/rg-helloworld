@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://rghello.dev/schemas/events/glyph-rasterized.v1.schema.json",
+  "$id": "https://rghw.dev/schemas/events/glyph-rasterized.v1.schema.json",
   "title": "GlyphRasterized",
   "description": "Event published by the Go normalizer after gRPC rasterization to the C# rasterizer (topic rg.glyph-rasterized.v1)",
   "type": "object",

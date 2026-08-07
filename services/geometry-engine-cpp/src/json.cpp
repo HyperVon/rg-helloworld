@@ -6,7 +6,7 @@
 #include <iomanip>
 #include <sstream>
 
-namespace rghello {
+namespace rghw {
 
 bool Json::asBool() const {
   if (type_ != Type::Bool) {
@@ -448,4 +448,4 @@ std::string Json::pretty(int indent) const {
   return out;
 }
 
-}  // namespace rghello
+}  // namespace rghw

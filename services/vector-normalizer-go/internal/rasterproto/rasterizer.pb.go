@@ -528,8 +528,8 @@ const file_rasterizer_v1_rasterizer_proto_rawDesc = "" +
 	"\fcontent_type\x18\a \x01(\tR\vcontentType2h\n" +
 	"\n" +
 	"Rasterizer\x12Z\n" +
-	"\vRenderGlyph\x12$.rg.rasterizer.v1.RenderGlyphRequest\x1a%.rg.rasterizer.v1.RenderGlyphResponseBs\n" +
-	"\x19dev.rghello.rasterizer.v1Z>rghello.dev/vector-normalizer/internal/rasterproto;rasterproto\xaa\x02\x15RgHello.Rasterizer.V1b\x06proto3"
+	"\vRenderGlyph\x12$.rg.rasterizer.v1.RenderGlyphRequest\x1a%.rg.rasterizer.v1.RenderGlyphResponseBj\n" +
+	"\x16dev.rghw.rasterizer.v1Z;rghw.dev/vector-normalizer/internal/rasterproto;rasterproto\xaa\x02\x12Rghw.Rasterizer.V1b\x06proto3"
 
 var (
 	file_rasterizer_v1_rasterizer_proto_rawDescOnce sync.Once

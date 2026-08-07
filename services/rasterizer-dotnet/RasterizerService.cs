@@ -1,8 +1,8 @@
 using Grpc.Core;
-using RgHello.Rasterizer.V1;
-using RasterizerBase = global::RgHello.Rasterizer.V1.Rasterizer.RasterizerBase;
+using Rghw.Rasterizer.V1;
+using RasterizerBase = global::Rghw.Rasterizer.V1.Rasterizer.RasterizerBase;
 
-namespace RgHello.Rasterizer;
+namespace Rghw.Rasterizer;
 
 // gRPC handler for rg.rasterizer.v1.Rasterizer (architecture section 12).
 // Validate -> render -> store -> respond; the response carries the artifact

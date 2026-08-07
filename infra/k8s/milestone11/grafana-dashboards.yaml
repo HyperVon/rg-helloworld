@@ -1,0 +1,282 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: rube-goldberg
+data:
+  dashboard-overview.json: |
+    {
+      "id": null,
+      "title": "Rube Goldberg Overview",
+      "tags": ["rube-goldberg"],
+      "version": 1,
+      "schemaVersion": 39,
+      "refresh": "10s",
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "title": "Active Runs",
+          "gridPos": {"x": 0, "y": 0, "w": 4, "h": 4},
+          "targets": [{"expr": "rg_active_runs", "refId": "A"}],
+          "fieldConfig": {"defaults": {"unit": "short"}}
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "Total Runs",
+          "gridPos": {"x": 4, "y": 0, "w": 4, "h": 4},
+          "targets": [{"expr": "rg_runs_total", "refId": "A"}],
+          "fieldConfig": {"defaults": {"unit": "short"}}
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "title": "Success Rate",
+          "gridPos": {"x": 8, "y": 0, "w": 4, "h": 4},
+          "targets": [{"expr": "sum(rate(rg_runs_total{status='SUCCEEDED'}[5m])) / sum(rate(rg_runs_total[5m])) * 100", "refId": "A"}],
+          "fieldConfig": {"defaults": {"unit": "percent"}}
+        },
+        {
+          "id": 4,
+          "type": "stat",
+          "title": "Failed Runs",
+          "gridPos": {"x": 0, "y": 4, "w": 4, "h": 4},
+          "targets": [{"expr": "rg_runs_total{status='FAILED'}", "refId": "A"}],
+          "fieldConfig": {"defaults": {"unit": "short", "color": "red"}}
+        },
+        {
+          "id": 5,
+          "type": "stat",
+          "title": "Retry Count",
+          "gridPos": {"x": 4, "y": 4, "w": 4, "h": 4},
+          "targets": [{"expr": "sum(rg_step_retries_total)", "refId": "A"}],
+          "fieldConfig": {"defaults": {"unit": "short"}}
+        },
+        {
+          "id": 6,
+          "type": "stat",
+          "title": "Kafka Consumer Lag",
+          "gridPos": {"x": 8, "y": 4, "w": 4, "h": 4},
+          "targets": [{"expr": "rg_kafka_consumer_lag", "refId": "A"}],
+          "fieldConfig": {"defaults": {"unit": "short"}}
+        },
+        {
+          "id": 7,
+          "type": "timeseries",
+          "title": "End-to-End Duration",
+          "gridPos": {"x": 0, "y": 8, "w": 8, "h": 8},
+          "targets": [{"expr": "rg_run_end_to_end_seconds", "refId": "A"}],
+          "fieldConfig": {"defaults": {"unit": "seconds"}}
+        },
+        {
+          "id": 8,
+          "type": "timeseries",
+          "title": "Step Completion Rate",
+          "gridPos": {"x": 8, "y": 8, "w": 8, "h": 8},
+          "targets": [{"expr": "rate(rg_step_completed_total[5m])", "refId": "A"}],
+          "fieldConfig": {"defaults": {"unit": "ops"}}
+        },
+        {
+          "id": 9,
+          "type": "bargauge",
+          "title": "Artifacts Created",
+          "gridPos": {"x": 0, "y": 16, "w": 8, "h": 4},
+          "targets": [{"expr": "sum(rg_artifacts_created_total)", "refId": "A"}],
+          "fieldConfig": {"defaults": {"unit": "short"}}
+        },
+        {
+          "id": 10,
+          "type": "bargauge",
+          "title": "Artifact Bytes",
+          "gridPos": {"x": 8, "y": 16, "w": 8, "h": 4},
+          "targets": [{"expr": "rg_artifact_bytes", "refId": "A"}],
+          "fieldConfig": {"defaults": {"unit": "bytes"}}
+        },
+        {
+          "id": 11,
+          "type": "histogram",
+          "title": "OCR Confidence",
+          "gridPos": {"x": 0, "y": 20, "w": 8, "h": 8},
+          "targets": [{"expr": "rg_ocr_confidence", "refId": "A"}],
+          "fieldConfig": {"defaults": {"unit": "percent"}}
+        }
+      ]
+    }
+  dashboard-deep-dive.json: |
+    {
+      "id": null,
+      "title": "Run Deep Dive",
+      "tags": ["rube-goldberg"],
+      "version": 1,
+      "schemaVersion": 39,
+      "refresh": "5s",
+      "templating": {
+        "list": [
+          {
+            "name": "trace_id",
+            "type": "query",
+            "datasource": {"type": "tempo"},
+            "refresh": 1,
+            "query": "query_result(label_values(tempo_traces, trace_id))",
+            "includeTime": false,
+            "multi": false
+          }
+        ]
+      },
+      "panels": [
+        {
+          "id": 1,
+          "type": "traces",
+          "title": "Trace Timeline",
+          "gridPos": {"x": 0, "y": 0, "w": 12, "h": 10},
+          "datasource": {"type": "tempo"},
+          "targets": [{"refId": "A", "query": {"traceId": "$trace_id"}}]
+        },
+        {
+          "id": 2,
+          "type": "nodeGraph",
+          "title": "Service Graph",
+          "gridPos": {"x": 0, "y": 10, "w": 12, "h": 10},
+          "datasource": {"type": "tempo"},
+          "targets": [{"refId": "A"}]
+        },
+        {
+          "id": 3,
+          "type": "logs",
+          "title": "Correlated Logs",
+          "gridPos": {"x": 0, "y": 20, "w": 24, "h": 12},
+          "datasource": {"type": "loki"},
+          "targets": [{"expr": "{namespace=\"rube-goldberg\"} | json | traceId=\"$trace_id\"", "refId": "A"}]
+        },
+        {
+          "id": 4,
+          "type": "table",
+          "title": "Stage Duration Table",
+          "gridPos": {"x": 0, "y": 32, "w": 12, "h": 8},
+          "targets": [{"expr": "rg_step_duration_seconds", "refId": "A"}],
+          "fieldConfig": {"defaults": {"unit": "s"}}
+        },
+        {
+          "id": 5,
+          "type": "logs",
+          "title": "Error Events",
+          "gridPos": {"x": 12, "y": 32, "w": 12, "h": 8},
+          "datasource": {"type": "loki"},
+          "targets": [{"expr": "{namespace=\"rube-goldberg\"} |~ \"(?i)error|fail|exception\"", "refId": "A"}]
+        },
+        {
+          "id": 6,
+          "type": "timeseries",
+          "title": "Artifact Creation Timeline",
+          "gridPos": {"x": 0, "y": 40, "w": 24, "h": 8},
+          "targets": [{"expr": "rate(rg_artifacts_created_total[5m])", "refId": "A"}],
+          "fieldConfig": {"defaults": {"unit": "ops"}}
+        },
+        {
+          "id": 7,
+          "type": "timeseries",
+          "title": "Kafka Produce/Consume Durations",
+          "gridPos": {"x": 0, "y": 48, "w": 24, "h": 8},
+          "targets": [{"expr": "rate(rg_kafka_produce_duration_seconds[5m])", "legendFormat": "produce"}, {"expr": "rate(rg_kafka_consume_duration_seconds[5m])", "legendFormat": "consume"}]
+        }
+      ]
+    }
+  dashboard-ocr-lab.json: |
+    {
+      "id": null,
+      "title": "OCR Laboratory",
+      "tags": ["rube-goldberg"],
+      "version": 1,
+      "schemaVersion": 39,
+      "panels": [
+        {
+          "id": 1,
+          "type": "timeseries",
+          "title": "OCR Confidence by Attempt",
+          "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+          "targets": [{"expr": "rg_ocr_confidence{mode=\"full\"}", "refId": "A"}],
+          "fieldConfig": {"defaults": {"unit": "percent"}}
+        },
+        {
+          "id": 2,
+          "type": "timeseries",
+          "title": "Quality Rejection Count",
+          "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+          "targets": [{"expr": "rate(rg_ocr_quality_rejections_total[5m])", "refId": "A"}]
+        },
+        {
+          "id": 3,
+          "type": "timeseries",
+          "title": "OCR Confidence Histogram",
+          "gridPos": {"x": 0, "y": 8, "w": 24, "h": 8},
+          "targets": [{"expr": "rg_ocr_confidence", "format": "time_series", "refId": "A"}]
+        }
+      ]
+    }
+  dashboard-infra.json: |
+    {
+      "id": null,
+      "title": "Ridiculous Infrastructure",
+      "tags": ["rube-goldberg"],
+      "version": 1,
+      "schemaVersion": 39,
+      "panels": [
+        {
+          "id": 1,
+          "type": "timeseries",
+          "title": "Pod CPU and Memory",
+          "gridPos": {"x": 0, "y": 0, "w": 24, "h": 8},
+          "targets": [{"expr": "rate(container_cpu_usage_seconds_total{namespace=\"rube-goldberg\"}[5m]) * 100", "legendFormat": "{{pod}}"}, {"expr": "container_memory_working_set_bytes{namespace=\"rube-goldberg\"}", "legendFormat": "{{pod}}"}]
+        },
+        {
+          "id": 2,
+          "type": "timeseries",
+          "title": "Pod Restart Count",
+          "gridPos": {"x": 0, "y": 8, "w": 24, "h": 8},
+          "targets": [{"expr": "increase(kube_pod_container_status_restarts_total{namespace=\"rube-goldberg\"}[5m])", "legendFormat": "{{pod}}"}]
+        },
+        {
+          "id": 3,
+          "type": "timeseries",
+          "title": "Kafka Consumer Lag",
+          "gridPos": {"x": 0, "y": 16, "w": 24, "h": 8},
+          "targets": [{"expr": "rg_kafka_consumer_lag", "legendFormat": "{{service}}/{{topic}}"}]
+        },
+        {
+          "id": 4,
+          "type": "stat",
+          "title": "Redis Stream Length",
+          "gridPos": {"x": 0, "y": 24, "w": 8, "h": 4},
+          "targets": [{"expr": "rg_redis_stream_length"}]
+        },
+        {
+          "id": 5,
+          "type": "stat",
+          "title": "Loki Ingestion",
+          "gridPos": {"x": 8, "y": 24, "w": 8, "h": 4},
+          "targets": [{"expr": "sum(rate(loki_server_logql_eval_duration_seconds_count[5m]))"}]
+        },
+        {
+          "id": 6,
+          "type": "stat",
+          "title": "Tempo Ingestion",
+          "gridPos": {"x": 16, "y": 24, "w": 8, "h": 4},
+          "targets": [{"expr": "tempo_discovery_queue_length"}]
+        },
+        {
+          "id": 7,
+          "type": "stat",
+          "title": "OTel Collector Queue Status",
+          "gridPos": {"x": 0, "y": 28, "w": 8, "h": 4},
+          "targets": [{"expr": "otelcol_exporter_queue_size"}]
+        },
+        {
+          "id": 8,
+          "type": "stat",
+          "title": "MinIO Storage",
+          "gridPos": {"x": 8, "y": 28, "w": 8, "h": 4},
+          "targets": [{"expr": "minio_bucket_size_bytes"}]
+        }
+      ]
+    }

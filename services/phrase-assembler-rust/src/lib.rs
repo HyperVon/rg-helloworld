@@ -22,6 +22,62 @@ pub struct AdjudicatedToken {
     pub confidence: f64,
     #[serde(rename = "inputArtifact")]
     pub input_artifact: String,
+    #[serde(default)]
+    pub run_id: Option<String>,
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct Transformation {
+    pub name: String,
+    pub version: String,
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct SymbolData {
+    #[serde(rename = "tokenType")]
+    pub token_type: String,
+    pub utf8: String,
+    pub confidence: f64,
+    pub evidence: serde_json::Value,
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct SymbolAdjudicatedData {
+    #[serde(rename = "runId")]
+    pub run_id: String,
+    #[serde(rename = "stepId")]
+    pub step_id: String,
+    #[serde(rename = "glyphInstanceId")]
+    pub glyph_instance_id: String,
+    pub position: i32,
+    pub attempt: i32,
+    #[serde(rename = "inputMaturity")]
+    pub input_maturity: i32,
+    #[serde(rename = "outputMaturity")]
+    pub output_maturity: i32,
+    #[serde(rename = "inputArtifacts")]
+    pub input_artifacts: Vec<String>,
+    #[serde(rename = "outputArtifacts")]
+    pub output_artifacts: Vec<String>,
+    pub transformation: Transformation,
+    pub symbol: SymbolData,
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct SymbolAdjudicatedEvent {
+    #[serde(rename = "specversion")]
+    pub specversion: String,
+    pub id: String,
+    pub source: String,
+    #[serde(rename = "type")]
+    pub event_type: String,
+    pub subject: String,
+    pub time: String,
+    #[serde(rename = "datacontenttype")]
+    pub datacontenttype: String,
+    #[serde(rename = "correlationid")]
+    pub correlationid: String,
+    pub data: SymbolAdjudicatedData,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -196,6 +252,22 @@ pub fn check_prohibited_fields(event_json: &str) -> Vec<String> {
         .collect()
 }
 
+pub fn symbol_adjudicated_to_token(data: &SymbolAdjudicatedData) -> AdjudicatedToken {
+    let token_type = match data.symbol.token_type.as_str() {
+        "GAP" => TokenType::Gap,
+        _ => TokenType::Symbol,
+    };
+    let input_artifact = data.input_artifacts.first().cloned().unwrap_or_default();
+    AdjudicatedToken {
+        position: data.position,
+        token_type,
+        utf8: data.symbol.utf8.clone(),
+        confidence: data.symbol.confidence,
+        input_artifact,
+        run_id: Some(data.run_id.clone()),
+    }
+}
+
 pub fn run_assemble_once(
     input_path: &str,
     output_path: Option<&str>,
@@ -229,4 +301,303 @@ pub fn run_assemble_once(
     }
 
     Ok(text)
+}
+
+pub mod whitespace;
+
+pub fn build_provenance_attestation(
+    run_id: &str,
+    step_id: &str,
+    attempt: i32,
+    manifest: &AssemblyManifest,
+    input_artifacts: &[String],
+    output_artifacts: &[String],
+) -> String {
+    let attestation = format!(
+        "runId={} stepId={} attempt={} maturity={}->{} sha256={} input_count={} output_count={}",
+        run_id,
+        step_id,
+        attempt,
+        INPUT_MATURITY,
+        OUTPUT_MATURITY,
+        manifest.sha256,
+        input_artifacts.len(),
+        output_artifacts.len()
+    );
+    whitespace::encode(&attestation)
+}
+
+pub fn kafka_bootstrap() -> String {
+    std::env::var("KAFKA_BOOTSTRAP")
+        .unwrap_or_else(|_| "kafka.rube-goldberg.svc.cluster.local:9092".to_string())
+}
+
+pub fn input_topic() -> String {
+    std::env::var("ASSEMBLER_INPUT_TOPIC")
+        .unwrap_or_else(|_| "rg.symbols-adjudicated.v1".to_string())
+}
+
+pub fn output_topic() -> String {
+    std::env::var("ASSEMBLER_OUTPUT_TOPIC")
+        .unwrap_or_else(|_| "rg.phrase-assembled.v1".to_string())
+}
+
+pub fn group_id() -> String {
+    std::env::var("KAFKA_GROUP_ID")
+        .unwrap_or_else(|_| "phrase-assembler-v1".to_string())
+}
+
+pub fn process_adjudicated_payload(payload: &[u8]) -> Result<AdjudicatedToken, String> {
+    let event: SymbolAdjudicatedEvent =
+        serde_json::from_slice(payload).map_err(|e| format!("parse failed: {}", e))?;
+    if event.event_type != "rg.symbols-adjudicated.v1" {
+        return Err("invalid event type".into());
+    }
+    if event.data.input_maturity != 70 || event.data.output_maturity != 80 {
+        return Err(format!(
+            "invalid maturity: {} -> {}",
+            event.data.input_maturity, event.data.output_maturity
+        ));
+    }
+    Ok(symbol_adjudicated_to_token(&event.data))
+}
+
+pub fn flush_run_buffer(
+    run_id: String,
+    tokens: Vec<AdjudicatedToken>,
+) -> Result<(String, String), String> {
+    let (text, manifest) = assemble(tokens).map_err(|e| e.to_string())?;
+    let input_artifacts: Vec<String> =
+        manifest.positions.iter().map(|p| p.evidence_artifact.clone()).collect();
+    let output_artifacts = vec![manifest.sha256.clone()];
+    let event_json = build_assembly_event(
+        run_id.clone(),
+        "assembled-step".to_string(),
+        1,
+        &text,
+        &manifest.sha256,
+        input_artifacts,
+        output_artifacts,
+    );
+    Ok((text, event_json))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::env;
+    use std::sync::Mutex;
+
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    #[test]
+    fn kafka_bootstrap_default() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        unsafe { env::remove_var("KAFKA_BOOTSTRAP"); }
+        assert_eq!(kafka_bootstrap(), "kafka.rube-goldberg.svc.cluster.local:9092");
+    }
+
+    #[test]
+    fn kafka_bootstrap_override() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        unsafe { env::set_var("KAFKA_BOOTSTRAP", "custom:9092"); }
+        assert_eq!(kafka_bootstrap(), "custom:9092");
+        unsafe { env::remove_var("KAFKA_BOOTSTRAP"); }
+    }
+
+    #[test]
+    fn input_topic_default() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        unsafe { env::remove_var("ASSEMBLER_INPUT_TOPIC"); }
+        assert_eq!(input_topic(), "rg.symbols-adjudicated.v1");
+    }
+
+    #[test]
+    fn input_topic_override() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        unsafe { env::set_var("ASSEMBLER_INPUT_TOPIC", "custom-topic"); }
+        assert_eq!(input_topic(), "custom-topic");
+        unsafe { env::remove_var("ASSEMBLER_INPUT_TOPIC"); }
+    }
+
+    #[test]
+    fn output_topic_default() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        unsafe { env::remove_var("ASSEMBLER_OUTPUT_TOPIC"); }
+        assert_eq!(output_topic(), "rg.phrase-assembled.v1");
+    }
+
+    #[test]
+    fn output_topic_override() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        unsafe { env::set_var("ASSEMBLER_OUTPUT_TOPIC", "custom-out"); }
+        assert_eq!(output_topic(), "custom-out");
+        unsafe { env::remove_var("ASSEMBLER_OUTPUT_TOPIC"); }
+    }
+
+    #[test]
+    fn group_id_default() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        unsafe { env::remove_var("KAFKA_GROUP_ID"); }
+        assert_eq!(group_id(), "phrase-assembler-v1");
+    }
+
+    #[test]
+    fn group_id_override() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        unsafe { env::set_var("KAFKA_GROUP_ID", "custom-group"); }
+        assert_eq!(group_id(), "custom-group");
+        unsafe { env::remove_var("KAFKA_GROUP_ID"); }
+    }
+
+    #[test]
+    fn process_adjudicated_payload_valid() {
+        let payload = r#"{
+            "specversion": "1.0",
+            "id": "event-1",
+            "source": "adjudicator",
+            "type": "rg.symbols-adjudicated.v1",
+            "subject": "runs/run-1",
+            "time": "2026-01-01T00:00:00Z",
+            "datacontenttype": "application/json",
+            "correlationid": "run-1",
+            "data": {
+                "runId": "run-1",
+                "stepId": "step-1",
+                "glyphInstanceId": "glyph-0",
+                "position": 0,
+                "attempt": 1,
+                "inputMaturity": 70,
+                "outputMaturity": 80,
+                "inputArtifacts": ["artifact-1"],
+                "outputArtifacts": [],
+                "transformation": {"name": "adjudicate-symbol", "version": "1.0"},
+                "symbol": {
+                    "tokenType": "SYMBOL",
+                    "utf8": "H",
+                    "confidence": 0.95,
+                    "evidence": {"agreement": true}
+                }
+            }
+        }"#;
+        let token = process_adjudicated_payload(payload.as_bytes()).unwrap();
+        assert_eq!(token.position, 0);
+        assert_eq!(token.utf8, "H");
+        assert_eq!(token.run_id, Some("run-1".to_string()));
+    }
+
+    #[test]
+    fn process_adjudicated_payload_invalid_type() {
+        let payload = r#"{
+            "specversion": "1.0",
+            "id": "event-1",
+            "source": "adjudicator",
+            "type": "rg.wrong-event.v1",
+            "subject": "runs/run-1",
+            "time": "2026-01-01T00:00:00Z",
+            "datacontenttype": "application/json",
+            "correlationid": "run-1",
+            "data": {
+                "runId": "run-1",
+                "stepId": "step-1",
+                "glyphInstanceId": "glyph-0",
+                "position": 0,
+                "attempt": 1,
+                "inputMaturity": 70,
+                "outputMaturity": 80,
+                "inputArtifacts": ["artifact-1"],
+                "outputArtifacts": [],
+                "transformation": {"name": "adjudicate-symbol", "version": "1.0"},
+                "symbol": {
+                    "tokenType": "SYMBOL",
+                    "utf8": "H",
+                    "confidence": 0.95,
+                    "evidence": {"agreement": true}
+                }
+            }
+        }"#;
+        assert!(process_adjudicated_payload(payload.as_bytes()).is_err());
+    }
+
+    #[test]
+    fn process_adjudicated_payload_invalid_maturity() {
+        let payload = r#"{
+            "specversion": "1.0",
+            "id": "event-1",
+            "source": "adjudicator",
+            "type": "rg.symbols-adjudicated.v1",
+            "subject": "runs/run-1",
+            "time": "2026-01-01T00:00:00Z",
+            "datacontenttype": "application/json",
+            "correlationid": "run-1",
+            "data": {
+                "runId": "run-1",
+                "stepId": "step-1",
+                "glyphInstanceId": "glyph-0",
+                "position": 0,
+                "attempt": 1,
+                "inputMaturity": 60,
+                "outputMaturity": 70,
+                "inputArtifacts": ["artifact-1"],
+                "outputArtifacts": [],
+                "transformation": {"name": "adjudicate-symbol", "version": "1.0"},
+                "symbol": {
+                    "tokenType": "SYMBOL",
+                    "utf8": "H",
+                    "confidence": 0.95,
+                    "evidence": {"agreement": true}
+                }
+            }
+        }"#;
+        assert!(process_adjudicated_payload(payload.as_bytes()).is_err());
+    }
+
+    #[test]
+    fn flush_run_buffer_assembles_tokens() {
+        let tokens = vec![
+            AdjudicatedToken {
+                position: 0,
+                token_type: TokenType::Symbol,
+                utf8: "H".to_string(),
+                confidence: 0.9,
+                input_artifact: "a1".to_string(),
+                run_id: None,
+            },
+            AdjudicatedToken {
+                position: 1,
+                token_type: TokenType::Symbol,
+                utf8: "i".to_string(),
+                confidence: 0.9,
+                input_artifact: "a2".to_string(),
+                run_id: None,
+            },
+        ];
+        let (text, event) = flush_run_buffer("run-1".to_string(), tokens).unwrap();
+        assert_eq!(text, "Hi");
+        let parsed: serde_json::Value = serde_json::from_str(&event).unwrap();
+        assert_eq!(parsed["data"]["assembledText"], "Hi");
+    }
+
+    #[test]
+    fn flush_run_buffer_rejects_duplicates() {
+        let tokens = vec![
+            AdjudicatedToken {
+                position: 0,
+                token_type: TokenType::Symbol,
+                utf8: "H".to_string(),
+                confidence: 0.9,
+                input_artifact: "a1".to_string(),
+                run_id: None,
+            },
+            AdjudicatedToken {
+                position: 0,
+                token_type: TokenType::Symbol,
+                utf8: "i".to_string(),
+                confidence: 0.9,
+                input_artifact: "a2".to_string(),
+                run_id: None,
+            },
+        ];
+        assert!(flush_run_buffer("run-1".to_string(), tokens).is_err());
+    }
 }

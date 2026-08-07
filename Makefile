@@ -10,15 +10,15 @@ SHELL := /bin/bash
 RUBY_PATH := $(if $(wildcard /opt/homebrew/opt/ruby/bin),/opt/homebrew/opt/ruby/bin/:)
 export PATH := $(RUBY_PATH)$(PATH)
 
-GO_CLI_DIR  := cmd/rghello
+GO_CLI_DIR  := cmd/rghw
 GO_NORM_DIR := services/vector-normalizer-go
 KOTLIN_DIR  := services/run-orchestrator-kotlin
 JAVA_DIR    := services/glyph-catalog-java
 CPP_DIR     := services/geometry-engine-cpp
 DOTNET_DIR  := services/rasterizer-dotnet
 PYTHON_DIR  := services/image-pipeline-python
-NODE_DIRS   := services/ocr-worker-node services/event-gateway-node
-RUBY_DIR    := services/adjudicator-ruby
+NODE_DIRS   := services/ocr-worker-node services/event-gateway-node services/telemetry-element
+RUBY_DIRS    := services/adjudicator-ruby services/artifact-inspector-ruby
 RUST_DIR    := services/phrase-assembler-rust
 
 VENV      := .venv
@@ -196,8 +196,10 @@ format-node:
 
 format-ruby:
 	$(call guard_tool,bundle,Bundler)
-	@echo ">> rubocop -A ($(RUBY_DIR))"
-	cd $(RUBY_DIR) && bundle exec rubocop -A
+	@for d in $(RUBY_DIRS); do \
+		echo ">> rubocop -A ($$d)"; \
+		(cd $$d && bundle exec rubocop -A) || exit 1; \
+	done
 
 format-rust:
 	$(call guard_tool,$(RUSTFMT),rustfmt)
@@ -251,8 +253,10 @@ lint-node:
 
 lint-ruby:
 	$(call guard_tool,bundle,Bundler)
-	@echo ">> rubocop ($(RUBY_DIR))"
-	cd $(RUBY_DIR) && bundle exec rubocop
+	@for d in $(RUBY_DIRS); do \
+		echo ">> rubocop ($$d)"; \
+		(cd $$d && bundle exec rubocop) || exit 1; \
+	done
 
 lint-rust:
 	$(call guard_tool,$(CARGO),Cargo)
@@ -313,14 +317,15 @@ coverage-node:
 
 coverage-ruby:
 	$(call guard_tool,bundle,Bundler)
-	@echo ">> simplecov rake coverage ($(RUBY_DIR))"
-	cd $(RUBY_DIR) && bundle exec rake coverage
+	@for d in $(RUBY_DIRS); do \
+		echo ">> simplecov rake coverage ($$d)"; \
+		(cd $$d && bundle exec rake coverage) || exit 1; \
+	done
 
 coverage-rust:
-	@LLVM_COV="$(if $(wildcard $(HOME)/.cargo/bin/cargo-llvm-cov),$(HOME)/.cargo/bin/cargo-llvm-cov,cargo-llvm-cov)"; \
-	if command -v cargo-llvm-cov >/dev/null 2>&1 || [ -x "$(HOME)/.cargo/bin/cargo-llvm-cov" ]; then \
+	@if command -v cargo-llvm-cov >/dev/null 2>&1; then \
 		echo ">> cargo llvm-cov (90% line gate) ($(RUST_DIR))"; \
-		cd $(RUST_DIR) && $$LLVM_COV --fail-under-lines 90; \
+		cd $(RUST_DIR) && cargo llvm-cov --fail-under-lines 90; \
 	else \
 		echo "SKIP: cargo-llvm-cov not installed (CI enforces Rust coverage)"; \
 		exit 0; \
@@ -366,8 +371,10 @@ unit-node:
 
 unit-ruby:
 	$(call guard_tool,ruby,Ruby)
-	@echo ">> minitest ($(RUBY_DIR))"
-	cd $(RUBY_DIR) && ruby -Ilib -Itest test/adjudicator_test.rb
+	@for d in $(RUBY_DIRS); do \
+		echo ">> minitest ($$d)"; \
+		(cd $$d && for f in test/*_test.rb; do ruby -Ilib -Itest "$$f"; done) || exit 1; \
+	done
 
 unit-rust:
 	$(call cargo_task,test,cargo test)
@@ -410,8 +417,11 @@ build-node:
 	@$(call node_task,build,tsc build)
 
 build-ruby:
-	@echo ">> ruby syntax check ($(RUBY_DIR))"
-	cd $(RUBY_DIR) && for f in lib/adjudicator.rb lib/adjudicator/version.rb; do ruby -c $$f; done
+	@echo ">> ruby syntax check ($(RUBY_DIRS))"
+	@for d in $(RUBY_DIRS); do \
+		echo ">> ruby syntax check ($$d)"; \
+		(cd $$d && for f in $$(ls lib/*.rb); do ruby -c "$$f"; done) || exit 1; \
+	done
 
 build-rust:
 	$(call cargo_task,build,cargo build)

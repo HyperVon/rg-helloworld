@@ -13,7 +13,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 
-	"rghello.dev/vector-normalizer/internal/rasterproto"
+	"rghw.dev/vector-normalizer/internal/rasterproto"
 )
 
 type stepResult struct {

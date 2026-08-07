@@ -1,13 +1,13 @@
-using RgHello.Rasterizer;
+using Rghw.Rasterizer;
 using Xunit;
 
-namespace RgHello.Rasterizer.Tests;
+namespace Rghw.Rasterizer.Tests;
 
 public class VersionTests
 {
     [Fact]
     public void VersionMatchesMilestone6() =>
-        Assert.Equal("0.1.0-milestone6", RasterizerVersion.Version);
+        Assert.Equal("0.1.0-milestone11", RasterizerVersion.Version);
 
     [Fact]
     public void VersionIsNotEmpty() =>
@@ -23,7 +23,7 @@ public class BannerTests
     public void RenderIncludesServiceAndVersion()
     {
         var banner = RasterizerBanner.Render();
-        Assert.StartsWith("rasterizer 0.1.0-milestone6", banner);
+        Assert.StartsWith("rasterizer 0.1.0-milestone11", banner);
     }
 
     [Fact]

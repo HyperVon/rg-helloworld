@@ -7,7 +7,7 @@
 
 #include "geometry_engine/json.hpp"
 
-namespace rghello {
+namespace rghw {
 
 struct Point {
   double x;
@@ -74,6 +74,6 @@ BlueprintGlyph parseBlueprintGlyph(const Json& data);
 // True when two primitives produce the same expanded, cleaned segments.
 bool sameGeometry(const std::vector<Segment>& a, const std::vector<Segment>& b);
 
-}  // namespace rghello
+}  // namespace rghw
 
 #endif  // RGHELLO_GEOMETRY_ENGINE_GEOMETRY_HPP_
