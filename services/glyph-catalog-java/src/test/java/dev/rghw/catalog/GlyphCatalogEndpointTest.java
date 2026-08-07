@@ -40,7 +40,7 @@ class GlyphCatalogEndpointTest {
     client
         .sendRequest(
             RequestCreators.withPayload(
-                payload(withNamespace(planPhrase("Hello World", "PRIMARY")))))
+                payload(withNamespace(planPhrase("HELLO WORLD", "PRIMARY")))))
         .andExpect(ResponseMatchers.noFault())
         .andExpect(
             ResponseMatchers.xpath(
@@ -60,13 +60,13 @@ class GlyphCatalogEndpointTest {
                     "count(/glyph:PlanPhraseResponse/glyph:glyphs/glyph:glyph[1]/"
                         + "glyph:primitives/glyph:primitive)",
                     NAMESPACES)
-                .evaluatesTo("3"));
+                .evaluatesTo("7"));
   }
 
   @Test
   void planPhraseWithoutVariantDefaultsToPrimary() {
     client
-        .sendRequest(RequestCreators.withPayload(payload(withNamespace(planPhrase("Hello", null)))))
+        .sendRequest(RequestCreators.withPayload(payload(withNamespace(planPhrase("HELLO", null)))))
         .andExpect(ResponseMatchers.noFault())
         .andExpect(
             ResponseMatchers.xpath(
@@ -79,7 +79,7 @@ class GlyphCatalogEndpointTest {
     client
         .sendRequest(
             RequestCreators.withPayload(
-                payload(withNamespace(planPhrase("Hello World!", "PRIMARY")))))
+                payload(withNamespace(planPhrase("HELLO WORLD!", "PRIMARY")))))
         .andExpect(ResponseMatchers.clientOrSenderFault());
   }
 
@@ -100,7 +100,7 @@ class GlyphCatalogEndpointTest {
 
   @Test
   void getAlternateBlueprintReturnsSingleAlternateGlyph() {
-    PlanPhraseResponse plan = service.planPhrase("Hello", "RUBE_SIMPLEX_V1", "PRIMARY");
+    PlanPhraseResponse plan = service.planPhrase("HELLO", "RUBE_SIMPLEX_V1", "PRIMARY");
     String glyphInstanceId = plan.getGlyphs().getGlyph().get(0).getGlyphInstanceId();
 
     client

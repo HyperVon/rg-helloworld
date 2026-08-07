@@ -45,7 +45,9 @@ def preprocess_phrase_image(
         sha256=sha256_bytes(ocr_image_bytes),
         byte_count=len(ocr_image_bytes),
     )
-    position_crops, crops_bytes = _make_crops(enhanced, manifest, params.scale_factor, params.border_size)
+    position_crops, crops_bytes = _make_crops(
+        enhanced, manifest, params.scale_factor, params.border_size
+    )
     report = _build_report(enhanced, params, phrase_image_bytes)
     return PreprocessResult(
         ocr_image=ocr_artifact,
@@ -109,13 +111,30 @@ def _make_crops(
     pad = crop_padding * scale
     position_crops: list[PositionCrop] = []
     crops_bytes: dict[int, bytes] = {}
-    for entry in manifest.layout:
-        x = entry.x * scale + border - pad
-        y = entry.y * scale + border - pad
-        w = max(1, entry.width * scale) + 2 * pad
-        h = max(1, entry.height * scale) + 2 * pad
-        x = max(0, x)
-        y = max(0, y)
+    for index, entry in enumerate(manifest.layout):
+        glyph_left = entry.x * scale + border
+        glyph_top = entry.y * scale + border
+        glyph_right = glyph_left + max(1, entry.width * scale)
+        glyph_bottom = glyph_top + max(1, entry.height * scale)
+        x = max(0, glyph_left - pad)
+        y = max(0, glyph_top - pad)
+        right = min(img.width, glyph_right + pad)
+        if index + 1 < len(manifest.layout):
+            next_entry = manifest.layout[index + 1]
+            next_left = next_entry.x * scale + border
+            right = min(right, next_left)
+        if index > 0:
+            previous_entry = manifest.layout[index - 1]
+            previous_right = (
+                previous_entry.x * scale + border + max(1, previous_entry.width * scale)
+            )
+            x = max(x, previous_right)
+        x = min(x, max(0, img.width - 1))
+        y = min(y, max(0, img.height - 1))
+        right = min(img.width, max(x + 1, right))
+        bottom = min(img.height, glyph_bottom + pad)
+        w = max(1, right - x)
+        h = max(1, bottom - y)
         crop_img = img.crop((x, y, x + w, y + h))
         crop_bytes = encode_png(crop_img)
         object_key = f"ocr-crop-position-{entry.position}.png"

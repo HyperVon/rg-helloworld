@@ -35,7 +35,7 @@ class GlyphCatalogServiceTest {
 
   @Test
   void planIsPersisted() {
-    PlanPhraseResponse plan = service.planPhrase("Hello World", "RUBE_SIMPLEX_V1", "PRIMARY");
+    PlanPhraseResponse plan = service.planPhrase("HELLO WORLD", "RUBE_SIMPLEX_V1", "PRIMARY");
 
     Integer stored = jdbc.queryForObject("SELECT COUNT(*) FROM glyph_plans", Integer.class);
     assertEquals(1, stored);
@@ -44,7 +44,7 @@ class GlyphCatalogServiceTest {
 
   @Test
   void alternateBlueprintComesFromStoredPlan() {
-    PlanPhraseResponse plan = service.planPhrase("Hello", "RUBE_SIMPLEX_V1", "PRIMARY");
+    PlanPhraseResponse plan = service.planPhrase("HELLO", "RUBE_SIMPLEX_V1", "PRIMARY");
     Glyph first = plan.getGlyphs().getGlyph().get(0);
 
     PlanPhraseResponse alternate =
@@ -71,7 +71,7 @@ class GlyphCatalogServiceTest {
 
   @Test
   void alternateExcludesRequestedVariant() {
-    PlanPhraseResponse plan = service.planPhrase("Hello", "RUBE_SIMPLEX_V1", "PRIMARY");
+    PlanPhraseResponse plan = service.planPhrase("HELLO", "RUBE_SIMPLEX_V1", "PRIMARY");
     Glyph first = plan.getGlyphs().getGlyph().get(0);
 
     PlanPhraseResponse mirrored =
@@ -105,7 +105,7 @@ class GlyphCatalogServiceTest {
 
   @Test
   void alternateForGapReturnsGap() {
-    PlanPhraseResponse plan = service.planPhrase("Hello World", "RUBE_SIMPLEX_V1", "PRIMARY");
+    PlanPhraseResponse plan = service.planPhrase("HELLO WORLD", "RUBE_SIMPLEX_V1", "PRIMARY");
     Glyph gap = plan.getGlyphs().getGlyph().get(5);
 
     PlanPhraseResponse alternate =
@@ -125,7 +125,7 @@ class GlyphCatalogServiceTest {
 
   @Test
   void unknownGlyphFaults() {
-    PlanPhraseResponse plan = service.planPhrase("Hello", "RUBE_SIMPLEX_V1", "PRIMARY");
+    PlanPhraseResponse plan = service.planPhrase("HELLO", "RUBE_SIMPLEX_V1", "PRIMARY");
     assertThrows(
         GlyphNotFoundException.class,
         () -> service.getAlternateBlueprint(plan.getPlanId(), "not-a-glyph", "PRIMARY"));
@@ -133,8 +133,8 @@ class GlyphCatalogServiceTest {
 
   @Test
   void plansAreDistinct() {
-    PlanPhraseResponse first = service.planPhrase("Hello", "RUBE_SIMPLEX_V1", "PRIMARY");
-    PlanPhraseResponse second = service.planPhrase("World", "RUBE_SIMPLEX_V1", "PRIMARY");
+    PlanPhraseResponse first = service.planPhrase("HELLO", "RUBE_SIMPLEX_V1", "PRIMARY");
+    PlanPhraseResponse second = service.planPhrase("WORLD", "RUBE_SIMPLEX_V1", "PRIMARY");
     assertNotEquals(first.getPlanId(), second.getPlanId());
   }
 }

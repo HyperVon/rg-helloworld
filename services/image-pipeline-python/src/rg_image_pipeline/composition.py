@@ -69,8 +69,25 @@ def compose_phrase(
     margin_left, margin_top, margin_right, margin_bottom = phrase_margins
     total_advance = sum((1 if g.kind == "GAP" else 1) * g.advance_width for g in sorted_glyphs)
     pixels_per_em = 128
-    phrase_width = max(1, int(total_advance * pixels_per_em) + margin_left + margin_right)
-    phrase_height = pixels_per_em + margin_top + margin_bottom
+    max_glyph_height = max(
+        (g.height for g in sorted_glyphs if g.kind == "DRAWABLE" and g.image_bytes is not None),
+        default=pixels_per_em,
+    )
+    phrase_height = max(pixels_per_em, max_glyph_height) + margin_top + margin_bottom
+
+    advance_width = max(1, int(total_advance * pixels_per_em) + margin_left + margin_right)
+    total_glyph_width = 0
+    for glyph in sorted_glyphs:
+        advance_pixels = max(1, int(glyph.advance_width * pixels_per_em))
+        if glyph.kind == "DRAWABLE" and glyph.image_bytes is not None:
+            img_width = glyph.width
+            if scale_factor != 1.0:
+                img_width = max(1, int(img_width * scale_factor))
+            actual_width = img_width
+        else:
+            actual_width = advance_pixels
+        total_glyph_width += max(advance_pixels, actual_width)
+    phrase_width = max(advance_width, total_glyph_width + margin_left + margin_right)
 
     canvas = Image.new("RGBA", (phrase_width, phrase_height), (0, 0, 0, 0))
     layout = []
@@ -88,18 +105,10 @@ def compose_phrase(
         if glyph.kind == "DRAWABLE" and glyph.image_bytes is not None:
             img = load_png_bytes(glyph.image_bytes)
             img_width, img_height = img.size
-            scale = _glyph_scale(
-                img_width,
-                img_height,
-                glyph.pixel_density,
-                pixels_per_em,
-                em_square,
-                scale_factor,
-            )
-            if scale != 1.0:
+            if scale_factor != 1.0:
                 new_size = (
-                    max(1, int(round(img_width * scale))),
-                    max(1, int(round(img_height * scale))),
+                    max(1, int(img_width * scale_factor)),
+                    max(1, int(img_height * scale_factor)),
                 )
                 img = img.resize(new_size, Image.Resampling.LANCZOS)
                 img_width, img_height = new_size
@@ -117,7 +126,11 @@ def compose_phrase(
             )
         layout.append(entry)
         advance_pixels = max(1, int(glyph.advance_width * pixels_per_em))
-        actual_width = entry.width if glyph.kind == "DRAWABLE" and glyph.image_bytes is not None else advance_pixels
+        actual_width = (
+            entry.width
+            if glyph.kind == "DRAWABLE" and glyph.image_bytes is not None
+            else advance_pixels
+        )
         x_offset += max(advance_pixels, actual_width)
 
     manifest = CompositionManifest(

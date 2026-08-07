@@ -13,7 +13,7 @@ rghw run
 **Required final standard output:**
 
 ```text
-Hello World
+HELLO WORLD
 ```
 
 The command may print progress messages to standard error, but standard output must contain only the completed phrase followed by a newline.
@@ -25,7 +25,7 @@ The command may print progress messages to standard error, but standard output m
 Build a deliberately excessive distributed system whose sole functional purpose is to derive, recognize, assemble, and print:
 
 ```text
-Hello World
+HELLO WORLD
 ```
 
 The system must:
@@ -37,7 +37,7 @@ The system must:
 5. Exercise REST, SOAP, gRPC, Kafka, Redis, relational storage, NoSQL storage, a web UI, and a full local observability stack.
 6. Transform real data at every pipeline stage.
 7. Produce the final text from generated visual artifacts and OCR results.
-8. Avoid printing a hard-coded copy of `"Hello World"` at the end.
+8. Avoid printing a hard-coded copy of `"HELLO WORLD"` at the end.
 9. Remain sufficiently deterministic that the demonstration succeeds reliably.
 10. Shut down the CLI process after printing the result.
 
@@ -136,7 +136,7 @@ make demo
 6. Terraform initialization and apply.
 7. Kubernetes readiness checks.
 8. Execution of `rghw run`.
-9. Printing of `Hello World`.
+9. Printing of `HELLO WORLD`.
 10. Display of the dashboard address on standard error.
 
 After the environment exists, subsequent executions use:
@@ -156,13 +156,13 @@ rghw run
 Equivalent explicit command:
 
 ```bash
-rghw run --message "Hello World"
+rghw run --message "HELLO WORLD"
 ```
 
 Useful options:
 
 ```text
---message TEXT           Input phrase; defaults to "Hello World"
+--message TEXT           Input phrase; defaults to "HELLO WORLD"
 --api-url URL            Orchestrator base URL
 --timeout DURATION       Maximum wait; defaults to 3m
 --quiet                  Suppress progress on stderr
@@ -185,7 +185,7 @@ stderr: [07/10] Preparing OCR image...
 stderr: [08/10] Running OCR...
 stderr: [09/10] Adjudicating symbols...
 stderr: [10/10] Assembling UTF-8 output...
-stdout: Hello World
+stdout: HELLO WORLD
 ```
 
 Exit codes:
@@ -213,7 +213,7 @@ This allows:
 
 ```bash
 RESULT="$(rghw run)"
-test "$RESULT" = "Hello World"
+test "$RESULT" = "HELLO WORLD"
 ```
 
 ---

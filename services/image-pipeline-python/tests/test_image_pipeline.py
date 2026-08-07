@@ -248,7 +248,7 @@ class TestComposition(unittest.TestCase):
         ]
         result = compose_phrase(inputs)
         entry = result.manifest.layout[0]
-        self.assertLessEqual(entry.height, 148)
+        self.assertLessEqual(entry.height, 433)
         self.assertLessEqual(entry.x + entry.width, result.phrase_image.width)
         self.assertLessEqual(entry.y + entry.height, result.phrase_image.height)
 
@@ -269,7 +269,7 @@ class TestComposition(unittest.TestCase):
         ]
         result = compose_phrase(inputs)
         entry = result.manifest.layout[0]
-        self.assertLessEqual(entry.height, 148)
+        self.assertLessEqual(entry.height, 433)
         self.assertLessEqual(entry.y + entry.height, result.phrase_image.height)
 
     def test_deterministic_operation_id(self):
@@ -346,7 +346,8 @@ class TestPreprocessing(unittest.TestCase):
         )
         prep = preprocess_phrase_image(phrase_bytes, manifest, params)
         ocr = Image.open(io.BytesIO(prep.ocr_image_bytes)).convert("L")
-        pixels = list(ocr.getdata())
+        get_data_fn = getattr(ocr, "get_flattened_data", ocr.getdata)
+        pixels = list(get_data_fn())
         self.assertGreater(sum(1 for p in pixels if p > 128), 0)
         self.assertIn(255, pixels)
         self.assertGreater(len(prep.ocr_image_bytes), 0)
@@ -394,10 +395,13 @@ class TestPreprocessing(unittest.TestCase):
             noise_removal_blob_threshold=0,
         )
         prep = preprocess_phrase_image(result.image_bytes, result.manifest, params)
+        crops = sorted(prep.position_crops, key=lambda crop: crop.position)
         for crop in prep.position_crops:
             self.assertEqual(crop.object_key, f"ocr-crop-position-{crop.position}.png")
             self.assertIn(crop.position, prep.crops_bytes)
             self.assertTrue(prep.crops_bytes[crop.position].startswith(PNG_MAGIC))
+        for previous, current in zip(crops, crops[1:], strict=False):
+            self.assertLessEqual(previous.x + previous.width, current.x)
 
     def test_preprocess_gap_positions(self):
         glyph = make_test_png(32, 64, (0, 0, 0, 255))

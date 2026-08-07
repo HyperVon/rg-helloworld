@@ -24,26 +24,62 @@ final class GlyphDefinitions {
     glyphs.put(
         'H',
         drawable(
-            1.0, line(0.1, 0.0, 0.1, 1.0), line(0.9, 0.0, 0.9, 1.0), line(0.1, 0.5, 0.9, 0.5)));
-    glyphs.put('e', drawable(1.0, polygon(0.55, 0.45, 0.35, 8), line(0.35, 0.5, 0.75, 0.5)));
-    glyphs.put('l', drawable(1.0, line(0.5, 0.0, 0.5, 1.0), line(0.35, 0.0, 0.65, 0.0)));
-    glyphs.put('o', drawable(1.0, polygon(0.5, 0.5, 0.4, 8)));
+            1.0,
+            line(0.2, 0.1, 0.2, 0.9),
+            line(0.8, 0.1, 0.8, 0.9),
+            line(0.2, 0.5, 0.8, 0.5),
+            line(0.14, 0.1, 0.26, 0.1),
+            line(0.74, 0.1, 0.86, 0.1),
+            line(0.14, 0.9, 0.26, 0.9),
+            line(0.74, 0.9, 0.86, 0.9)));
+    glyphs.put(
+        'E',
+        drawable(
+            1.0,
+            line(0.18, 0.1, 0.18, 0.9),
+            line(0.20, 0.1, 0.20, 0.9),
+            line(0.22, 0.1, 0.22, 0.9),
+            line(0.24, 0.1, 0.24, 0.9),
+            line(0.26, 0.1, 0.26, 0.9),
+            line(0.20, 0.08, 0.82, 0.08),
+            line(0.20, 0.10, 0.82, 0.10),
+            line(0.20, 0.12, 0.82, 0.12),
+            line(0.20, 0.48, 0.70, 0.48),
+            line(0.20, 0.50, 0.70, 0.50),
+            line(0.20, 0.52, 0.70, 0.52),
+            line(0.20, 0.88, 0.82, 0.88),
+            line(0.20, 0.90, 0.82, 0.90),
+            line(0.20, 0.92, 0.82, 0.92)));
+    glyphs.put(
+        'L',
+        drawable(
+            1.0,
+            line(0.2, 0.1, 0.2, 0.9),
+            line(0.2, 0.9, 0.8, 0.9),
+            line(0.14, 0.1, 0.26, 0.1),
+            line(0.14, 0.9, 0.26, 0.9)));
+    glyphs.put('O', drawable(1.0, ellipse(0.5, 0.5, 0.3, 0.4, 20)));
     glyphs.put(
         'W',
-        drawable(
-            1.0,
-            line(0.1, 1.0, 0.35, 0.0),
-            line(0.35, 0.0, 0.5, 0.55),
-            line(0.5, 0.55, 0.65, 0.0),
-            line(0.65, 0.0, 0.9, 1.0)));
+        drawable(1.0, path(0.12, 0.2, 0.25, 0.85, 0.4, 0.45, 0.5, 0.85, 0.65, 0.2, 0.88, 0.85)));
     glyphs.put(
-        'r',
+        'R',
         drawable(
             1.0,
-            line(0.35, 0.0, 0.35, 1.0),
-            line(0.35, 0.65, 0.75, 0.65),
-            line(0.75, 0.65, 0.65, 0.35)));
-    glyphs.put('d', drawable(1.0, line(0.65, 0.0, 0.65, 1.0), polygon(0.4, 0.35, 0.3, 8)));
+            line(0.2, 0.1, 0.2, 0.9),
+            path(0.2, 0.1, 0.55, 0.1, 0.7, 0.18, 0.78, 0.3, 0.76, 0.42, 0.66, 0.5, 0.2, 0.5),
+            path(0.48, 0.5, 0.58, 0.58, 0.68, 0.68, 0.8, 0.9),
+            line(0.14, 0.1, 0.26, 0.1)));
+    glyphs.put(
+        'D',
+        drawable(
+            1.0,
+            line(0.2, 0.1, 0.2, 0.9),
+            path(
+                0.2, 0.1, 0.55, 0.1, 0.68, 0.18, 0.77, 0.3, 0.8, 0.5, 0.77, 0.7, 0.68, 0.82, 0.55,
+                0.9, 0.2, 0.9),
+            line(0.14, 0.1, 0.26, 0.1),
+            line(0.14, 0.9, 0.26, 0.9)));
     return glyphs;
   }
 
@@ -59,14 +95,28 @@ final class GlyphDefinitions {
     return primitive;
   }
 
-  private static Primitive polygon(double cx, double cy, double radius, int sides) {
+  private static Primitive path(double... coordinates) {
     Primitive primitive = new Primitive();
     primitive.setType(POLYLINE);
-    for (int i = 0; i < sides; i++) {
-      double angle = 2.0 * Math.PI * i / sides;
+    for (int i = 0; i < coordinates.length; i += 2) {
+      primitive.getPoints().add(point(coordinates[i], coordinates[i + 1]));
+    }
+    return primitive;
+  }
+
+  private static Primitive polygon(double cx, double cy, double radius, int sides) {
+    return ellipse(cx, cy, radius, radius, sides);
+  }
+
+  private static Primitive ellipse(
+      double cx, double cy, double radiusX, double radiusY, int sides) {
+    Primitive primitive = new Primitive();
+    primitive.setType(POLYLINE);
+    for (int i = 0; i <= sides; i++) {
+      double angle = 2.0 * Math.PI * (i % sides) / sides;
       primitive
           .getPoints()
-          .add(point(cx + radius * Math.cos(angle), cy + radius * Math.sin(angle)));
+          .add(point(cx + radiusX * Math.cos(angle), cy + radiusY * Math.sin(angle)));
     }
     return primitive;
   }

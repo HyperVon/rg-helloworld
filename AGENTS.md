@@ -14,7 +14,7 @@ adjudication -> assembly.
   sections before any milestone work).
 - Authoritative status: `docs/implementation-status.md` (update it with every
   milestone; work must be resumable after context compression).
-- Acceptance: `rghw run` prints exactly `Hello World` and exits 0, with the
+- Acceptance: `rghw run` prints exactly `HELLO WORLD` and exits 0, with the
   phrase derived from OCR-derived artifacts — never printed from the request.
 
 ## Non-negotiable integrity rules

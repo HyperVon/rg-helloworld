@@ -40,10 +40,28 @@ cleanup_portforward() {
 trap cleanup_portforward EXIT
 PORTFORWARD_PIDS=()
 
+wait_for_app_ready() {
+    local app="$1"
+    local timeout="${2:-180}"
+    local elapsed=0
+    while [[ $elapsed -lt $timeout ]]; do
+        local ready
+        ready=$(kubectl get pod -n "$NAMESPACE" -l "app=$app" -o jsonpath='{.items[0].status.containerStatuses[0].ready}' 2>/dev/null || echo "false")
+        if [[ "$ready" == "true" ]]; then
+            echo "pod/app=$app condition met"
+            return 0
+        fi
+        sleep 2
+        ((elapsed += 2))
+    done
+    echo "ERROR: pod/app=$app not ready after ${timeout}s"
+    return 1
+}
+
 echo "=== Platform Smoke Tests ==="
 
 # Wait for pods to be ready
-retry kubectl wait --for=condition=ready pod --all -n $NAMESPACE --timeout=300s
+retry kubectl wait --for=condition=Ready pod --all -n $NAMESPACE --timeout=300s
 
 echo ""
 echo "--- Test 1: Kafka produce + consume ---"
@@ -57,7 +75,7 @@ retry kubectl exec -n $NAMESPACE kafka-controller-0 -c kafka -- \
     kafka-topics.sh --create --topic $TOPIC --bootstrap-server $KAFKA_BROKER --partitions 1 --replication-factor 1 --if-not-exists
 
 # Produce a message
-TEST_MESSAGE="Hello World from Kafka"
+TEST_MESSAGE="HELLO WORLD FROM KAFKA"
 echo "Producing message: $TEST_MESSAGE"
 retry kubectl exec -n $NAMESPACE kafka-controller-0 -c kafka -- \
     bash -c "echo '$TEST_MESSAGE' | kafka-console-producer.sh --topic $TOPIC --bootstrap-server $KAFKA_BROKER"
@@ -78,7 +96,7 @@ echo ""
 # --- Test 2: MinIO artifact round trip ---
 echo "--- Test 2: MinIO artifact round trip ---"
 TEST_FILE="/tmp/rghw-test-artifact.txt"
-echo "Hello World from MinIO" > "$TEST_FILE"
+echo "HELLO WORLD FROM MINIO" > "$TEST_FILE"
 ORIGINAL_HASH=$(sha256sum "$TEST_FILE" | awk '{print $1}')
 
 kubectl port-forward -n $NAMESPACE svc/minio 9000:9000 &>/dev/null &
@@ -149,51 +167,51 @@ if command -v docker >/dev/null 2>&1; then
     retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone6/run-orchestrator.yaml"
     retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone6/vector-normalizer.yaml"
     retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone6/rasterizer.yaml"
-    retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=run-orchestrator --timeout=180s
-    retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=glyph-catalog --timeout=180s
-    retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=geometry-engine --timeout=180s
-    retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=vector-normalizer --timeout=180s
-    retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=rasterizer --timeout=180s
+    wait_for_app_ready run-orchestrator 180
+    wait_for_app_ready glyph-catalog 180
+    wait_for_app_ready geometry-engine 180
+    wait_for_app_ready vector-normalizer 180
+    wait_for_app_ready rasterizer 180
     retry kubectl rollout status deployment/run-orchestrator -n $NAMESPACE --timeout=180s
     retry kubectl rollout status deployment/vector-normalizer -n $NAMESPACE --timeout=180s
     retry kubectl rollout status deployment/rasterizer -n $NAMESPACE --timeout=180s
 
     echo "Deploying Milestone 7 image pipeline"
     retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone7/image-pipeline.yaml"
-    retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=image-pipeline --timeout=180s
+    wait_for_app_ready image-pipeline 180
     retry kubectl rollout status deployment/image-pipeline -n $NAMESPACE --timeout=180s
 
     echo "Deploying Milestone 8 services (OCR worker + adjudicator)"
     retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone8/ocr-worker.yaml"
     retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone8/adjudicator.yaml"
-    retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=ocr-worker --timeout=180s
-    retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=adjudicator --timeout=180s
+    wait_for_app_ready ocr-worker 180
+    wait_for_app_ready adjudicator 180
 
     echo "Deploying Milestone 9 Rust assembler"
     retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone9/phrase-assembler.yaml"
-    retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=phrase-assembler --timeout=180s
+    wait_for_app_ready phrase-assembler 180
     retry kubectl rollout status deployment/phrase-assembler -n $NAMESPACE --timeout=180s
 
     echo "Deploying Milestone 10 event gateway + telemetry"
     retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone10/event-gateway.yaml"
     retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone10/telemetry-element.yaml"
     retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone10/artifact-inspector.yaml"
-    retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=event-gateway --timeout=180s
-    retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=telemetry-element --timeout=180s
-    retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=artifact-inspector --timeout=180s
+    wait_for_app_ready event-gateway 180
+    wait_for_app_ready telemetry-element 180
+    wait_for_app_ready artifact-inspector 180
 
-    kubectl port-forward -n $NAMESPACE svc/run-orchestrator 8080:8080 &>/dev/null &
+    kubectl port-forward --address 127.0.0.1 -n $NAMESPACE svc/run-orchestrator 18080:8080 &>/dev/null &
     PORTFORWARD_PIDS+=($!)
     sleep 3
 
     if ! command -v go >/dev/null 2>&1; then
         echo "SKIP: go not installed, skipping rghw run acceptance"
     else
-        if ! RESULT=$(cd "$PROJECT_ROOT/cmd/rghw" && go run . run --api-url "http://localhost:8080" --quiet --timeout 90s 2>/dev/null); then
+        if ! RESULT=$(cd "$PROJECT_ROOT/cmd/rghw" && go run . run --api-url "http://127.0.0.1:18080" --quiet --timeout 90s 2>/dev/null); then
             RESULT=""
         fi
-        if [[ "$RESULT" == "Hello World" ]]; then
-            echo "PASS: rghw run printed 'Hello World'"
+        if [[ "$RESULT" == "HELLO WORLD" ]]; then
+            echo "PASS: rghw run printed 'HELLO WORLD'"
         else
             echo "FAIL: rghw run printed '$RESULT'"
             kubectl logs -n $NAMESPACE deploy/run-orchestrator --tail=20 || true
@@ -551,8 +569,8 @@ if command -v docker >/dev/null 2>&1; then
     echo "Deploying Milestone 8 services (OCR worker + adjudicator)"
     retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone8/ocr-worker.yaml"
     retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone8/adjudicator.yaml"
-    retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=ocr-worker --timeout=180s
-    retry kubectl wait --for=condition=ready pod -n $NAMESPACE -l app=adjudicator --timeout=180s
+    retry kubectl wait --for=condition=Ready pod -n $NAMESPACE -l app=ocr-worker --timeout=180s
+    retry kubectl wait --for=condition=Ready pod -n $NAMESPACE -l app=adjudicator --timeout=180s
 
     echo "Verifying OCR observations on rg.ocr-observations.v1"
     OBSERVATIONS=$(kubectl exec -n $NAMESPACE kafka-controller-0 -c kafka -- \

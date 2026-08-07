@@ -15,7 +15,7 @@ class PhrasePlannerTest {
 
   @Test
   void helloWorldProducesElevenOrderedGlyphs() {
-    PlanPhraseResponse plan = planner.plan("Hello World", "RUBE_SIMPLEX_V1", "PRIMARY");
+    PlanPhraseResponse plan = planner.plan("HELLO WORLD", "RUBE_SIMPLEX_V1", "PRIMARY");
 
     assertEquals(11, plan.getGlyphs().getGlyph().size());
     for (int i = 0; i < plan.getGlyphs().getGlyph().size(); i++) {
@@ -25,7 +25,7 @@ class PhrasePlannerTest {
 
   @Test
   void gapPositionExistsWithWidthAndNoPrimitives() {
-    PlanPhraseResponse plan = planner.plan("Hello World", "RUBE_SIMPLEX_V1", "PRIMARY");
+    PlanPhraseResponse plan = planner.plan("HELLO WORLD", "RUBE_SIMPLEX_V1", "PRIMARY");
 
     Glyph gap = plan.getGlyphs().getGlyph().get(5);
     assertEquals("GAP", gap.getKind());
@@ -35,26 +35,26 @@ class PhrasePlannerTest {
 
   @Test
   void drawableGlyphsHaveExpectedGeometry() {
-    PlanPhraseResponse plan = planner.plan("Hello World", "RUBE_SIMPLEX_V1", "PRIMARY");
+    PlanPhraseResponse plan = planner.plan("HELLO WORLD", "RUBE_SIMPLEX_V1", "PRIMARY");
 
     Glyph h = plan.getGlyphs().getGlyph().get(0);
     assertEquals("DRAWABLE", h.getKind());
-    assertEquals(3, h.getPrimitives().getPrimitive().size());
+    assertEquals(7, h.getPrimitives().getPrimitive().size());
     assertEquals(2, h.getPrimitives().getPrimitive().get(0).getPoints().size());
 
     Glyph o = plan.getGlyphs().getGlyph().get(7);
-    assertEquals(16, o.getPrimitives().getPrimitive().get(0).getPoints().size());
+    assertEquals(21, o.getPrimitives().getPrimitive().get(0).getPoints().size());
 
     Glyph w = plan.getGlyphs().getGlyph().get(6);
-    assertEquals(4, w.getPrimitives().getPrimitive().size());
+    assertEquals(1, w.getPrimitives().getPrimitive().size());
 
     Glyph l = plan.getGlyphs().getGlyph().get(2);
-    assertEquals(2, l.getPrimitives().getPrimitive().size());
+    assertEquals(4, l.getPrimitives().getPrimitive().size());
   }
 
   @Test
   void instanceIdsAreOpaqueUuids() {
-    PlanPhraseResponse plan = planner.plan("Hello World", "RUBE_SIMPLEX_V1", "PRIMARY");
+    PlanPhraseResponse plan = planner.plan("HELLO WORLD", "RUBE_SIMPLEX_V1", "PRIMARY");
 
     assertTrue(
         plan.getGlyphs()
@@ -75,21 +75,21 @@ class PhrasePlannerTest {
   void unsupportedCharacterFaults() {
     assertThrows(
         UnsupportedCharacterException.class,
-        () -> planner.plan("Hello World!", "RUBE_SIMPLEX_V1", "PRIMARY"));
+        () -> planner.plan("HELLO WORLD!", "RUBE_SIMPLEX_V1", "PRIMARY"));
   }
 
   @Test
   void unknownAlphabetFaults() {
     assertThrows(
         UnsupportedAlphabetException.class,
-        () -> planner.plan("Hello", "SOME_OTHER_V1", "PRIMARY"));
+        () -> planner.plan("HELLO", "SOME_OTHER_V1", "PRIMARY"));
   }
 
   @Test
   void unknownVariantFaults() {
     assertThrows(
         UnsupportedVariantException.class,
-        () -> planner.plan("Hello", "RUBE_SIMPLEX_V1", "DOUBLE_SIZE"));
+        () -> planner.plan("HELLO", "RUBE_SIMPLEX_V1", "DOUBLE_SIZE"));
   }
 
   @Test

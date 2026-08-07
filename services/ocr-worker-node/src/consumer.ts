@@ -98,11 +98,7 @@ export async function runConsumer(): Promise<void> {
 
         for (const crop of positionCrops) {
           const cropPath = join(cropsDir, `crop-position-${crop.position}.png`);
-          const tmpPath = await downloadToTemp(
-            minio,
-            minioConfig.bucket,
-            crop.objectKey as string,
-          );
+          const tmpPath = await downloadToTemp(minio, minioConfig.bucket, crop.objectKey as string);
           renameSync(tmpPath, cropPath);
           tmpFiles.push(cropPath);
         }

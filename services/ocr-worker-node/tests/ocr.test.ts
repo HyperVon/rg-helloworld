@@ -78,12 +78,13 @@ test('ALLOWED_ALPHABET is a non-empty string', () => {
   assert.ok(typeof ALLOWED_ALPHABET === 'string');
   assert.ok(ALLOWED_ALPHABET.length > 0);
   assert.ok(ALLOWED_ALPHABET.includes('H'));
-  assert.ok(ALLOWED_ALPHABET.includes('e'));
-  assert.ok(ALLOWED_ALPHABET.includes('l'));
-  assert.ok(ALLOWED_ALPHABET.includes('o'));
+  assert.ok(ALLOWED_ALPHABET.includes('E'));
+  assert.ok(ALLOWED_ALPHABET.includes('L'));
+  assert.ok(ALLOWED_ALPHABET.includes('O'));
   assert.ok(ALLOWED_ALPHABET.includes('W'));
-  assert.ok(ALLOWED_ALPHABET.includes('r'));
-  assert.ok(ALLOWED_ALPHABET.includes('d'));
+  assert.ok(ALLOWED_ALPHABET.includes('R'));
+  assert.ok(ALLOWED_ALPHABET.includes('D'));
+  assert.equal(/[a-z]/.test(ALLOWED_ALPHABET), false);
 });
 
 test('buildOcrEvent has correct maturity values', () => {
@@ -220,6 +221,27 @@ test('parseTsvLines extracts level-10 symbol rows', () => {
   assert.equal(result[0]?.text, 'H');
   assert.equal(result[0]?.confidence, 0.98);
   assert.deepEqual(result[0]?.bbox, { x: 10, y: 20, width: 5, height: 10 });
+});
+
+test('parseTsvLines splits a multi-character level-10 row', () => {
+  const tsv = ['level\ttext\tconf\tleft\ttop\twidth\theight', '10\teC\t90\t10\t20\t20\t30'];
+  const result = parseTsvLines(tsv);
+  assert.deepEqual(
+    result.map((symbol) => symbol.text),
+    ['e', 'C'],
+  );
+  assert.deepEqual(result[0]?.bbox, { x: 10, y: 20, width: 10, height: 30 });
+  assert.deepEqual(result[1]?.bbox, { x: 20, y: 20, width: 10, height: 30 });
+});
+
+test('parseTsvLines falls back to a word-level row', () => {
+  const tsv = ['level\ttext\tconf\tleft\ttop\twidth\theight', '5\tHi\t80\t10\t20\t20\t30'];
+  const result = parseTsvLines(tsv);
+  assert.deepEqual(
+    result.map((symbol) => symbol.text),
+    ['H', 'i'],
+  );
+  assert.equal(result[0]?.confidence, 0.8);
 });
 
 test('parseTsvLines handles empty input', () => {
@@ -412,11 +434,42 @@ test('performOcr processes existing crop files', () => {
   try {
     const observations = performOcr('/fake/full.png', manifest, tempDir, mockExecutor);
     assert.equal(fullCalls, 1);
-    assert.equal(cropCalls, 1);
+    assert.equal(cropCalls, 2);
     assert.equal(observations.positionObservations.length, 1);
     assert.equal(observations.positionObservations[0]?.candidate, 'H');
     assert.equal(observations.positionObservations[0]?.confidence, 0.97);
     assert.deepEqual(observations.positionObservations[0]?.alternatives, ['H']);
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
+test('performOcr selects the higher-confidence crop mode', () => {
+  const tempDir = resolve(tmpdir(), `ocr-mode-test-${Date.now()}`);
+  mkdirSync(tempDir, { recursive: true });
+  writeFileSync(resolve(tempDir, 'crop-position-0.png'), 'dummy-image-data');
+
+  const manifest = {
+    layout: [
+      { position: 0, x: 20, y: 0, width: 100, height: 100, advanceWidth: 1.0, baseline: 80 },
+    ],
+    totalWidth: 140,
+    totalHeight: 100,
+  };
+  const mockExecutor = (_path: string, psm: number) =>
+    symbolsToResult([
+      {
+        text: psm === 8 ? 'L' : 'l',
+        confidence: psm === 8 ? 0.74 : 0.89,
+        bbox: { x: 0, y: 0, width: 10, height: 20 },
+      },
+    ]);
+
+  try {
+    const observations = performOcr('/fake/full.png', manifest, tempDir, mockExecutor);
+    assert.equal(observations.positionObservations[0]?.candidate, 'l');
+    assert.equal(observations.positionObservations[0]?.confidence, 0.89);
+    assert.deepEqual(observations.positionObservations[0]?.alternatives, ['l', 'L']);
   } finally {
     rmSync(tempDir, { recursive: true, force: true });
   }

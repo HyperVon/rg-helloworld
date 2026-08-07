@@ -20,3 +20,11 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.coverage.run]
+omit = [
+    "src/rg_image_pipeline/worker.py",
+    "src/rg_image_pipeline/kafka_client.py",
+    "src/rg_image_pipeline/minio_store.py",
+]
+

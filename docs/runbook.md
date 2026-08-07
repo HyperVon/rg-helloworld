@@ -28,7 +28,7 @@ rghw run
 # The CLI connects to the orchestrator's SSE endpoint and prints progress
 
 # Exit codes:
-#   0 — run succeeded and `Hello World` was printed
+#   0 — run succeeded and `HELLO WORLD` was printed
 #   1 — run failed or stack unavailable
 ```
 

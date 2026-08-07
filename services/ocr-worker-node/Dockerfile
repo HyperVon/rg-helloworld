@@ -1,6 +1,6 @@
 # OCR worker: Node.js service that runs Tesseract locally.
 # Base image is tag-pinned (never "latest").
-FROM node:24.6.0-bookworm AS builder
+FROM node:24.6.0-bookworm-slim AS builder
 
 WORKDIR /app
 COPY package.json package-lock.json* ./
@@ -11,16 +11,16 @@ COPY src ./src
 COPY tests ./tests
 RUN npm run build
 
-FROM node:24.6.0-bookworm
+FROM node:24.6.0-bookworm-slim
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends tesseract-ocr libtesseract-dev && \
+    apt-get install -y --no-install-recommends tesseract-ocr && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY --from=builder /app/out/ ./out/
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev && npm cache clean --force
 
 ENV NODE_ENV=production
 ENV KAFKA_BOOTSTRAP=kafka.rube-goldberg.svc.cluster.local:9092

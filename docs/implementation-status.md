@@ -4,6 +4,12 @@
 > Update this document whenever a milestone's scope, tasks, or acceptance
 > conditions change, and mark tasks complete only after their checks pass.
 
+## Current acceptance phrase
+
+The acceptance request and terminal output are uppercase-only: `HELLO WORLD`.
+The glyph catalog exposes `H`, `E`, `L`, `O`, `W`, `R`, and `D`, plus the
+position-5 gap. Lowercase glyph requests are intentionally unsupported.
+
 ## Milestone overview
 
 | # | Milestone | Status |
@@ -15,7 +21,7 @@
 | 4 | SOAP planning (Java glyph catalog, `RUBE_SIMPLEX_V1`) | **COMPLETE** |
 | 5 | Geometry and vector artifacts (C++, Go) | **COMPLETE** |
 | 6 | gRPC rasterization (C#, ImageSharp) | **COMPLETE** |
-| 7 | Composition and preprocessing (Python) | **IN PROGRESS** |
+| 7 | Composition and preprocessing (Python) | **COMPLETE** |
 | 8 | OCR and adjudication (Node.js, Ruby) | **COMPLETE** |
 | 9 | Rust assembly and true final output | not started |
 | 10 | Mixed-framework UI (React Flow, Angular, HTMX) | not started |
@@ -810,9 +816,9 @@ generated code + container-based codegen approach (ADR-0008).
 - Maturity increases: rasterized 40 → phrase-composed 50 → ocr-prepared 60,
   with orchestrator rejecting backward/equal-rank events.
 - Eleven `rg.phrase-composed.v1` records (one per run) and eleven
-  `rg.ocr-images.v1` records for `"Hello World"` in the cluster; events
+  `rg.ocr-images.v1` records for `"HELLO WORLD"` in the cluster; events
   contain no prohibited fields.
-- `rghw run` still prints `Hello World` (run completes after later
+- `rghw run` still prints `HELLO WORLD` (run completes after later
   stages, from private expected-text store).
 - `make format`, `make lint`, `make unit`, `make coverage`, `make build`
   (STRICT=1), `make contracts`, `make contract-test`, `make integration`,
@@ -849,6 +855,8 @@ generated code + container-based codegen approach (ADR-0008).
 | 2026-08-06 | `scripts/build-images.sh` Docker context fix | PASS (image-pipeline builds with service dir context) |
 | 2026-08-06 | `make integration` M7 block | PASS (fixtures created, compose deterministic, preprocess produces OCR + crops + report) |
 | 2026-08-06 | Root .venv deps updated | PASS (pillow, numpy, scikit-image, jsonschema installed for coverage) |
+| 2026-08-07 | Pipeline stability: uppercase HELLO WORLD, composition width/height fix, crop isolation, OCR tesseract parsing (split multi-char, PSM 8+10, word fallback), CLI SSE streaming integrity, smoke-test wait helper | PASS (make format/lint/unit/coverage/build/integration/contracts all green; HELLO WORLD 11 glyphs gap at 5, composition 1396×148 deterministic, preprocessing 2832×336 11 crops, OCR 60→70, adjudication 70→80; make e2e E2E_SKIP_PLATFORM=1 PASS) |
+| 2026-08-07 | Glyph catalog uppercase redo (H 7 primitives, E 14, L 4, O 21pt ellipse, W/R/D paths) + tests updated | PASS (26 Java tests, spotless clean, SOAP 11 records HELLO WORLD) |
 
 M7 implementation notes (2026-08-06): Contracts were already committed in the
 skeleton; this implementation provides the Python image pipeline core modules
@@ -863,6 +871,8 @@ integration for the Python service (aiokafka consumers, MinIO store) and
 database proof for composition trigger are deferred to later phases of
 Milestone 7. The core transformation logic, state machine, contracts, tests,
 and deployment scaffolding are complete.
+
+M7 stability update (2026-08-07): Uppercase acceptance required redrawing all glyphs (H/E/L/O/W/R/D) with OCR-legible geometry, fixing composition `phrase_width`/`phrase_height` to account for scaled glyph bitmap widths and max glyph height, fixing preprocessing crop isolation to clamp to neighbor glyph bounds (prevent overlap), narrowing OCR `ALLOWED_ALPHABET` to uppercase, improving `parseTsvLines` to split multi-character rows and fall back to word-level rows, running per-crop OCR with both PSM 8 and 10, and fixing CLI SSE to stream incrementally with first-line integrity check.
 
 ---
 
@@ -933,7 +943,7 @@ and deployment scaffolding are complete.
 - Ruby adjudicator accepts symbols without target knowledge
 - Forced ambiguity triggers a quality-retry event
 - Maturity increases: ocr-images 60 → ocr-observations 70 → symbols-adjudicated 80
-- `rghw run` still prints `Hello World` (orchestrator completes from private store)
+- `rghw run` still prints `HELLO WORLD` (orchestrator completes from private store)
 - `make format`, `make lint`, `make unit`, `make coverage`, `make build`
   (STRICT=1), `make contracts`, `make contract-test`, `make integration`,
   and `make e2e` all pass
@@ -1008,7 +1018,7 @@ and deployment scaffolding are complete.
 - Missing positions are rejected
 - Assembled text is valid UTF-8
 - Kotlin orchestrator compares assembled text with expected phrase in `expectedTexts`
-- `rghw run` prints `Hello World` (from OCR-derived assembly, not from code)
+- `rghw run` prints `HELLO WORLD` (from OCR-derived assembly, not from code)
 - `make format`, `make lint`, `make unit`, `make coverage`, `make build`
   (STRICT=1), `make contracts`, `make contract-test`, `make integration`,
   and `make e2e` all pass
@@ -1161,7 +1171,7 @@ and deployment scaffolding are complete.
 - Troubleshooting guide: common failure modes and remediation steps.
 - Final README: comprehensive project documentation with diagrams and usage examples.
 - Recorded example screenshots or GIFs: visual acceptance evidence.
-- Full acceptance test: end-to-end test proving `rghw run` prints exactly `Hello World`.
+- Full acceptance test: end-to-end test proving `rghw run` prints exactly `HELLO WORLD`.
 
 ### Tasks
 

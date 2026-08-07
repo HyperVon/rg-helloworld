@@ -46,7 +46,7 @@ type streamEvent struct {
 	AssembledText string `json:"assembledText,omitempty"`
 }
 
-const defaultMessage = "SGVsbG8gV29ybGQ="
+const defaultMessage = "SEVMTE8gV09STEQ="
 
 func decodeDefaultMessage() string {
 	data, err := base64.StdEncoding.DecodeString(defaultMessage)
@@ -219,18 +219,12 @@ func streamResult(ctx context.Context, client *http.Client, baseURL, runID strin
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("stream: unexpected status %d", resp.StatusCode)
 	}
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("stream: read body: %w", err)
-	}
-	if err := brainfuck.VerifyIntegrity(body); err != nil {
-		return "", fmt.Errorf("stream: integrity check failed: %w", err)
-	}
-	return parseSSE(ctx, strings.NewReader(string(body)))
+	return parseSSE(ctx, resp.Body)
 }
 
 func parseSSE(ctx context.Context, body io.Reader) (string, error) {
 	scanner := bufio.NewScanner(body)
+	firstLine := true
 	for scanner.Scan() {
 		select {
 		case <-ctx.Done():
@@ -238,6 +232,12 @@ func parseSSE(ctx context.Context, body io.Reader) (string, error) {
 		default:
 		}
 		line := scanner.Text()
+		if firstLine {
+			if err := brainfuck.VerifyIntegrity([]byte(line)); err != nil {
+				return "", fmt.Errorf("stream: integrity check failed: %w", err)
+			}
+			firstLine = false
+		}
 		if line == "" || strings.HasPrefix(line, ":") {
 			continue
 		}

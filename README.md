@@ -6,8 +6,10 @@ A deliberately excessive, fully local, event-driven distributed system whose sol
 functional purpose is to derive, recognize, assemble, and print:
 
 ```text
-Hello World
+HELLO WORLD
 ```
+
+The acceptance phrase uses uppercase glyphs only: `HELLO WORLD`.
 
 The project runs entirely on one laptop — no cloud account, no paid service, no
 external runtime API. It exercises ten programming languages, REST, SOAP, gRPC,

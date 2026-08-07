@@ -64,7 +64,7 @@ func TestRunCommandHappyPath(t *testing.T) {
 			_, _ = w.Write([]byte(`{"runId":"run-123","status":"PLANNING","createdAt":"2026-01-01T00:00:00Z","links":{"self":"/api/v1/runs/run-123","events":"/api/v1/runs/run-123/events","stream":"/api/v1/runs/run-123/stream","artifacts":"/api/v1/runs/run-123/artifacts"}}`))
 		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/runs/run-123/stream":
 			w.Header().Set("Content-Type", "text/event-stream")
-			_, _ = w.Write([]byte(": connected\n\ndata: {\"status\":\"PLANNING\"}\n\ndata: {\"status\":\"SUCCEEDED\",\"assembledText\":\"Hello World\"}\n\n"))
+			_, _ = w.Write([]byte(": connected\n\ndata: {\"status\":\"PLANNING\"}\n\ndata: {\"status\":\"SUCCEEDED\",\"assembledText\":\"HELLO WORLD\"}\n\n"))
 		default:
 			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
 			w.WriteHeader(http.StatusNotFound)
@@ -81,8 +81,8 @@ func TestRunCommandHappyPath(t *testing.T) {
 	if !created {
 		t.Fatal("run was not created")
 	}
-	if stdout.String() != "Hello World\n" {
-		t.Fatalf("stdout = %q, want %q", stdout.String(), "Hello World\n")
+	if stdout.String() != "HELLO WORLD\n" {
+		t.Fatalf("stdout = %q, want %q", stdout.String(), "HELLO WORLD\n")
 	}
 }
 
@@ -168,7 +168,7 @@ func TestParseRunArgsDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseRunArgs error: %v", err)
 	}
-	if opts.message != "Hello World" {
+	if opts.message != "HELLO WORLD" {
 		t.Fatalf("message = %q, want default", opts.message)
 	}
 	if opts.apiURL != "http://localhost:8080" {
@@ -256,7 +256,7 @@ func TestRunDispatchToRunCommand(t *testing.T) {
 			w.WriteHeader(http.StatusAccepted)
 			_, _ = w.Write([]byte(`{"runId":"run-123","status":"PLANNING","createdAt":"2026-01-01T00:00:00Z","links":{"self":"","events":"","stream":"","artifacts":""}}`))
 		case r.Method == http.MethodGet:
-			_, _ = w.Write([]byte(": connected\n\ndata: {\"status\":\"SUCCEEDED\",\"assembledText\":\"Hello World\"}\n"))
+			_, _ = w.Write([]byte(": connected\n\ndata: {\"status\":\"SUCCEEDED\",\"assembledText\":\"HELLO WORLD\"}\n"))
 		}
 	}))
 	defer server.Close()
@@ -266,8 +266,8 @@ func TestRunDispatchToRunCommand(t *testing.T) {
 	if code != exitSuccess {
 		t.Fatalf("exit code = %d, want %d (stderr: %s)", code, exitSuccess, stderr.String())
 	}
-	if stdout.String() != "Hello World\n" {
-		t.Fatalf("stdout = %q, want %q", stdout.String(), "Hello World\n")
+	if stdout.String() != "HELLO WORLD\n" {
+		t.Fatalf("stdout = %q, want %q", stdout.String(), "HELLO WORLD\n")
 	}
 }
 
@@ -307,7 +307,7 @@ func TestCreateRunConnectionFailure(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	server.Close()
 
-	_, err := createRun(context.Background(), server.Client(), server.URL, "Hello World")
+	_, err := createRun(context.Background(), server.Client(), server.URL, "HELLO WORLD")
 	if err == nil {
 		t.Fatal("createRun error = nil, want connection error")
 	}
@@ -320,7 +320,7 @@ func TestCreateRunDecodeFailure(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := createRun(context.Background(), server.Client(), server.URL, "Hello World")
+	_, err := createRun(context.Background(), server.Client(), server.URL, "HELLO WORLD")
 	if err == nil {
 		t.Fatal("createRun error = nil, want decode error")
 	}
@@ -333,7 +333,7 @@ func TestCreateRunMissingRunID(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := createRun(context.Background(), server.Client(), server.URL, "Hello World")
+	_, err := createRun(context.Background(), server.Client(), server.URL, "HELLO WORLD")
 	if err == nil {
 		t.Fatal("createRun error = nil, want missing runId error")
 	}

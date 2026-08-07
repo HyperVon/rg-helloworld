@@ -681,9 +681,12 @@ suspend fun ByteWriteChannel.writeSseLoop(
         flush()
     }
     while (true) {
-        val msg = channel.receive()
+        val msg = channel.receiveCatching().getOrNull() ?: break
         writeStringUtf8("data: $msg\n\n")
         flush()
+        if (msg.contains("\"SUCCEEDED\"") || msg.contains("\"FAILED\"")) {
+            break
+        }
     }
 }
 

@@ -159,7 +159,7 @@ if command -v java >/dev/null 2>&1 && command -v curl >/dev/null 2>&1; then
     say "[FAIL] glyph catalog did not become ready (see /tmp/rghw-catalog.log)"
   else
     SOAP_RESPONSE=$(curl -sf -H "Content-Type: text/xml" \
-      -d '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:glyph="urn:rube-goldberg:glyph-catalog:v1"><soapenv:Body><glyph:PlanPhraseRequest><glyph:message>Hello World</glyph:message><glyph:alphabet>RUBE_SIMPLEX_V1</glyph:alphabet><glyph:variant>PRIMARY</glyph:variant></glyph:PlanPhraseRequest></soapenv:Body></soapenv:Envelope>' \
+      -d '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:glyph="urn:rube-goldberg:glyph-catalog:v1"><soapenv:Body><glyph:PlanPhraseRequest><glyph:message>HELLO WORLD</glyph:message><glyph:alphabet>RUBE_SIMPLEX_V1</glyph:alphabet><glyph:variant>PRIMARY</glyph:variant></glyph:PlanPhraseRequest></soapenv:Body></soapenv:Envelope>' \
       "http://127.0.0.1:$CATALOG_PORT/ws/glyph-catalog" 2>/dev/null)
     if [ -z "$SOAP_RESPONSE" ]; then
       FAILED=$((FAILED + 1))

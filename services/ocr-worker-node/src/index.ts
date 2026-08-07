@@ -5,8 +5,7 @@ import { createHash } from 'node:crypto';
 
 export const SERVICE_NAME = 'ocr-worker';
 export const SERVICE_VERSION = '0.5.0-milestone8';
-export const ALLOWED_ALPHABET =
-  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,!? '-:;";
+export const ALLOWED_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,!? '-:;";
 
 export interface PositionObservation {
   position: number;
@@ -161,8 +160,7 @@ export type OcrExecutor = (
 ) => TesseractResult;
 
 export function parseTsvLines(lines: string[]): TesseractSymbol[] {
-  const symbols: TesseractSymbol[] = [];
-  if (lines.length < 2) return symbols;
+  if (lines.length < 2) return [];
 
   const header = (lines[0] ?? '').split('\t');
   const idxLevel = header.indexOf('level');
@@ -172,12 +170,18 @@ export function parseTsvLines(lines: string[]): TesseractSymbol[] {
   const idxTop = header.indexOf('top');
   const idxWidth = header.indexOf('width');
   const idxHeight = header.indexOf('height');
+  const rows = lines.slice(1).map((line) => line.split('\t'));
+  const characterRows = rows.filter(
+    (fields) => fields[idxLevel] === '10' && (fields[idxText] ?? '').trim() !== '',
+  );
+  const textRows =
+    characterRows.length > 0
+      ? characterRows
+      : rows.filter((fields) => fields[idxLevel] === '5' && (fields[idxText] ?? '').trim() !== '');
+  const symbols: TesseractSymbol[] = [];
 
-  for (let i = 1; i < lines.length; i++) {
-    const fields = (lines[i] ?? '').split('\t');
+  for (const fields of textRows) {
     if (fields.length < header.length) continue;
-    const level = fields[idxLevel] ?? '';
-    if (level !== '10') continue;
     const text = fields[idxText] ?? '';
     if (!text || text.trim() === '') continue;
     const confStr = fields[idxConf] ?? '0';
@@ -191,11 +195,20 @@ export function parseTsvLines(lines: string[]): TesseractSymbol[] {
     const top = parseInt(topStr, 10) || 0;
     const width = parseInt(widthStr, 10) || 0;
     const height = parseInt(heightStr, 10) || 0;
-    symbols.push({
-      text: text.trim(),
-      confidence: conf / 100,
-      bbox: { x: left, y: top, width, height },
-    });
+    const characters = [...text.trim()];
+    const characterWidth = characters.length > 0 ? width / characters.length : width;
+    for (const [index, character] of characters.entries()) {
+      symbols.push({
+        text: character,
+        confidence: conf / 100,
+        bbox: {
+          x: Math.round(left + index * characterWidth),
+          y: top,
+          width: Math.round(characterWidth),
+          height,
+        },
+      });
+    }
   }
   return symbols;
 }
@@ -213,10 +226,17 @@ export function performOcr(
     if (entry.width === 0 && entry.height === 0) continue;
     const cropPath = resolve(cropsDir, `crop-position-${entry.position}.png`);
     if (!existsSync(cropPath)) continue;
-    const cropResult = ocrExecutor(cropPath, 8, ALLOWED_ALPHABET);
-    const candidates = cropResult.symbols
+    const cropResults = [
+      ocrExecutor(cropPath, 8, ALLOWED_ALPHABET),
+      ocrExecutor(cropPath, 10, ALLOWED_ALPHABET),
+    ];
+    const cropResult = cropResults.reduce((best, current) =>
+      current.confidence > best.confidence ? current : best,
+    );
+    const candidates = [...cropResult.symbols, ...cropResults.flatMap((result) => result.symbols)]
       .map((s) => s.text)
       .filter((c) => c.length > 0)
+      .filter((candidate, index, all) => all.indexOf(candidate) === index)
       .slice(0, 5);
     const bestCandidate = candidates[0] ?? '?';
     positionObservations.push({
