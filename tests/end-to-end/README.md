@@ -30,7 +30,7 @@ E2E_SKIP_GATES=1 make e2e
 The primary acceptance test arrives in Milestone 9:
 
 ```bash
-OUTPUT="$(rghello run --quiet)"
+OUTPUT="$(rghw run --quiet)"
 test "$OUTPUT" = "Hello World"
 ```
 

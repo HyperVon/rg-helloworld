@@ -8,7 +8,7 @@ public class LocalRasterStoreTests
     [Fact]
     public async Task PutWritesFileUnderRoot()
     {
-        string root = Path.Combine(Path.GetTempPath(), "rghello-raster-" + Guid.NewGuid().ToString("N"));
+        string root = Path.Combine(Path.GetTempPath(), "rghw-raster-" + Guid.NewGuid().ToString("N"));
         try
         {
             var store = new LocalRasterStore(root);
@@ -27,7 +27,7 @@ public class LocalRasterStoreTests
     [Fact]
     public async Task PutCreatesNestedDirectories()
     {
-        string root = Path.Combine(Path.GetTempPath(), "rghello-raster-" + Guid.NewGuid().ToString("N"));
+        string root = Path.Combine(Path.GetTempPath(), "rghw-raster-" + Guid.NewGuid().ToString("N"));
         try
         {
             var store = new LocalRasterStore(root);

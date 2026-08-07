@@ -77,7 +77,7 @@ echo ""
 
 # --- Test 2: MinIO artifact round trip ---
 echo "--- Test 2: MinIO artifact round trip ---"
-TEST_FILE="/tmp/rghello-test-artifact.txt"
+TEST_FILE="/tmp/rghw-test-artifact.txt"
 echo "Hello World from MinIO" > "$TEST_FILE"
 ORIGINAL_HASH=$(sha256sum "$TEST_FILE" | awk '{print $1}')
 
@@ -88,7 +88,7 @@ sleep 3
 mc alias set local http://localhost:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD --quiet
 mc mb local/$MINIO_BUCKET --ignore-existing --quiet 2>&1 || true
 mc cp "$TEST_FILE" local/$MINIO_BUCKET/test-artifact.txt --quiet
-DOWNLOAD_FILE="/tmp/rghello-test-artifact-downloaded.txt"
+DOWNLOAD_FILE="/tmp/rghw-test-artifact-downloaded.txt"
 mc cp local/$MINIO_BUCKET/test-artifact.txt "$DOWNLOAD_FILE" --quiet
 DOWNLOADED_HASH=$(sha256sum "$DOWNLOAD_FILE" | awk '{print $1}')
 
@@ -187,15 +187,15 @@ if command -v docker >/dev/null 2>&1; then
     sleep 3
 
     if ! command -v go >/dev/null 2>&1; then
-        echo "SKIP: go not installed, skipping rghello run acceptance"
+        echo "SKIP: go not installed, skipping rghw run acceptance"
     else
-        if ! RESULT=$(cd "$PROJECT_ROOT/cmd/rghello" && go run . run --api-url "http://localhost:8080" --quiet --timeout 90s 2>/dev/null); then
+        if ! RESULT=$(cd "$PROJECT_ROOT/cmd/rghw" && go run . run --api-url "http://localhost:8080" --quiet --timeout 90s 2>/dev/null); then
             RESULT=""
         fi
         if [[ "$RESULT" == "Hello World" ]]; then
-            echo "PASS: rghello run printed 'Hello World'"
+            echo "PASS: rghw run printed 'Hello World'"
         else
-            echo "FAIL: rghello run printed '$RESULT'"
+            echo "FAIL: rghw run printed '$RESULT'"
             kubectl logs -n $NAMESPACE deploy/run-orchestrator --tail=20 || true
             kubectl logs -n $NAMESPACE deploy/glyph-catalog --tail=20 || true
             exit 1
@@ -344,8 +344,8 @@ if command -v docker >/dev/null 2>&1; then
         exit 1
     fi
 
-    printf '%s\n' "$NORMALIZED" > /tmp/rghello-normalized-records.txt
-    if python3 - "$MINIO_BUCKET" /tmp/rghello-normalized-records.txt <<'PYEOF'
+    printf '%s\n' "$NORMALIZED" > /tmp/rghw-normalized-records.txt
+    if python3 - "$MINIO_BUCKET" /tmp/rghw-normalized-records.txt <<'PYEOF'
 import hashlib
 import json
 import subprocess
@@ -366,7 +366,7 @@ with open(records_file, encoding="utf-8") as handle:
             continue
         svg_key = svg_keys[0]
         expected = data["svgSha256"]
-        target = "/tmp/rghello-svg-check.svg"
+        target = "/tmp/rghw-svg-check.svg"
         subprocess.run(
             ["mc", "cp", f"local/{bucket}/{svg_key}", target, "--quiet"],
             check=True,
@@ -393,7 +393,7 @@ PYEOF
         echo "FAIL: SVG artifact verification failed"
         exit 1
     fi
-    rm -f /tmp/rghello-normalized-records.txt /tmp/rghello-svg-check.svg
+    rm -f /tmp/rghw-normalized-records.txt /tmp/rghw-svg-check.svg
     mc alias rm local 2>/dev/null || true
 
     if [[ ${#PORTFORWARD_PIDS[@]} -gt 0 ]]; then
@@ -460,8 +460,8 @@ if command -v docker >/dev/null 2>&1; then
         exit 1
     fi
 
-    printf '%s\n' "$RASTERIZED" > /tmp/rghello-rasterized-records.txt
-    if python3 - "$MINIO_BUCKET" /tmp/rghello-rasterized-records.txt <<'PYEOF'
+    printf '%s\n' "$RASTERIZED" > /tmp/rghw-rasterized-records.txt
+    if python3 - "$MINIO_BUCKET" /tmp/rghw-rasterized-records.txt <<'PYEOF'
 import hashlib
 import json
 import subprocess
@@ -478,7 +478,7 @@ with open(records_file, encoding="utf-8") as handle:
         event = json.loads(line)
         data = event["data"]
         raster = data["raster"]
-        target = "/tmp/rghello-raster-check.png"
+        target = "/tmp/rghw-raster-check.png"
         subprocess.run(
             ["mc", "cp", f"local/{bucket}/{raster['objectKey']}", target, "--quiet"],
             check=True,
@@ -509,7 +509,7 @@ PYEOF
         echo "FAIL: raster PNG artifact verification failed"
         exit 1
     fi
-    rm -f /tmp/rghello-rasterized-records.txt /tmp/rghello-raster-check.png
+    rm -f /tmp/rghw-rasterized-records.txt /tmp/rghw-raster-check.png
     mc alias rm local 2>/dev/null || true
 
     if [[ ${#PORTFORWARD_PIDS[@]} -gt 0 ]]; then

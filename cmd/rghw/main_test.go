@@ -372,7 +372,7 @@ func TestNewRunIDIsUUIDShaped(t *testing.T) {
 type exitSignal struct{ code int }
 
 func TestMainInvocation(t *testing.T) {
-	if os.Getenv("RGHELLO_MAIN_HELPER") == "1" {
+	if os.Getenv("RGHW_MAIN_HELPER") == "1" {
 		os.Args = []string{"rghw", "version"}
 		exit = func(code int) { panic(exitSignal{code: code}) }
 		defer func() {
@@ -386,8 +386,8 @@ func TestMainInvocation(t *testing.T) {
 		return
 	}
 	cmd := exec.Command(os.Args[0], "-test.run=TestMainInvocation")
-	cmd.Env = append(os.Environ(), "RGHELLO_MAIN_HELPER=1")
-	if profile := os.Getenv("RGHELLO_CHILD_COVER"); profile != "" {
+	cmd.Env = append(os.Environ(), "RGHW_MAIN_HELPER=1")
+	if profile := os.Getenv("RGHW_CHILD_COVER"); profile != "" {
 		cmd.Args = append(cmd.Args, "-test.coverprofile="+profile)
 	}
 	out, err := cmd.CombinedOutput()

@@ -17,12 +17,12 @@ PASS: Kafka message round-tripped correctly
 --- Test 2: MinIO artifact round trip ---
 Added `local` successfully.
 Bucket created successfully `local/rube-goldberg-artifacts`.
-`/tmp/rghello-test-artifact.txt` -> `local/rube-goldberg-artifacts/test-artifact.txt`
+`/tmp/rghw-test-artifact.txt` -> `local/rube-goldberg-artifacts/test-artifact.txt`
 ┌───────┬─────────────┬──────────┬────────────┐
 │ Total │ Transferred │ Duration │ Speed      │
 │ 23 B  │ 23 B        │ 00m00s   │ 2.06 KiB/s │
 └───────┴─────────────┴──────────┴────────────┘
-`local/rube-goldberg-artifacts/test-artifact.txt` -> `/tmp/rghello-test-artifact-downloaded.txt`
+`local/rube-goldberg-artifacts/test-artifact.txt` -> `/tmp/rghw-test-artifact-downloaded.txt`
 ┌───────┬─────────────┬──────────┬────────────┐
 │ Total │ Transferred │ Duration │ Speed      │
 │ 23 B  │ 23 B        │ 00m00s   │ 2.61 KiB/s │

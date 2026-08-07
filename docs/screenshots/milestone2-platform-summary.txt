@@ -2,7 +2,7 @@
 Date: 2026-08-04
 
 Cluster: k3d-rube-goldberg (k3d v5.9.0)
-Local Registry: rghello-registry (localhost:5001)
+Local Registry: rghw-registry (localhost:5001)
 
 Services deployed in namespace 'rube-goldberg':
 

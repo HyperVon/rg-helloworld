@@ -46,7 +46,7 @@ echo "Rube Goldberg Hello World - integration tests"
 echo "Building service artifacts:"
 
 if command -v go >/dev/null 2>&1; then
-  (cd "$ROOT/cmd/rghello" && go build -o "$BIN/rghello" .) || exit 1
+  (cd "$ROOT/cmd/rghw" && go build -o "$BIN/rghw" .) || exit 1
   (cd "$ROOT/services/vector-normalizer-go" && go build -o "$BIN/vector-normalizer" .) || exit 1
   say "[ ok ] Go binaries"
 else
@@ -123,7 +123,7 @@ fi
 
 echo "Verifying service banners:"
 
-check "rghello" "rghello 0.0.0-skeleton" "$BIN/rghello" version
+check "rghw" "rghw 0.0.0-skeleton" "$BIN/rghw" version
 check "vector-normalizer" "vector-normalizer 0.2.0-milestone6" "$BIN/vector-normalizer" version
 check "glyph-catalog" "glyph-catalog 0.1.0-milestone4" java -jar "$ROOT/services/glyph-catalog-java/target/glyph-catalog-java-0.1.0-milestone4.jar" version
 check "run-orchestrator" "run-orchestrator 0.5.0-milestone7" "$ROOT/services/run-orchestrator-kotlin/build/install/run-orchestrator/bin/run-orchestrator" version
@@ -144,7 +144,7 @@ if command -v java >/dev/null 2>&1 && command -v curl >/dev/null 2>&1; then
   CATALOG_PORT=18083
   GLYPH_CATALOG_PORT=$CATALOG_PORT GLYPH_CATALOG_DB_URL=jdbc:h2:mem:integration \
     java -jar "$ROOT/services/glyph-catalog-java/target/glyph-catalog-java-0.1.0-milestone4.jar" \
-    >/tmp/rghello-catalog.log 2>&1 &
+    >/tmp/rghw-catalog.log 2>&1 &
   CATALOG_PID=$!
   READY=""
   for _ in $(seq 1 30); do
@@ -156,7 +156,7 @@ if command -v java >/dev/null 2>&1 && command -v curl >/dev/null 2>&1; then
   done
   if [ -z "$READY" ]; then
     FAILED=$((FAILED + 1))
-    say "[FAIL] glyph catalog did not become ready (see /tmp/rghello-catalog.log)"
+    say "[FAIL] glyph catalog did not become ready (see /tmp/rghw-catalog.log)"
   else
     SOAP_RESPONSE=$(curl -sf -H "Content-Type: text/xml" \
       -d '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:glyph="urn:rube-goldberg:glyph-catalog:v1"><soapenv:Body><glyph:PlanPhraseRequest><glyph:message>Hello World</glyph:message><glyph:alphabet>RUBE_SIMPLEX_V1</glyph:alphabet><glyph:variant>PRIMARY</glyph:variant></glyph:PlanPhraseRequest></soapenv:Body></soapenv:Envelope>' \
@@ -207,9 +207,9 @@ if [ -x "$ROOT/.local/build/geometry-engine-cpp/geometry_engine" ] && [ -x "$BIN
   VENV_PY="$ROOT/.venv/bin/python"
 
   # Geometry expansion is deterministic: two runs produce identical events.
-  "$GEOMETRY_ONCE" --once < "$FIXTURE" > /tmp/rghello-geometry-1.json
-  "$GEOMETRY_ONCE" --once < "$FIXTURE" > /tmp/rghello-geometry-2.json
-  if cmp -s /tmp/rghello-geometry-1.json /tmp/rghello-geometry-2.json; then
+  "$GEOMETRY_ONCE" --once < "$FIXTURE" > /tmp/rghw-geometry-1.json
+  "$GEOMETRY_ONCE" --once < "$FIXTURE" > /tmp/rghw-geometry-2.json
+  if cmp -s /tmp/rghw-geometry-1.json /tmp/rghw-geometry-2.json; then
     say "[ ok ] geometry-engine --once is deterministic"
   else
     FAILED=$((FAILED + 1))
@@ -217,9 +217,9 @@ if [ -x "$ROOT/.local/build/geometry-engine-cpp/geometry_engine" ] && [ -x "$BIN
   fi
 
   # The event type and maturity ranks are correct (10 -> 20).
-  if grep -q '"type":"rg.geometry-expanded.v1"' /tmp/rghello-geometry-1.json &&
-    grep -q '"inputMaturity":10' /tmp/rghello-geometry-1.json &&
-    grep -q '"outputMaturity":20' /tmp/rghello-geometry-1.json; then
+  if grep -q '"type":"rg.geometry-expanded.v1"' /tmp/rghw-geometry-1.json &&
+    grep -q '"inputMaturity":10' /tmp/rghw-geometry-1.json &&
+    grep -q '"outputMaturity":20' /tmp/rghw-geometry-1.json; then
     say "[ ok ] geometry event type + maturity 10 -> 20"
   else
     FAILED=$((FAILED + 1))
@@ -228,21 +228,21 @@ if [ -x "$ROOT/.local/build/geometry-engine-cpp/geometry_engine" ] && [ -x "$BIN
 
   # Normalization consumes the geometry event and emits the normalized
   # event plus SVG artifacts; deterministic and mature 20 -> 30.
-  rm -rf /tmp/rghello-normalized-out
-  "$BIN/vector-normalizer" --once --emit-artifacts-to /tmp/rghello-normalized-out \
-    < /tmp/rghello-geometry-1.json > /tmp/rghello-normalized-1.json
-  "$BIN/vector-normalizer" --once --emit-artifacts-to /tmp/rghello-normalized-out-2 \
-    < /tmp/rghello-geometry-1.json > /tmp/rghello-normalized-2.json
-  if cmp -s /tmp/rghello-normalized-1.json /tmp/rghello-normalized-2.json; then
+  rm -rf /tmp/rghw-normalized-out
+  "$BIN/vector-normalizer" --once --emit-artifacts-to /tmp/rghw-normalized-out \
+    < /tmp/rghw-geometry-1.json > /tmp/rghw-normalized-1.json
+  "$BIN/vector-normalizer" --once --emit-artifacts-to /tmp/rghw-normalized-out-2 \
+    < /tmp/rghw-geometry-1.json > /tmp/rghw-normalized-2.json
+  if cmp -s /tmp/rghw-normalized-1.json /tmp/rghw-normalized-2.json; then
     say "[ ok ] vector-normalizer --once is deterministic"
   else
     FAILED=$((FAILED + 1))
     say "[FAIL] vector-normalizer --once produced different outputs for the same input"
   fi
 
-  if grep -q '"type":"rg.glyph-normalized.v1"' /tmp/rghello-normalized-1.json &&
-    grep -q '"inputMaturity":20' /tmp/rghello-normalized-1.json &&
-    grep -q '"outputMaturity":30' /tmp/rghello-normalized-1.json; then
+  if grep -q '"type":"rg.glyph-normalized.v1"' /tmp/rghw-normalized-1.json &&
+    grep -q '"inputMaturity":20' /tmp/rghw-normalized-1.json &&
+    grep -q '"outputMaturity":30' /tmp/rghw-normalized-1.json; then
     say "[ ok ] normalized event type + maturity 20 -> 30"
   else
     FAILED=$((FAILED + 1))
@@ -250,7 +250,7 @@ if [ -x "$ROOT/.local/build/geometry-engine-cpp/geometry_engine" ] && [ -x "$BIN
   fi
 
   for field in message targetText expectedCharacter unicodeCodePoint characterName glyphLabel; do
-    if grep -q "\"$field\"" /tmp/rghello-geometry-1.json /tmp/rghello-normalized-1.json; then
+    if grep -q "\"$field\"" /tmp/rghw-geometry-1.json /tmp/rghw-normalized-1.json; then
       FAILED=$((FAILED + 1))
       say "[FAIL] prohibited field '$field' present in a downstream event"
     fi
@@ -259,7 +259,7 @@ if [ -x "$ROOT/.local/build/geometry-engine-cpp/geometry_engine" ] && [ -x "$BIN
 
   # Schema validation of the event data payloads.
   if [ -x "$VENV_PY" ] && "$VENV_PY" -c "import jsonschema" >/dev/null 2>&1; then
-    if "$VENV_PY" - "$ROOT/contracts/events/geometry-expanded.v1.schema.json" /tmp/rghello-geometry-1.json <<'PYEOF'
+    if "$VENV_PY" - "$ROOT/contracts/events/geometry-expanded.v1.schema.json" /tmp/rghw-geometry-1.json <<'PYEOF'
 import json
 import sys
 from jsonschema import validate
@@ -274,7 +274,7 @@ PYEOF
       FAILED=$((FAILED + 1))
       say "[FAIL] geometry event failed schema validation"
     fi
-    if "$VENV_PY" - "$ROOT/contracts/events/vector-normalized.v1.schema.json" /tmp/rghello-normalized-1.json <<'PYEOF'
+    if "$VENV_PY" - "$ROOT/contracts/events/vector-normalized.v1.schema.json" /tmp/rghw-normalized-1.json <<'PYEOF'
 import json
 import sys
 from jsonschema import validate
@@ -294,7 +294,7 @@ PYEOF
   fi
 
   # SVG artifacts: no text elements, and sha256 matches the event field.
-  SVG_FILE=$(find /tmp/rghello-normalized-out -maxdepth 1 -type f -name '*.svg' -print -quit)
+  SVG_FILE=$(find /tmp/rghw-normalized-out -maxdepth 1 -type f -name '*.svg' -print -quit)
   if [ -n "$SVG_FILE" ]; then
     if grep -q "<text\|<font" "$SVG_FILE"; then
       FAILED=$((FAILED + 1))
@@ -303,7 +303,7 @@ PYEOF
       say "[ ok ] SVG artifact contains no text elements"
     fi
     ACTUAL_SHA=$(shasum -a 256 "$SVG_FILE" | awk '{print $1}')
-    EVENT_SHA=$(grep -o '"svgSha256":"[0-9a-f]*"' /tmp/rghello-normalized-1.json | head -1 | sed 's/.*:"//; s/"//')
+    EVENT_SHA=$(grep -o '"svgSha256":"[0-9a-f]*"' /tmp/rghw-normalized-1.json | head -1 | sed 's/.*:"//; s/"//')
     if [ "$ACTUAL_SHA" = "$EVENT_SHA" ]; then
       say "[ ok ] SVG artifact sha256 matches the event svgSha256"
     else
@@ -315,9 +315,9 @@ PYEOF
     say "[FAIL] no SVG artifact emitted by --emit-artifacts-to"
   fi
 
-  rm -rf /tmp/rghello-normalized-out /tmp/rghello-normalized-out-2
-  rm -f /tmp/rghello-geometry-1.json /tmp/rghello-geometry-2.json \
-    /tmp/rghello-normalized-1.json /tmp/rghello-normalized-2.json
+  rm -rf /tmp/rghw-normalized-out /tmp/rghw-normalized-out-2
+  rm -f /tmp/rghw-geometry-1.json /tmp/rghw-geometry-2.json \
+    /tmp/rghw-normalized-1.json /tmp/rghw-normalized-2.json
 else
   skip "geometry-engine or vector-normalizer binary (--once pipeline)"
 fi
@@ -326,11 +326,11 @@ echo ""
 echo "Verifying Milestone 6 gRPC rasterization (local rasterizer):"
 
 if [ -x "$BIN/vector-normalizer" ] && [ -x "$DOTNET" ]; then
-  RASTERIZER_STORE_DIR=$(mktemp -d /tmp/rghello-raster-store.XXXXXX)
+  RASTERIZER_STORE_DIR=$(mktemp -d /tmp/rghw-raster-store.XXXXXX)
   RASTERIZER_PORT=18505
   RASTERIZER_STORE=local RASTERIZER_LOCAL_DIR="$RASTERIZER_STORE_DIR" RASTERIZER_PORT=$RASTERIZER_PORT \
     "$DOTNET" "$ROOT/services/rasterizer-dotnet/cli/bin/Debug/net10.0/rasterizer.Cli.dll" serve \
-    >/tmp/rghello-rasterizer.log 2>&1 &
+    >/tmp/rghw-rasterizer.log 2>&1 &
   RASTERIZER_PID=$!
   READY=""
   for _ in $(seq 1 30); do
@@ -342,7 +342,7 @@ if [ -x "$BIN/vector-normalizer" ] && [ -x "$DOTNET" ]; then
   done
   if [ -z "$READY" ]; then
     FAILED=$((FAILED + 1))
-    say "[FAIL] rasterizer did not become ready (see /tmp/rghello-rasterizer.log)"
+    say "[FAIL] rasterizer did not become ready (see /tmp/rghw-rasterizer.log)"
     kill "$RASTERIZER_PID" 2>/dev/null || true
   else
     say "[ ok ] rasterizer gRPC server ready on :$RASTERIZER_PORT"
@@ -352,18 +352,18 @@ if [ -x "$BIN/vector-normalizer" ] && [ -x "$DOTNET" ]; then
     FIXTURE="$ROOT/tests/integration/fixtures/blueprint-event.json"
     GEOMETRY_ONCE="$ROOT/.local/build/geometry-engine-cpp/geometry_engine"
     if [ -x "$GEOMETRY_ONCE" ]; then
-      "$GEOMETRY_ONCE" --once < "$FIXTURE" > /tmp/rghello-m6-geometry.json
+      "$GEOMETRY_ONCE" --once < "$FIXTURE" > /tmp/rghw-m6-geometry.json
     else
       say "[skip] geometry-engine binary missing for M6 geometry input"
-      cp /dev/null /tmp/rghello-m6-geometry.json
+      cp /dev/null /tmp/rghw-m6-geometry.json
     fi
-    if [ -s /tmp/rghello-m6-geometry.json ]; then
+    if [ -s /tmp/rghw-m6-geometry.json ]; then
       "$BIN/vector-normalizer" --once --rasterizer-url "127.0.0.1:$RASTERIZER_PORT" \
-        < /tmp/rghello-m6-geometry.json > /tmp/rghello-raster-1.json
+        < /tmp/rghw-m6-geometry.json > /tmp/rghw-raster-1.json
       "$BIN/vector-normalizer" --once --rasterizer-url "127.0.0.1:$RASTERIZER_PORT" \
-        < /tmp/rghello-m6-geometry.json > /tmp/rghello-raster-2.json
+        < /tmp/rghw-m6-geometry.json > /tmp/rghw-raster-2.json
 
-      RASTER_LINES=$(wc -l < /tmp/rghello-raster-1.json | tr -d ' ')
+      RASTER_LINES=$(wc -l < /tmp/rghw-raster-1.json | tr -d ' ')
       if [ "$RASTER_LINES" = "2" ]; then
         say "[ ok ] --once --rasterizer-url emitted normalized + rasterized events"
       else
@@ -372,7 +372,7 @@ if [ -x "$BIN/vector-normalizer" ] && [ -x "$DOTNET" ]; then
       fi
 
       # The second line is the rasterized event.
-      RASTER_EVENT=$(sed -n 2p /tmp/rghello-raster-1.json)
+      RASTER_EVENT=$(sed -n 2p /tmp/rghw-raster-1.json)
       if [ -n "$RASTER_EVENT" ] &&
         printf '%s' "$RASTER_EVENT" | grep -q '"type":"rg.glyph-rasterized.v1"' &&
         printf '%s' "$RASTER_EVENT" | grep -q '"inputMaturity":30' &&
@@ -384,7 +384,7 @@ if [ -x "$BIN/vector-normalizer" ] && [ -x "$DOTNET" ]; then
       fi
 
       # Idempotency: the same request produces the identical event.
-      if cmp -s /tmp/rghello-raster-1.json /tmp/rghello-raster-2.json; then
+      if cmp -s /tmp/rghw-raster-1.json /tmp/rghw-raster-2.json; then
         say "[ ok ] --once --rasterizer-url is deterministic"
       else
         FAILED=$((FAILED + 1))
@@ -426,8 +426,8 @@ if [ -x "$BIN/vector-normalizer" ] && [ -x "$DOTNET" ]; then
 
       # Schema validation of the rasterized event data payload.
       if [ -x "$VENV_PY" ] && "$VENV_PY" -c "import jsonschema" >/dev/null 2>&1; then
-        printf '%s\n' "$RASTER_EVENT" > /tmp/rghello-raster-event.json
-        if "$VENV_PY" - "$ROOT/contracts/events/glyph-rasterized.v1.schema.json" /tmp/rghello-raster-event.json <<'PYEOF'
+        printf '%s\n' "$RASTER_EVENT" > /tmp/rghw-raster-event.json
+        if "$VENV_PY" - "$ROOT/contracts/events/glyph-rasterized.v1.schema.json" /tmp/rghw-raster-event.json <<'PYEOF'
 import json
 import sys
 from jsonschema import validate
@@ -442,17 +442,17 @@ PYEOF
           FAILED=$((FAILED + 1))
           say "[FAIL] rasterized event failed schema validation"
         fi
-        rm -f /tmp/rghello-raster-event.json
+        rm -f /tmp/rghw-raster-event.json
       else
         skip "venv jsonschema for rasterized event schema validation"
       fi
 
       # Gap geometry is normalized but never rasterized.
-      sed 's/"kind"[[:space:]]*:[[:space:]]*"DRAWABLE_GEOMETRY"/"kind": "GAP_GEOMETRY"/' /tmp/rghello-m6-geometry.json \
-        > /tmp/rghello-m6-gap.json
+      sed 's/"kind"[[:space:]]*:[[:space:]]*"DRAWABLE_GEOMETRY"/"kind": "GAP_GEOMETRY"/' /tmp/rghw-m6-geometry.json \
+        > /tmp/rghw-m6-gap.json
       "$BIN/vector-normalizer" --once --rasterizer-url "127.0.0.1:$RASTERIZER_PORT" \
-        < /tmp/rghello-m6-gap.json > /tmp/rghello-raster-gap.json
-      GAP_LINES=$(wc -l < /tmp/rghello-raster-gap.json | tr -d ' ')
+        < /tmp/rghw-m6-gap.json > /tmp/rghw-raster-gap.json
+      GAP_LINES=$(wc -l < /tmp/rghw-raster-gap.json | tr -d ' ')
       if [ "$GAP_LINES" = "1" ]; then
         say "[ ok ] gap geometry skips rasterization"
       else
@@ -460,8 +460,8 @@ PYEOF
         say "[FAIL] gap geometry produced $GAP_LINES output lines, want 1"
       fi
 
-      rm -f /tmp/rghello-m6-geometry.json /tmp/rghello-m6-gap.json \
-        /tmp/rghello-raster-1.json /tmp/rghello-raster-2.json /tmp/rghello-raster-gap.json
+      rm -f /tmp/rghw-m6-geometry.json /tmp/rghw-m6-gap.json \
+        /tmp/rghw-raster-1.json /tmp/rghw-raster-2.json /tmp/rghw-raster-gap.json
     else
       FAILED=$((FAILED + 1))
       say "[FAIL] geometry-engine --once produced no geometry input"
@@ -480,7 +480,7 @@ echo "Verifying Milestone 7 composition and preprocessing (--once):"
 if command -v python3 >/dev/null 2>&1 && [ -f "$ROOT/services/image-pipeline-python/src/rg_image_pipeline/__init__.py" ]; then
   # Create fixture glyph inputs (simulating rasterized glyph outputs)
   # We create 11 JSON fixtures: 10 drawables + 1 gap, matching "Hello World"
-  M7_FIXTURES="/tmp/rghello-m7-glyphs"
+  M7_FIXTURES="/tmp/rghw-m7-glyphs"
   mkdir -p "$M7_FIXTURES"
 
   # Generate fixtures using a helper Python script
@@ -546,18 +546,18 @@ print('fixtures created')
 
   if [ -n "$GLYPH_LIST" ]; then
     # Run composition --once
-    if eval "$IMAGE_PIPELINE compose $GLYPH_LIST --output-phrase-image /tmp/rghello-m7-phrase.png --output-manifest /tmp/rghello-m7-manifest.json" 2>/tmp/rghello-m7-compose.log; then
-      if [ -f /tmp/rghello-m7-phrase.png ]; then
+    if eval "$IMAGE_PIPELINE compose $GLYPH_LIST --output-phrase-image /tmp/rghw-m7-phrase.png --output-manifest /tmp/rghw-m7-manifest.json" 2>/tmp/rghw-m7-compose.log; then
+      if [ -f /tmp/rghw-m7-phrase.png ]; then
         say "[ ok ] composition --once produced phrase PNG"
         # Verify PNG magic bytes
-        if xxd -l 8 /tmp/rghello-m7-phrase.png 2>/dev/null | grep -q "8950 4e47 0d0a 1a0a"; then
+        if xxd -l 8 /tmp/rghw-m7-phrase.png 2>/dev/null | grep -q "8950 4e47 0d0a 1a0a"; then
           say "[ ok ] phrase PNG has valid PNG magic bytes"
         else
           FAILED=$((FAILED + 1))
           say "[FAIL] phrase PNG has invalid magic bytes"
         fi
         # Verify manifest was generated
-        if [ -f /tmp/rghello-m7-manifest.json ]; then
+        if [ -f /tmp/rghw-m7-manifest.json ]; then
           say "[ ok ] composition manifest generated"
         else
           FAILED=$((FAILED + 1))
@@ -566,13 +566,13 @@ print('fixtures created')
       else
         FAILED=$((FAILED + 1))
         say "[FAIL] composition --once did not produce phrase PNG"
-        cat /tmp/rghello-m7-compose.log
+        cat /tmp/rghw-m7-compose.log
       fi
 
       # Verify determinism: run again, compare SHA-256
-      eval "$IMAGE_PIPELINE compose $GLYPH_LIST --output-phrase-image /tmp/rghello-m7-phrase2.png --output-manifest /tmp/rghello-m7-manifest2.json" >/dev/null 2>&1
-      SHA1=$(shasum -a 256 /tmp/rghello-m7-phrase.png 2>/dev/null | awk '{print $1}')
-      SHA2=$(shasum -a 256 /tmp/rghello-m7-phrase2.png 2>/dev/null | awk '{print $1}')
+      eval "$IMAGE_PIPELINE compose $GLYPH_LIST --output-phrase-image /tmp/rghw-m7-phrase2.png --output-manifest /tmp/rghw-m7-manifest2.json" >/dev/null 2>&1
+      SHA1=$(shasum -a 256 /tmp/rghw-m7-phrase.png 2>/dev/null | awk '{print $1}')
+      SHA2=$(shasum -a 256 /tmp/rghw-m7-phrase2.png 2>/dev/null | awk '{print $1}')
       if [ "$SHA1" = "$SHA2" ]; then
         say "[ ok ] composition is deterministic (sha256 match)"
       else
@@ -581,17 +581,17 @@ print('fixtures created')
       fi
 
       # Run preprocessing --once
-      if eval "$IMAGE_PIPELINE preprocess --phrase-image /tmp/rghello-m7-phrase.png --composition-manifest /tmp/rghello-m7-manifest.json --output-ocr-image /tmp/rghello-m7-ocr.png --output-crops-dir /tmp/rghello-m7-crops --output-report /tmp/rghello-m7-report.json" 2>/tmp/rghello-m7-prep.log; then
-        if [ -f /tmp/rghello-m7-ocr.png ]; then
+      if eval "$IMAGE_PIPELINE preprocess --phrase-image /tmp/rghw-m7-phrase.png --composition-manifest /tmp/rghw-m7-manifest.json --output-ocr-image /tmp/rghw-m7-ocr.png --output-crops-dir /tmp/rghw-m7-crops --output-report /tmp/rghw-m7-report.json" 2>/tmp/rghw-m7-prep.log; then
+        if [ -f /tmp/rghw-m7-ocr.png ]; then
           say "[ ok ] preprocessing --once produced OCR image"
-          if [ -f /tmp/rghello-m7-report.json ]; then
+          if [ -f /tmp/rghw-m7-report.json ]; then
             say "[ ok ] preprocessing report generated"
           else
             FAILED=$((FAILED + 1))
             say "[FAIL] preprocessing report missing"
           fi
           # Verify crops were generated
-          CROP_COUNT=$(ls /tmp/rghello-m7-crops/*.png 2>/dev/null | wc -l | tr -d ' ')
+          CROP_COUNT=$(ls /tmp/rghw-m7-crops/*.png 2>/dev/null | wc -l | tr -d ' ')
           if [ "$CROP_COUNT" -gt 0 ]; then
             say "[ ok ] position crops generated ($CROP_COUNT crops)"
           else
@@ -605,11 +605,11 @@ print('fixtures created')
       else
         FAILED=$((FAILED + 1))
         say "[FAIL] preprocessing --once failed"
-        cat /tmp/rghello-m7-prep.log
+        cat /tmp/rghw-m7-prep.log
       fi
 
-      rm -f /tmp/rghello-m7-phrase.png /tmp/rghello-m7-phrase2.png /tmp/rghello-m7-manifest.json /tmp/rghello-m7-manifest2.json /tmp/rghello-m7-ocr.png /tmp/rghello-m7-report.json /tmp/rghello-m7-compose.log /tmp/rghello-m7-prep.log
-      rm -rf /tmp/rghello-m7-crops
+      rm -f /tmp/rghw-m7-phrase.png /tmp/rghw-m7-phrase2.png /tmp/rghw-m7-manifest.json /tmp/rghw-m7-manifest2.json /tmp/rghw-m7-ocr.png /tmp/rghw-m7-report.json /tmp/rghw-m7-compose.log /tmp/rghw-m7-prep.log
+      rm -rf /tmp/rghw-m7-crops
     else
       FAILED=$((FAILED + 1))
       say "[FAIL] image-pipeline compose command failed"
@@ -627,7 +627,7 @@ echo ""
 echo "Verifying Milestone 8 OCR and adjudication (--once):"
 
 if command -v node >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
-  M8_FIXTURES="/tmp/rghello-m8-fixtures"
+  M8_FIXTURES="/tmp/rghw-m8-fixtures"
   mkdir -p "$M8_FIXTURES/crops"
 
   python3 -c "
@@ -673,7 +673,7 @@ print('M8 fixtures created')
   OCR_WORKER="$ROOT/services/ocr-worker-node/out/index.js"
   M8_RUNNER="$ROOT/services/ocr-worker-node/tests/m8-once-runner.js"
   if [ -f "$OCR_WORKER" ] && [ -f "$M8_RUNNER" ]; then
-    if node "$M8_RUNNER" "$M8_FIXTURES" "$M8_FIXTURES/observations.json" "$M8_FIXTURES/ocr-event.json" 2>/tmp/rghello-m8-ocr.log; then
+    if node "$M8_RUNNER" "$M8_FIXTURES" "$M8_FIXTURES/observations.json" "$M8_FIXTURES/ocr-event.json" 2>/tmp/rghw-m8-ocr.log; then
       say "[ ok ] OCR worker --once produced observations"
   if [ -f "$M8_FIXTURES/observations.json" ]; then
     say "[ ok ] observations file written"
@@ -695,7 +695,7 @@ print('M8 fixtures created')
     else
       FAILED=$((FAILED + 1))
       say "[FAIL] OCR worker --once failed"
-      cat /tmp/rghello-m8-ocr.log
+      cat /tmp/rghw-m8-ocr.log
     fi
   else
     skip "ocr-worker not built"
@@ -722,7 +722,7 @@ print('M8 fixtures created')
 OBS
 
     if command -v ruby >/dev/null 2>&1; then
-      if (cd "$ROOT/services/adjudicator-ruby" && ruby -Ilib -e "require 'json'; require 'adjudicator'; result = Adjudicator::AdjudicatorImpl.run_once('$M8_FIXTURES/observations.json', '$M8_FIXTURES/manifest.json', event_output_path: '$M8_FIXTURES/adjudicator-event.json'); puts JSON.pretty_generate(result)" > "$M8_FIXTURES/adjudicated.json" 2>/tmp/rghello-m8-adjudicator.log); then
+      if (cd "$ROOT/services/adjudicator-ruby" && ruby -Ilib -e "require 'json'; require 'adjudicator'; result = Adjudicator::AdjudicatorImpl.run_once('$M8_FIXTURES/observations.json', '$M8_FIXTURES/manifest.json', event_output_path: '$M8_FIXTURES/adjudicator-event.json'); puts JSON.pretty_generate(result)" > "$M8_FIXTURES/adjudicated.json" 2>/tmp/rghw-m8-adjudicator.log); then
         say "[ ok ] adjudicator --once produced adjudicated symbols"
         if [ -f "$M8_FIXTURES/adjudicated.json" ]; then
           say "[ ok ] adjudicated file written"
@@ -744,7 +744,7 @@ OBS
       else
         FAILED=$((FAILED + 1))
         say "[FAIL] adjudicator --once failed"
-        cat /tmp/rghello-m8-adjudicator.log
+        cat /tmp/rghw-m8-adjudicator.log
       fi
     else
       skip "ruby for adjudicator"

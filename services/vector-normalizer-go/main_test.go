@@ -340,7 +340,7 @@ func TestMainInvocation(t *testing.T) {
 	}
 	cmd := exec.Command(os.Args[0], "-test.run=TestMainInvocation")
 	cmd.Env = append(os.Environ(), "VECTOR_NORMALIZER_MAIN_HELPER=1")
-	if profile := os.Getenv("RGHELLO_CHILD_COVER"); profile != "" {
+	if profile := os.Getenv("RGHW_CHILD_COVER"); profile != "" {
 		cmd.Args = append(cmd.Args, "-test.coverprofile="+profile)
 	}
 	out, err := cmd.CombinedOutput()
