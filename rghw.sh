@@ -191,6 +191,10 @@ else
   say "Skipping make infra (--skip-infra)"
 fi
 
+# 4b. Deploy app services
+say "Deploying app services (milestones 5-11)..."
+make -C "$PROJECT_ROOT" deploy || die "make deploy failed"
+
 # 5. Wait
 say "Waiting for pods to be Ready (300s)..."
 make -C "$PROJECT_ROOT" wait || {

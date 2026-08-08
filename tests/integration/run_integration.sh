@@ -91,7 +91,7 @@ else
 fi
 
 if command -v node >/dev/null 2>&1; then
-  for d in ocr-worker-node event-gateway-node; do
+  for d in ocr-worker-node event-gateway-node telemetry-element; do
     if [ ! -d "$ROOT/services/$d/node_modules" ]; then
       (cd "$ROOT/services/$d" && npm ci --no-audit --no-fund) || exit 1
     fi
@@ -131,10 +131,10 @@ check "geometry-engine" "geometry-engine 0.1.0-milestone5" "$ROOT/.local/build/g
 check "rasterizer" "rasterizer 0.1.0-milestone11" "$DOTNET" "$ROOT/services/rasterizer-dotnet/cli/bin/Debug/net10.0/rasterizer.Cli.dll" version
 check_eval "image-pipeline" "image-pipeline 0.1.0-milestone11" "PYTHONPATH=$ROOT/services/image-pipeline-python/src python3 -c 'import rg_image_pipeline as m; print(m.banner())'"
 check_eval "ocr-worker" "ocr-worker 0.5.0-milestone8" "node -e \"import('$ROOT/services/ocr-worker-node/out/index.js').then(m => console.log(m.banner()))\""
-check_eval "event-gateway" "event-gateway 0.5.0-milestone11 (Milestone 11)" "node -e \"import('$ROOT/services/event-gateway-node/out/src/index.js').then(m => console.log(m.banner()))\""
+check_eval "event-gateway" "event-gateway 0.5.0-milestone11 (Milestone 11)" "node -e \"import('$ROOT/services/event-gateway-node/out/index.js').then(m => console.log(m.banner()))\""
 check_eval "adjudicator" "adjudicator 0.5.0-milestone8 (Milestone 8)" "cd '$ROOT/services/adjudicator-ruby' && ruby -Ilib -e 'require \"adjudicator\"; puts Adjudicator.banner'"
 check "phrase-assembler" "phrase-assembler 0.5.0-milestone11 (Milestone 11)" "$ROOT/services/phrase-assembler-rust/target/debug/phrase-assembler"
-check_eval "telemetry-element" "telemetry-element 0.5.0-milestone11 (Milestone 11)" "cd '$ROOT/services/telemetry-element' && node -e \"const m = require('./out/src/index.js'); console.log(m.banner())\""
+check_eval "telemetry-element" "telemetry-element 0.5.0-milestone11 (Milestone 11)" "cd '$ROOT/services/telemetry-element' && node -e \"const m = require('./out/index.js'); console.log(m.banner())\""
 check_eval "artifact-inspector" "artifact-inspector 0.5.0-milestone11 (Milestone 11)" "cd '$ROOT/services/artifact-inspector-ruby' && ruby -Ilib -e 'require \"artifact_inspector\"; puts ArtifactInspector.banner'"
 
 echo ""
@@ -538,6 +538,8 @@ print('fixtures created')
 
   if [ -x "$BIN/image-pipeline" ]; then
     IMAGE_PIPELINE="$BIN/image-pipeline"
+  elif [ -x "$ROOT/.venv/bin/python" ]; then
+    IMAGE_PIPELINE="PYTHONPATH=$ROOT/services/image-pipeline-python/src $ROOT/.venv/bin/python -m rg_image_pipeline.cli"
   else
     IMAGE_PIPELINE="PYTHONPATH=$ROOT/services/image-pipeline-python/src python3 -m rg_image_pipeline.cli"
   fi

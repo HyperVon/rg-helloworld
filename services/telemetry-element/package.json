@@ -13,7 +13,7 @@
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit"
   },
-  "main": "out/src/index.js",
+  "main": "out/index.js",
   "devDependencies": {
     "@types/node": "26.1.2",
     "c8": "12.0.0",

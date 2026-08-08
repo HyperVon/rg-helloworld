@@ -452,6 +452,9 @@ cluster:
 infra:
 	cd infra/terraform/environments/local && terraform init && terraform apply -auto-approve
 
+deploy:
+	@bash scripts/deploy.sh
+
 wait:
 	@bash scripts/wait-ready.sh
 

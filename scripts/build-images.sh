@@ -34,5 +34,6 @@ build_and_push phrase-assembler services/phrase-assembler-rust/Dockerfile milest
 build_and_push event-gateway services/event-gateway-node/Dockerfile milestone11 services/event-gateway-node
 build_and_push telemetry-element services/telemetry-element/Dockerfile milestone11 services/telemetry-element
 build_and_push artifact-inspector services/artifact-inspector-ruby/Dockerfile milestone11 services/artifact-inspector-ruby
+build_and_push web-shell services/web-shell/Dockerfile milestone11 services/web-shell
 
 echo ">> Images pushed to ${REGISTRY} (milestone5 + milestone6 + milestone7 + milestone8 + milestone9 + milestone10 + milestone11)"

@@ -20,10 +20,6 @@ data:
 
     processors:
       batch:
-      tail_sampling:
-        policies:
-          - name: always_on
-            type: always_on
       attributes:
         actions:
           - key: service.name
@@ -31,8 +27,8 @@ data:
             action: upsert
 
     exporters:
-      logging:
-        loglevel: debug
+      debug:
+        verbosity: detailed
       otlp/tempo:
         endpoint: tempo:4317
         tls:
@@ -48,17 +44,21 @@ data:
         logs:
           level: "info"
         metrics:
-          level: "detailed"
-          address: 0.0.0.0:8888
+          readers:
+            - pull:
+                exporter:
+                  prometheus:
+                    host: "0.0.0.0"
+                    port: 8888
       pipelines:
         traces:
           receivers: [otlp]
-          processors: [tail_sampling, batch]
-          exporters: [otlp/tempo, logging]
+          processors: [batch]
+          exporters: [otlp/tempo, debug]
         metrics:
           receivers: [otlp]
           processors: [batch]
-          exporters: [prometheus, logging]
+          exporters: [prometheus, debug]
         logs:
           receivers: [otlp]
           processors: [batch]
