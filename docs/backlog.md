@@ -43,3 +43,25 @@ This item belongs with the optional absurdity extensions in architecture
 section 30 and should be considered only after the primary pipeline is
 working, unless a later milestone gives it a concrete integrity-preserving
 role.
+
+### Artifact viewer renders JSON instead of intermediate artifacts
+
+After an `rghw run`, the Web Shell artifact viewer (port 3000) shows JSON for
+each artifact rather than the rendered intermediate artifact itself
+(vector glyphs -> geometry -> SVG -> raster -> phrase image -> OCR ->
+assembly). Clicking "View Artifact" navigates to
+`/api/v1/runs/<runId>/artifacts/<runId>:<stage>` and renders an essentially
+empty default view of the port-3000 app, not the generated image/binary.
+
+Expected (per AGENTS.md / architecture section 30): a dark-glass, live view
+that lets an operator inspect every intermediate artifact produced during a
+run, sourced from MinIO via the artifact-inspector service, with zero cloud.
+
+Investigation areas:
+- `services/web-shell` routing for `/api/v1/runs/:runId/artifacts/:id` —
+  confirm it streams the artifact bytes (or a rendered preview) rather than
+  returning the descriptor JSON.
+- Artifact-inspector endpoint that resolves `runId:stage` to a MinIO object —
+  confirm it returns the object bytes / content-type, not just metadata.
+- Content-type handling so images render inline (PNG/SVG) instead of
+  downloading / showing empty.

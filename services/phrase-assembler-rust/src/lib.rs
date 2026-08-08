@@ -428,6 +428,13 @@ pub fn group_id() -> String {
     std::env::var("KAFKA_GROUP_ID").unwrap_or_else(|_| "phrase-assembler-v1".to_string())
 }
 
+pub fn otel_endpoint() -> String {
+    std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT")
+        .ok()
+        .filter(|endpoint| !endpoint.trim().is_empty())
+        .unwrap_or_else(|| OTEL_COLLECTOR_ENDPOINT.to_string())
+}
+
 pub fn process_adjudicated_payload(payload: &[u8]) -> Result<AdjudicatedToken, String> {
     let event: SymbolAdjudicatedEvent =
         serde_json::from_slice(payload).map_err(|e| format!("parse failed: {}", e))?;
@@ -568,6 +575,39 @@ mod tests {
         assert_eq!(group_id(), "custom-group");
         unsafe {
             env::remove_var("KAFKA_GROUP_ID");
+        }
+    }
+
+    #[test]
+    fn otel_endpoint_default() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        unsafe {
+            env::remove_var("OTEL_EXPORTER_OTLP_ENDPOINT");
+        }
+        assert_eq!(otel_endpoint(), OTEL_COLLECTOR_ENDPOINT);
+    }
+
+    #[test]
+    fn otel_endpoint_override() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        unsafe {
+            env::set_var("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317");
+        }
+        assert_eq!(otel_endpoint(), "http://localhost:4317");
+        unsafe {
+            env::remove_var("OTEL_EXPORTER_OTLP_ENDPOINT");
+        }
+    }
+
+    #[test]
+    fn otel_endpoint_ignores_blank_override() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        unsafe {
+            env::set_var("OTEL_EXPORTER_OTLP_ENDPOINT", "   ");
+        }
+        assert_eq!(otel_endpoint(), OTEL_COLLECTOR_ENDPOINT);
+        unsafe {
+            env::remove_var("OTEL_EXPORTER_OTLP_ENDPOINT");
         }
     }
 

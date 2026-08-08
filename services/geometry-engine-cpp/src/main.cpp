@@ -11,6 +11,7 @@
 #include "geometry_engine/s3.hpp"
 #include "geometry_engine/service.hpp"
 #include "geometry_engine/version.hpp"
+#include "telemetry.h"
 
 namespace {
 
@@ -91,6 +92,8 @@ int main(int argc, char** argv) {
     std::cout << geometry_engine::kBanner << '\n';
     return 0;
   }
+  rghw::telemetry::initialize();
+  std::atexit(&rghw::telemetry::shutdown);
   if (!args.empty() && args[0] == "--once") {
     std::string artifactsDir;
     for (size_t i = 1; i < args.size(); ++i) {

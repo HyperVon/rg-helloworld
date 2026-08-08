@@ -7,6 +7,7 @@ import os
 from collections import defaultdict
 from typing import Any
 
+from . import init_telemetry
 from .composition import compose_phrase
 from .events import CloudEvent, build_operation_id, validate_no_prohibited_fields
 from .kafka_client import create_consumer, create_producer, publish
@@ -23,6 +24,7 @@ SOURCE = "image-pipeline"
 
 
 async def run_worker() -> None:
+    init_telemetry()
     compose_consumer = await create_consumer(
         [INPUT_TOPIC, GEOMETRY_TOPIC], group_id=GROUP_ID + "-compose"
     )

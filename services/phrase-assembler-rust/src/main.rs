@@ -1,7 +1,15 @@
 use futures_util::stream::StreamExt;
+use opentelemetry::KeyValue;
+use opentelemetry::global;
+use opentelemetry::logs::{LogRecord, Logger, LoggerProvider, Severity};
+use opentelemetry::trace::{Tracer, TracerProvider};
+use opentelemetry_otlp::WithExportConfig;
+use opentelemetry_sdk::Resource;
+use opentelemetry_sdk::logs::SdkLoggerProvider;
+use opentelemetry_sdk::trace::SdkTracerProvider;
 use phrase_assembler::{
-    banner, flush_run_buffer, group_id, input_topic, kafka_bootstrap, output_topic,
-    process_adjudicated_payload, run_assemble_once,
+    OTEL_SERVICE_NAME, VERSION, banner, flush_run_buffer, group_id, input_topic, kafka_bootstrap,
+    otel_endpoint, output_topic, process_adjudicated_payload, run_assemble_once,
 };
 use rdkafka::ClientConfig;
 use rdkafka::Message;
@@ -20,6 +28,70 @@ fn init_tracing() {
         }
     }
     tracing_subscriber::fmt::init();
+}
+
+struct Telemetry {
+    tracer_provider: SdkTracerProvider,
+    logger_provider: SdkLoggerProvider,
+}
+
+impl Telemetry {
+    fn shutdown(self) {
+        if let Err(e) = self.tracer_provider.shutdown() {
+            tracing::debug!(error = %e, "otel tracer provider shutdown failed");
+        }
+        if let Err(e) = self.logger_provider.shutdown() {
+            tracing::debug!(error = %e, "otel logger provider shutdown failed");
+        }
+    }
+}
+
+fn init_telemetry() -> Result<Telemetry, Box<dyn std::error::Error>> {
+    let endpoint = otel_endpoint();
+    let resource = Resource::builder()
+        .with_service_name(OTEL_SERVICE_NAME)
+        .with_attribute(KeyValue::new("service.version", VERSION))
+        .build();
+
+    let span_exporter = opentelemetry_otlp::SpanExporter::builder()
+        .with_tonic()
+        .with_endpoint(&endpoint)
+        .build()?;
+    let tracer_provider = SdkTracerProvider::builder()
+        .with_resource(resource.clone())
+        .with_batch_exporter(span_exporter)
+        .build();
+    global::set_tracer_provider(tracer_provider.clone());
+
+    let log_exporter = opentelemetry_otlp::LogExporter::builder()
+        .with_tonic()
+        .with_endpoint(&endpoint)
+        .build()?;
+    let logger_provider = SdkLoggerProvider::builder()
+        .with_resource(resource)
+        .with_batch_exporter(log_exporter)
+        .build();
+
+    tracing::info!(endpoint = %endpoint, "otel otlp exporters initialized");
+
+    Ok(Telemetry {
+        tracer_provider,
+        logger_provider,
+    })
+}
+
+fn emit_startup_telemetry(telemetry: &Telemetry) {
+    telemetry
+        .tracer_provider
+        .tracer(OTEL_SERVICE_NAME)
+        .in_span("phrase-assembler.startup", |_cx| {});
+
+    let logger = telemetry.logger_provider.logger(OTEL_SERVICE_NAME);
+    let mut record = logger.create_log_record();
+    record.set_severity_number(Severity::Info);
+    record.set_severity_text("INFO");
+    record.set_body(format!("{} started", banner()).into());
+    logger.emit(record);
 }
 
 async fn run_kafka_consumer() -> Result<(), Box<dyn std::error::Error>> {
@@ -193,9 +265,26 @@ async fn run_mode(mode: RunMode) -> Result<(), String> {
 async fn main() {
     init_tracing();
 
+    let telemetry = match init_telemetry() {
+        Ok(telemetry) => {
+            emit_startup_telemetry(&telemetry);
+            Some(telemetry)
+        }
+        Err(e) => {
+            tracing::warn!(error = %e, "otel export disabled");
+            None
+        }
+    };
+
     let args: Vec<String> = env::args().collect();
     let mode = parse_args(&args);
-    if let Err(e) = run_mode(mode).await {
+    let result = run_mode(mode).await;
+
+    if let Some(telemetry) = telemetry {
+        telemetry.shutdown();
+    }
+
+    if let Err(e) = result {
         eprintln!("assembly failed: {}", e);
         process::exit(1);
     }

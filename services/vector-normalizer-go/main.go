@@ -8,9 +8,12 @@ import (
 	"path/filepath"
 	"time"
 
+	"go.opentelemetry.io/otel/log"
+
 	"rghw.dev/vector-normalizer/internal/kafka"
 	"rghw.dev/vector-normalizer/internal/rasterclient"
 	"rghw.dev/vector-normalizer/internal/s3store"
+	"rghw.dev/vector-normalizer/internal/telemetry"
 	"rghw.dev/vector-normalizer/internal/version"
 	"rghw.dev/vector-normalizer/internal/worker"
 )
@@ -104,11 +107,15 @@ func runOnce(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 // runWorker runs the consume-normalize-store-publish loop.
 func runWorker(stderr io.Writer) int {
 	ctx := context.Background()
+	shutdownTelemetry := telemetry.Init(ctx, envOr("OTEL_EXPORTER_OTLP_ENDPOINT", telemetry.DefaultEndpoint))
+	defer shutdownTelemetry()
+	telemetry.Info(ctx, "vector-normalizer started", log.String("version", version.Version))
+
 	transport, err := kafka.New(envOr("KAFKA_BOOTSTRAP", "localhost:9092"),
 		envOr("KAFKA_GROUP_ID", "vector-normalizer"),
 		envOr("NORMALIZER_INPUT_TOPIC", "rg.geometry-expanded.v1"))
 	if err != nil {
-		fmt.Fprintf(stderr, "vector-normalizer: %v\n", err)
+		reportError(ctx, stderr, "kafka transport unavailable", err)
 		return 1
 	}
 	defer transport.Close()
@@ -116,7 +123,7 @@ func runWorker(stderr io.Writer) int {
 	store, err := s3store.New(envOr("MINIO_ENDPOINT", "localhost:9000"),
 		envOr("MINIO_ACCESS_KEY", "minioadmin"), envOr("MINIO_SECRET_KEY", "minioadmin"), false)
 	if err != nil {
-		fmt.Fprintf(stderr, "vector-normalizer: %v\n", err)
+		reportError(ctx, stderr, "object store unavailable", err)
 		return 1
 	}
 
@@ -128,13 +135,20 @@ func runWorker(stderr io.Writer) int {
 	if addr := envOr("RASTERIZER_ADDR", ""); addr != "" {
 		client, err := rasterclient.New(addr)
 		if err != nil {
-			fmt.Fprintf(stderr, "vector-normalizer: %v\n", err)
+			reportError(ctx, stderr, "rasterizer unavailable", err)
 			return 1
 		}
 		defer client.Close()
 		config.Renderer = client
 	}
 	return workerLoop(ctx, transport, store, config, stderr)
+}
+
+// reportError writes a handled error to stderr and mirrors it to the OTLP log
+// exporter. Only control-flow detail is recorded; never event payloads.
+func reportError(ctx context.Context, stderr io.Writer, message string, err error) {
+	fmt.Fprintf(stderr, "vector-normalizer: %v\n", err)
+	telemetry.Error(ctx, message, log.String("error", err.Error()))
 }
 
 // retryDelay is the backoff between failed iterations; tests override it.
@@ -154,7 +168,7 @@ func workerLoop(ctx context.Context, transport kafka.Transport, store s3store.St
 		}
 		processed, err := loop.ProcessOne(ctx)
 		if err != nil {
-			fmt.Fprintf(stderr, "vector-normalizer: %v\n", err)
+			reportError(ctx, stderr, "process iteration failed", err)
 			select {
 			case <-ctx.Done():
 				return 0
@@ -164,7 +178,7 @@ func workerLoop(ctx context.Context, transport kafka.Transport, store s3store.St
 		}
 		if processed {
 			if err := transport.Commit(ctx); err != nil {
-				fmt.Fprintf(stderr, "vector-normalizer: %v\n", err)
+				reportError(ctx, stderr, "offset commit failed", err)
 			}
 		}
 	}

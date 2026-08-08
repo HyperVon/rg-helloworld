@@ -3,6 +3,8 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 
+import { initTelemetry } from './telemetry.js';
+
 export const SERVICE_NAME = 'ocr-worker';
 export const SERVICE_VERSION = '0.5.0-milestone8';
 export const ALLOWED_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,!? '-:;";
@@ -385,5 +387,12 @@ export async function runCli(argv: string[]): Promise<number> {
 }
 
 if (process.argv[1] && process.argv[1].endsWith('index.js')) {
-  runCli(process.argv).then((code) => process.exit(code));
+  void (async () => {
+    try {
+      await initTelemetry(SERVICE_NAME, SERVICE_VERSION);
+    } catch {
+      // telemetry init must never block the CLI
+    }
+    runCli(process.argv).then((code) => process.exit(code));
+  })();
 }

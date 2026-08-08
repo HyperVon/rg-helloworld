@@ -2,6 +2,9 @@
 
 require 'sinatra'
 require_relative 'artifact_inspector'
+require_relative 'rghello/telemetry'
+
+Rghello::Telemetry.configure
 
 set :port, ENV.fetch('PORT', 4568)
 set :bind, '0.0.0.0'

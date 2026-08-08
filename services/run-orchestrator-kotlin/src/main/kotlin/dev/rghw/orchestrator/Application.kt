@@ -343,6 +343,7 @@ fun runServer(
 ): Int {
     System.setOut(stdout)
     System.setErr(stderr)
+    Telemetry.init()
     retryWithBackoff(attempts = 30, delayMs = 2000, name = "kafka") { Services.initKafka() }
     retryWithBackoff(attempts = 30, delayMs = 2000, name = "redis") { Services.initRedis() }
     Services.initStageMonitor()
@@ -368,6 +369,7 @@ private fun retryWithBackoff(
             return
         } catch (e: Exception) {
             lastError = e
+            Telemetry.recordError(name, e)
             System.err.println("[$name] connect attempt ${attempt + 1}/$attempts failed: ${e.message} — retrying in ${delayMs}ms")
             try {
                 Thread.sleep(delayMs)
@@ -424,6 +426,7 @@ fun Application.module() {
     }
     install(StatusPages) {
         exception<Throwable> { call, cause ->
+            Telemetry.recordError("http-request", cause)
             System.err.println("Unhandled error: ${cause.message}")
             call.respond(HttpStatusCode.InternalServerError)
         }
@@ -501,6 +504,7 @@ suspend fun handleCreateRun(call: ApplicationCall) {
         try {
             planner.plan(request.message, Services.ALPHABET, "PRIMARY")
         } catch (e: Exception) {
+            Telemetry.recordError("soap-planning", e)
             System.err.println("SOAP planning failed: ${e.message}")
             failRun(runId, "SOAP planning failed: ${e.message}")
             call.respond(

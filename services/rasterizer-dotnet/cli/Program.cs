@@ -2,6 +2,11 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using OpenTelemetry;
+using OpenTelemetry.Logs;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Rghw.Rasterizer;
 
 // Rasterizer host: `rasterizer version` prints the banner, `rasterizer serve`
@@ -46,8 +51,40 @@ static async Task<int> ServeAsync()
     builder.Services.AddGrpc();
     var limits = RasterLimits.FromEnvironment(Environment.GetEnvironmentVariable);
     builder.Services.AddSingleton(new RasterizerService(store, bucket, new RasterRenderer(), limits));
+
+    string otlpEndpoint = Env("OTEL_EXPORTER_OTLP_ENDPOINT", "http://otel-collector.rube-goldberg:4317");
+    var resourceBuilder = ResourceBuilder.CreateDefault().AddService("rasterizer");
+    try
+    {
+        builder.Services.AddOpenTelemetry()
+            .WithTracing(tracing => tracing
+                .SetResourceBuilder(resourceBuilder)
+                .AddAspNetCoreInstrumentation()
+                .AddOtlpExporter(o =>
+                {
+                    o.Endpoint = new Uri(otlpEndpoint);
+                    o.Protocol = OtlpExportProtocol.Grpc;
+                }))
+            .WithLogging(logging => logging
+                .SetResourceBuilder(resourceBuilder)
+                .AddOtlpExporter(o =>
+                {
+                    o.Endpoint = new Uri(otlpEndpoint);
+                    o.Protocol = OtlpExportProtocol.Grpc;
+                }),
+                configureBuilder: null);
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"rasterizer: OpenTelemetry setup skipped (collector unreachable): {ex.Message}");
+    }
+
     var app = builder.Build();
     app.MapGrpcService<RasterizerService>();
+
+    var startupLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("rasterizer");
+    startupLogger.LogInformation("rasterizer started; serving gRPC on port {Port}", port);
+
     await app.RunAsync();
     return 0;
 }

@@ -40,6 +40,7 @@ dependencies {
     implementation("io.opentelemetry:opentelemetry-api:1.54.0")
     implementation("io.opentelemetry:opentelemetry-sdk:1.54.0")
     implementation("io.opentelemetry:opentelemetry-sdk-trace:1.54.0")
+    implementation("io.opentelemetry:opentelemetry-sdk-logs:1.54.0")
     implementation("io.opentelemetry:opentelemetry-exporter-otlp:1.54.0")
 
     wsimportTools("com.sun.xml.ws:jaxws-tools:$jaxwsVersion")
