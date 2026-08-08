@@ -39,14 +39,19 @@ export function RunSelector({ onSelectRun, currentRunId, availableRuns = [] }: R
     window.location.reload();
   };
 
+  const selectedExists = currentRunId ? availableRuns.some((r) => r.runId === currentRunId) : false;
+  const selectValue = selectedExists ? currentRunId! : (availableRuns[0]?.runId ?? '');
+
   return (
     <div className="run-selector">
       {availableRuns.length > 0 ? (
         <>
-          <select value={currentRunId ?? ''} onChange={handleSelectChange} aria-label="Select run">
-            <option value="" disabled>
-              {currentRunId ? `Viewing: ${currentRunId.slice(0, 8)}…` : 'Select a run — auto-loaded latest'}
-            </option>
+          <select value={selectValue} onChange={handleSelectChange} aria-label="Select run">
+            {!selectedExists && !currentRunId && (
+              <option value="" disabled>
+                Select a run — auto-loaded latest
+              </option>
+            )}
             {availableRuns.map((r) => (
               <option key={r.runId} value={r.runId}>
                 {r.runId.slice(0, 8)}… — {r.status} — {new Date(r.createdAt).toLocaleString()}
@@ -54,7 +59,9 @@ export function RunSelector({ onSelectRun, currentRunId, availableRuns = [] }: R
             ))}
           </select>
           <span className="current-run" title={currentRunId ?? ''}>
-            {currentRunId ? `Viewing: ${currentRunId}` : `Auto-selected latest of ${availableRuns.length}`}
+            {currentRunId
+              ? `Viewing: ${currentRunId}`
+              : `Auto-selected latest of ${availableRuns.length}`}
           </span>
           {currentRunId && (
             <button type="button" onClick={handleClear} className="clear-btn">
@@ -65,8 +72,13 @@ export function RunSelector({ onSelectRun, currentRunId, availableRuns = [] }: R
       ) : null}
       {availableRuns.length > 0 ? (
         <details style={{ flex: 1 }}>
-          <summary style={{ cursor: 'pointer', fontSize: '0.85rem', opacity: 0.7 }}>Or enter run ID manually</summary>
-          <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+          <summary style={{ cursor: 'pointer', fontSize: '0.85rem', opacity: 0.7 }}>
+            Or enter run ID manually
+          </summary>
+          <form
+            onSubmit={handleSubmit}
+            style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}
+          >
             <input
               type="text"
               value={inputValue}
@@ -92,7 +104,9 @@ export function RunSelector({ onSelectRun, currentRunId, availableRuns = [] }: R
         </form>
       )}
       {!availableRuns.length && !currentRunId && (
-        <span className="hint">No runs yet — run <code>./rghw.sh</code> or <code>rghw run</code></span>
+        <span className="hint">
+          No runs yet — run <code>./rghw.sh</code> or <code>rghw run</code>
+        </span>
       )}
       <style>{`
         .run-selector {

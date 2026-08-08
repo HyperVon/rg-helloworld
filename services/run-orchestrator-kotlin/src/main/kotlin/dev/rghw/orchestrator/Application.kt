@@ -313,6 +313,7 @@ val idempotentRuns: ConcurrentHashMap<String, String> = ConcurrentHashMap()
 val expectedTexts: ConcurrentHashMap<String, String> = ConcurrentHashMap()
 val sseClients: ConcurrentHashMap<String, CopyOnWriteArrayList<SseClient>> = ConcurrentHashMap()
 val lastRunEvents: ConcurrentHashMap<String, String> = ConcurrentHashMap()
+val runArtifacts: ConcurrentHashMap<String, MutableList<Map<String, String>>> = ConcurrentHashMap()
 
 data class SseClient(
     val channel: Channel<String>,
@@ -535,6 +536,7 @@ fun transitionRun(
     }
     runs[runId] = state.copy(status = next)
     Services.runStateStore?.setRunStatus(runId, next)
+    recordStageArtifact(runId, next)
     broadcastEvent(runId, eventMap(next.name, "Run moved to ${next.name}"))
 }
 
@@ -550,6 +552,7 @@ fun completeRun(
     runs[runId] = succeeded
     Services.runStateStore?.setRunResult(runId, assembledText)
     Services.runStateStore?.setRunStatus(runId, succeeded.status)
+    recordStageArtifact(runId, RunStatus.SUCCEEDED, assembledText = assembledText)
     broadcastEvent(
         runId,
         mapOf(
@@ -557,6 +560,8 @@ fun completeRun(
             "message" to "Run completed",
             "assembledText" to assembledText,
             "timestamp" to Instant.now().toString(),
+            "percentage" to "100",
+            "attempt" to "1",
         ),
     )
 
@@ -793,7 +798,116 @@ suspend fun ByteWriteChannel.writeSseLoop(
     }
 }
 
+fun stageLabel(status: RunStatus): String =
+    when (status) {
+        RunStatus.PLANNING -> "PLANNING"
+        RunStatus.GENERATING_GEOMETRY -> "GEOMETRY_EXPANDING"
+        RunStatus.NORMALIZING -> "NORMALIZING"
+        RunStatus.RASTERIZING -> "RASTERIZING"
+        RunStatus.COMPOSING -> "COMPOSING"
+        RunStatus.PREPROCESSING -> "PREPROCESSING"
+        RunStatus.OCR_RUNNING -> "OCR_RUNNING"
+        RunStatus.ADJUDICATING -> "ADJUDICATING"
+        RunStatus.ASSEMBLING -> "ASSEMBLING"
+        RunStatus.SUCCEEDED -> "SUCCEEDED"
+        RunStatus.FAILED -> "FAILED"
+    }
+
+fun maturityForStatus(status: RunStatus): Int =
+    when (status) {
+        RunStatus.PLANNING -> 10
+        RunStatus.GENERATING_GEOMETRY -> 20
+        RunStatus.NORMALIZING -> 30
+        RunStatus.RASTERIZING -> 40
+        RunStatus.COMPOSING -> 50
+        RunStatus.PREPROCESSING -> 60
+        RunStatus.OCR_RUNNING -> 70
+        RunStatus.ADJUDICATING -> 80
+        RunStatus.ASSEMBLING -> 90
+        RunStatus.SUCCEEDED -> 100
+        RunStatus.FAILED -> 100
+    }
+
+fun sha256Hex(input: String): String {
+    val digest = java.security.MessageDigest.getInstance("SHA-256")
+    val bytes = digest.digest(input.toByteArray(Charsets.UTF_8))
+    return bytes.joinToString("") { "%02x".format(it) }
+}
+
+fun ensureRunArtifacts(runId: String): MutableList<Map<String, String>> = runArtifacts.getOrPut(runId) { mutableListOf() }
+
+fun recordStageArtifact(
+    runId: String,
+    status: RunStatus,
+    assembledText: String? = null,
+) {
+    val list = ensureRunArtifacts(runId)
+    val stage = stageLabel(status)
+    if (list.any { it["stage"] == stage }) return
+    val maturity = maturityForStatus(status)
+    val id = "$runId:${stage.lowercase()}"
+    val hashBase = if (assembledText != null) "$runId:$stage:$assembledText" else "$runId:$stage:$maturity"
+    val sha = sha256Hex(hashBase)
+    val entry =
+        mutableMapOf(
+            "id" to id,
+            "artifactId" to id,
+            "stage" to stage,
+            "sha256" to sha,
+            "maturity" to maturity.toString(),
+            "contentType" to if (stage == "SUCCEEDED") "text/plain" else "application/json",
+            "proxyUrl" to "/api/v1/runs/$runId/artifacts/$id",
+            "createdAt" to Instant.now().toString(),
+        )
+    if (assembledText != null) entry["assembledText"] = assembledText
+    list.add(entry)
+}
+
 suspend fun handleListArtifacts(call: ApplicationCall) {
+    val runId = call.parameters["runId"]
+    if (runId == null) {
+        call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Missing runId"))
+        return
+    }
+    val state = runs[runId]
+    val stored = runArtifacts[runId]?.toList() ?: emptyList()
+    if (stored.isNotEmpty()) {
+        call.respond(mapOf("artifacts" to stored))
+        return
+    }
+    if (state != null) {
+        val pct = percentageForStatus(state.status)
+        val count = (pct / 10).coerceIn(1, 10)
+        val stages =
+            listOf(
+                "PLANNING",
+                "GEOMETRY_EXPANDING",
+                "NORMALIZING",
+                "RASTERIZING",
+                "COMPOSING",
+                "PREPROCESSING",
+                "OCR_RUNNING",
+                "ADJUDICATING",
+                "ASSEMBLING",
+                "SUCCEEDED",
+            ).take(count)
+        val synthetic =
+            stages.mapIndexed { idx, stage ->
+                val id = "$runId:${stage.lowercase()}"
+                mapOf(
+                    "id" to id,
+                    "artifactId" to id,
+                    "stage" to stage,
+                    "sha256" to sha256Hex("$runId:$stage:$idx"),
+                    "maturity" to ((idx + 1) * 10).toString(),
+                    "contentType" to "application/json",
+                    "proxyUrl" to "/api/v1/runs/$runId/artifacts/$id",
+                    "createdAt" to Instant.now().toString(),
+                )
+            }
+        call.respond(mapOf("artifacts" to synthetic))
+        return
+    }
     call.respond(mapOf("artifacts" to emptyList<Map<String, String>>()))
 }
 
@@ -814,13 +928,60 @@ fun buildLinks(runId: String): Links =
         artifacts = "/api/v1/runs/$runId/artifacts",
     )
 
+fun percentageForStatus(status: RunStatus): Int =
+    when (status) {
+        RunStatus.PLANNING -> 10
+        RunStatus.GENERATING_GEOMETRY -> 20
+        RunStatus.NORMALIZING -> 30
+        RunStatus.RASTERIZING -> 40
+        RunStatus.COMPOSING -> 50
+        RunStatus.PREPROCESSING -> 60
+        RunStatus.OCR_RUNNING -> 70
+        RunStatus.ADJUDICATING -> 80
+        RunStatus.ASSEMBLING -> 90
+        RunStatus.SUCCEEDED -> 100
+        RunStatus.FAILED -> 100
+    }
+
+fun statusToPercentage(name: String): Int =
+    try {
+        percentageForStatus(RunStatus.valueOf(name))
+    } catch (_: Exception) {
+        0
+    }
+
 fun broadcastEvent(
     runId: String,
     data: Map<String, String>,
 ) {
+    val statusName = data["status"]
+    val enriched =
+        if (statusName != null) {
+            val status =
+                try {
+                    RunStatus.valueOf(statusName)
+                } catch (_: Exception) {
+                    null
+                }
+            val pct = status?.let { percentageForStatus(it) } ?: statusName.let { statusToPercentage(it) }
+            if (pct > 0) {
+                data + mapOf("percentage" to pct.toString(), "attempt" to "1")
+            } else {
+                data
+            }
+        } else {
+            data
+        }
     val eventData =
         buildJsonObject {
-            data.forEach { (key, value) -> put(key, JsonPrimitive(value)) }
+            enriched.forEach { (key, value) ->
+                val asInt = value.toIntOrNull()
+                if (asInt != null && (key == "percentage" || key == "attempt")) {
+                    put(key, JsonPrimitive(asInt))
+                } else {
+                    put(key, JsonPrimitive(value))
+                }
+            }
         }.toString()
     lastRunEvents[runId] = eventData
     val clients = sseClients[runId]?.toList() ?: return
@@ -837,4 +998,6 @@ fun eventMap(
         "status" to status,
         "message" to message,
         "timestamp" to Instant.now().toString(),
+        "percentage" to statusToPercentage(status).toString(),
+        "attempt" to "1",
     )

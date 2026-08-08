@@ -12,22 +12,30 @@ export function ArtifactModal({ artifacts, onClose }: ArtifactModalProps) {
   return (
     <div className="artifact-modal-backdrop" onClick={onClose}>
       <div className="artifact-modal" onClick={(e) => e.stopPropagation()}>
-        <h3>Artifacts</h3>
-        <div className="artifact-list">
-          {artifacts.map((a) => (
-            <div
-              key={a.id}
-              className={`artifact-item ${selected?.id === a.id ? 'selected' : ''}`}
-              onClick={() => setSelected(a)}
-            >
-              <span className="artifact-id">{a.id}</span>
-              <span className="artifact-stage">{a.stage}</span>
-              <span className="artifact-sha" title={a.sha256}>
-                {a.sha256.slice(0, 8)}…
-              </span>
-            </div>
-          ))}
-        </div>
+        <h3>Artifacts {artifacts.length > 0 ? `(${artifacts.length})` : ''}</h3>
+        {artifacts.length === 0 ? (
+          <div className="artifact-empty">
+            No artifacts returned — orchestrator may still be finalizing or the run has no
+            stored artifacts. Try the Artifact Inspector or check that the run reached
+            SUCCEEDED.
+          </div>
+        ) : (
+          <div className="artifact-list">
+            {artifacts.map((a) => (
+              <div
+                key={a.id}
+                className={`artifact-item ${selected?.id === a.id ? 'selected' : ''}`}
+                onClick={() => setSelected(a)}
+              >
+                <span className="artifact-id">{a.id}</span>
+                <span className="artifact-stage">{a.stage}</span>
+                <span className="artifact-sha" title={a.sha256}>
+                  {a.sha256.slice(0, 8)}…
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
         {selected && (
           <div className="artifact-detail">
             <p>
@@ -64,12 +72,26 @@ export function ArtifactModal({ artifacts, onClose }: ArtifactModalProps) {
             z-index: 1000;
           }
           .artifact-modal {
-            background: white;
-            border-radius: 8px;
+            background: #0f172a;
+            color: #e2e8f0;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 12px;
             padding: 1.5rem;
-            max-width: 600px;
+            max-width: 640px;
+            width: min(92vw, 640px);
             max-height: 70vh;
             overflow: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+          }
+          .artifact-modal h3 { margin: 0 0 0.75rem; }
+          .artifact-empty {
+            padding: 1rem;
+            background: rgba(255,255,255,0.06);
+            border: 1px dashed rgba(255,255,255,0.14);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            opacity: 0.85;
+            line-height: 1.45;
           }
           .artifact-list {
             max-height: 300px;

@@ -138,7 +138,9 @@ class HttpApiTest {
 
             val artifacts = client.get("/api/v1/runs/$runId/artifacts")
             assertEquals(HttpStatusCode.OK, artifacts.status)
-            assertTrue(artifacts.bodyAsText().contains("\"artifacts\":[]"))
+            val artifactsBody = artifacts.bodyAsText()
+            assertTrue(artifactsBody.contains("\"artifacts\""), "body: $artifactsBody")
+            assertTrue(artifactsBody.contains("\"stage\"") || artifactsBody.contains("\"artifacts\":[]"), "body: $artifactsBody")
         }
 
     @Test

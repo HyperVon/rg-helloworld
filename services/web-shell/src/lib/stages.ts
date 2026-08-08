@@ -64,16 +64,16 @@ export const PROCESS_EDGES: GraphEdge[] = [
 
 export const PROCESS_NODE_POSITIONS: Record<string, { x: number; y: number }> = {
   plan: { x: 0, y: 0 },
-  geometry: { x: 0, y: 80 },
-  vector: { x: 0, y: 160 },
-  raster: { x: 0, y: 240 },
-  compose: { x: 0, y: 320 },
-  preprocess: { x: 0, y: 400 },
-  ocr: { x: 0, y: 480 },
-  adjudicate: { x: 0, y: 560 },
-  assemble: { x: 0, y: 640 },
-  validate: { x: 0, y: 720 },
-  terminal: { x: 0, y: 800 },
+  geometry: { x: 220, y: 75 },
+  vector: { x: -220, y: 150 },
+  raster: { x: 220, y: 225 },
+  compose: { x: -220, y: 300 },
+  preprocess: { x: 220, y: 375 },
+  ocr: { x: -220, y: 450 },
+  adjudicate: { x: 220, y: 525 },
+  assemble: { x: -220, y: 600 },
+  validate: { x: 220, y: 675 },
+  terminal: { x: 0, y: 750 },
 };
 
 export function nodeStatusForStage(

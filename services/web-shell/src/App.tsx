@@ -12,7 +12,11 @@ function prefersReducedMotion(): boolean {
 }
 
 function apiBase(): string {
-  if (typeof window !== 'undefined' && window.location.hostname === 'localhost' && window.location.port === '3000') {
+  if (
+    typeof window !== 'undefined' &&
+    window.location.hostname === 'localhost' &&
+    window.location.port === '3000'
+  ) {
     return 'http://localhost:8080';
   }
   return '';
@@ -52,12 +56,33 @@ export function App() {
         if (cancelled) return;
         const list = data.runs || [];
         setAvailableRuns(list);
-        if (!runId && list.length > 0) {
+        if (list.length > 0) {
           const latest = list[0].runId;
-          setRunId(latest);
-          try {
-            localStorage.setItem('rghw:lastRunId', latest);
-          } catch {}
+          const current = runId;
+          const exists = current ? list.some((x) => x.runId === current) : false;
+          if (!current) {
+            setRunId(latest);
+            try {
+              localStorage.setItem('rghw:lastRunId', latest);
+            } catch {}
+          } else if (!exists) {
+            let shouldCorrect = true;
+            try {
+              const vr = await fetch(`${base}/api/v1/runs/${current}`);
+              if (vr.ok) {
+                const vdata = (await vr.json()) as { status?: string };
+                if (vdata && vdata.status && vdata.status !== 'UNKNOWN') {
+                  shouldCorrect = false;
+                }
+              }
+            } catch {}
+            if (shouldCorrect) {
+              setRunId(latest);
+              try {
+                localStorage.setItem('rghw:lastRunId', latest);
+              } catch {}
+            }
+          }
         }
       } catch {}
     };
@@ -103,22 +128,16 @@ export function App() {
         {error && <span className="error">{error}</span>}
       </header>
 
-      <RunSelector onSelectRun={handleSelectRun} currentRunId={runId} availableRuns={availableRuns} />
+      <RunSelector
+        onSelectRun={handleSelectRun}
+        currentRunId={runId}
+        availableRuns={availableRuns}
+      />
 
       {runId && (
         <>
-          <main>
-            <section className="graph-section">
-              <h2>Process Graph</h2>
-              <ProcessGraph
-                currentStage={currentStage}
-                terminal={terminal}
-                runStatus={runStatus}
-                glyphCount={glyphCount}
-              />
-            </section>
-
-            <section className="telemetry-section">
+          <main className="main-layout">
+            <section className="telemetry-section telemetry-top">
               <h2>Telemetry</h2>
               <div className="metrics">
                 <div>Attempt: {summary?.attempt ?? 0}</div>
@@ -131,13 +150,22 @@ export function App() {
                   <button onClick={() => setShowArtifacts(true)}>View Artifacts</button>
                 )}
               </div>
+              {runStatus === 'SUCCEEDED' && (
+                <div className="success-inline">
+                  <SuccessAnimation status="SUCCEEDED" prefersReducedMotion={reducedMotion} />
+                </div>
+              )}
             </section>
 
-            {runStatus === 'SUCCEEDED' && (
-              <section className="success-section">
-                <SuccessAnimation status="SUCCEEDED" prefersReducedMotion={reducedMotion} />
-              </section>
-            )}
+            <section className="graph-section">
+              <h2>Process Graph</h2>
+              <ProcessGraph
+                currentStage={currentStage}
+                terminal={terminal}
+                runStatus={runStatus}
+                glyphCount={glyphCount}
+              />
+            </section>
           </main>
 
           {showArtifacts && (
@@ -200,6 +228,26 @@ export function App() {
           border-radius: 8px;
           border: 1px solid rgba(248,113,113,0.3);
         }
+        .main-layout {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+        .telemetry-top {
+          position: sticky;
+          top: 0;
+          z-index: 5;
+          margin: 0;
+          background: rgba(15,23,42,0.82);
+          backdrop-filter: blur(14px);
+          border: 1px solid rgba(255,255,255,0.12);
+          border-radius: 14px;
+          padding: 0.9rem 1rem;
+          box-shadow: 0 8px 24px rgba(2,6,23,0.4);
+        }
+        .success-inline {
+          margin-top: 0.75rem;
+        }
         .graph-section, .telemetry-section, .success-section {
           margin: 1rem 0;
           background: rgba(255,255,255,0.06);
@@ -209,6 +257,8 @@ export function App() {
           padding: 1rem;
           box-shadow: 0 8px 24px rgba(2,6,23,0.35);
         }
+        .telemetry-top { margin: 0; }
+        .graph-section { margin: 0; flex: 1; min-height: 520px; }
         .graph-section h2, .telemetry-section h2 { margin: 0 0 0.75rem; font-size: 1.1rem; letter-spacing: -0.01em; color: #f1f5f9; }
         .metrics {
           display: grid;
@@ -231,6 +281,9 @@ export function App() {
           font-weight: 700;
           cursor: pointer;
           box-shadow: 0 6px 16px rgba(139,92,246,0.35);
+        }
+        @media (max-height: 820px) {
+          .graph-section { min-height: 420px; }
         }
       `}</style>
     </div>

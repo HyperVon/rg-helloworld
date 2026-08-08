@@ -1,5 +1,9 @@
 package dev.rghw.orchestrator
 
+import io.ktor.client.request.get
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpStatusCode
+import io.ktor.server.testing.testApplication
 import io.ktor.utils.io.ByteChannel
 import io.ktor.utils.io.readUTF8Line
 import kotlinx.coroutines.CancellationException
@@ -551,4 +555,114 @@ class FakeGlyphPlanner : GlyphPlanner {
             }
         return SoapPlan(planId = "plan-$message", glyphs = glyphs)
     }
+}
+
+class ArtifactCoverageTest {
+    @BeforeEach
+    fun setUp() {
+        runs.clear()
+        idempotentRuns.clear()
+        expectedTexts.clear()
+        sseClients.clear()
+        lastRunEvents.clear()
+        runArtifacts.clear()
+    }
+
+    @Test
+    fun percentageForStatusCoversAllStatuses() {
+        assertEquals(10, percentageForStatus(RunStatus.PLANNING))
+        assertEquals(20, percentageForStatus(RunStatus.GENERATING_GEOMETRY))
+        assertEquals(30, percentageForStatus(RunStatus.NORMALIZING))
+        assertEquals(40, percentageForStatus(RunStatus.RASTERIZING))
+        assertEquals(50, percentageForStatus(RunStatus.COMPOSING))
+        assertEquals(60, percentageForStatus(RunStatus.PREPROCESSING))
+        assertEquals(70, percentageForStatus(RunStatus.OCR_RUNNING))
+        assertEquals(80, percentageForStatus(RunStatus.ADJUDICATING))
+        assertEquals(90, percentageForStatus(RunStatus.ASSEMBLING))
+        assertEquals(100, percentageForStatus(RunStatus.SUCCEEDED))
+        assertEquals(100, percentageForStatus(RunStatus.FAILED))
+        assertEquals(0, statusToPercentage("UNKNOWN"))
+        assertEquals(10, statusToPercentage("PLANNING"))
+    }
+
+    @Test
+    fun stageLabelAndMaturityCoverAllStatuses() {
+        assertEquals("PLANNING", stageLabel(RunStatus.PLANNING))
+        assertEquals("GEOMETRY_EXPANDING", stageLabel(RunStatus.GENERATING_GEOMETRY))
+        assertEquals("NORMALIZING", stageLabel(RunStatus.NORMALIZING))
+        assertEquals("RASTERIZING", stageLabel(RunStatus.RASTERIZING))
+        assertEquals("COMPOSING", stageLabel(RunStatus.COMPOSING))
+        assertEquals("PREPROCESSING", stageLabel(RunStatus.PREPROCESSING))
+        assertEquals("OCR_RUNNING", stageLabel(RunStatus.OCR_RUNNING))
+        assertEquals("ADJUDICATING", stageLabel(RunStatus.ADJUDICATING))
+        assertEquals("ASSEMBLING", stageLabel(RunStatus.ASSEMBLING))
+        assertEquals("SUCCEEDED", stageLabel(RunStatus.SUCCEEDED))
+        assertEquals("FAILED", stageLabel(RunStatus.FAILED))
+        assertEquals(10, maturityForStatus(RunStatus.PLANNING))
+        assertEquals(100, maturityForStatus(RunStatus.SUCCEEDED))
+        assertEquals(100, maturityForStatus(RunStatus.FAILED))
+    }
+
+    @Test
+    fun sha256HexIsDeterministic() {
+        val a = sha256Hex("hello")
+        val b = sha256Hex("hello")
+        val c = sha256Hex("world")
+        assertEquals(a, b)
+        assertTrue(a.length == 64)
+        assertTrue(a != c)
+        assertTrue(a.matches(Regex("[0-9a-f]{64}")))
+    }
+
+    @Test
+    fun recordStageArtifactIsIdempotent() {
+        val runId = UUID.randomUUID().toString()
+        recordStageArtifact(runId, RunStatus.PLANNING)
+        assertEquals(1, runArtifacts[runId]?.size)
+        recordStageArtifact(runId, RunStatus.PLANNING)
+        assertEquals(1, runArtifacts[runId]?.size, "duplicate stage must not add")
+        recordStageArtifact(runId, RunStatus.SUCCEEDED, assembledText = "HELLO")
+        assertEquals(2, runArtifacts[runId]?.size)
+        assertTrue(runArtifacts[runId]!!.any { it["stage"] == "SUCCEEDED" && it["assembledText"] == "HELLO" })
+    }
+
+    @Test
+    fun broadcastEventEnrichesPercentageAndAttempt() {
+        val runId = UUID.randomUUID().toString()
+        val ch = Channel<String>(1)
+        sseClients[runId] = CopyOnWriteArrayList(listOf(SseClient(ch)))
+        broadcastEvent(runId, mapOf("status" to "PLANNING", "message" to "hi"))
+        val msg = ch.tryReceive().getOrNull()!!
+        assertTrue(msg.contains("\"percentage\":10"))
+        assertTrue(msg.contains("\"attempt\":1"))
+        assertTrue(msg.contains("\"status\":\"PLANNING\""))
+        lastRunEvents.clear()
+        sseClients.clear()
+        broadcastEvent(runId, mapOf("status" to "UNKNOWN", "message" to "hi"))
+        val msg2 = lastRunEvents[runId]!!
+        assertTrue(msg2.contains("UNKNOWN"))
+    }
+
+    @Test
+    fun handleListArtifactsSyntheticPath() =
+        kotlinx.coroutines.runBlocking {
+            val runId = UUID.randomUUID().toString()
+            runs[runId] =
+                RunState(
+                    runId = runId,
+                    status = RunStatus.GENERATING_GEOMETRY,
+                    message = "Hello",
+                    idempotencyKey = "k",
+                    createdAt = java.time.Instant.now(),
+                )
+            runArtifacts.remove(runId)
+            io.ktor.server.testing.testApplication {
+                application { module() }
+                val resp = client.get("/api/v1/runs/$runId/artifacts")
+                assertEquals(io.ktor.http.HttpStatusCode.OK, resp.status)
+                val body = resp.bodyAsText()
+                assertTrue(body.contains("\"artifacts\""))
+                assertTrue(body.contains("GEOMETRY_EXPANDING") || body.contains("PLANNING"))
+            }
+        }
 }
