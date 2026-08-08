@@ -133,7 +133,7 @@ func TestRasterizeSendsNormalizedSegmentsAndProfile(t *testing.T) {
 	if req.Canvas.Width != 512 || req.Canvas.Height != 512 || req.Canvas.Baseline != 400 {
 		t.Fatalf("canvas = %+v", req.Canvas)
 	}
-	if req.Profile.StrokeWidth != 80 || !req.Profile.Antialias || req.Profile.LineCap != "round" || req.Profile.Supersampling != 2 {
+	if req.Profile.StrokeWidth != 140 || !req.Profile.Antialias || req.Profile.LineCap != "round" || req.Profile.Supersampling != 2 {
 		t.Fatalf("profile = %+v", req.Profile)
 	}
 	if req.RunId != "22222222-2222-4222-8222-222222222222" ||

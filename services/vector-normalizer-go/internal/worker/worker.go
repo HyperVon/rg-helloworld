@@ -41,7 +41,7 @@ const (
 	rasterCanvasSize     = 512
 	rasterBaseline       = 400.0
 	rasterEmSize         = 1024.0
-	defaultStrokeWidth   = 80.0
+	defaultStrokeWidth   = 140.0
 	defaultSupersampling = 2
 )
 

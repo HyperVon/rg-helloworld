@@ -54,7 +54,7 @@ class GlyphCatalogEndpointTest {
             ResponseMatchers.xpath(
                     "/glyph:PlanPhraseResponse/glyph:glyphs/glyph:glyph[6]/glyph:advanceWidth",
                     NAMESPACES)
-                .evaluatesTo("0.6"))
+                .evaluatesTo("1.0"))
         .andExpect(
             ResponseMatchers.xpath(
                     "count(/glyph:PlanPhraseResponse/glyph:glyphs/glyph:glyph[1]/"

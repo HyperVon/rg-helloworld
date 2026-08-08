@@ -85,6 +85,13 @@ module AdjudicatorConsumer
       producer.produce(topic: ADJUDICATED_TOPIC, payload: JSON.generate(event))
     end
 
+    result[:gaps].each do |gap|
+      event = Adjudicator::AdjudicatorImpl.build_symbol_event(
+        run_id, step_id, generate_glyph_instance_id(gap[:position]), attempt, gap[:position], gap
+      )
+      producer.produce(topic: ADJUDICATED_TOPIC, payload: JSON.generate(event))
+    end
+
     result[:retryEvents].each do |event|
       producer.produce(topic: QUALITY_RETRY_TOPIC, payload: JSON.generate(event))
     end

@@ -10,9 +10,9 @@ from .imaging import ImageArtifact
 class PreprocessParams:
     contrast_factor: float = 1.5
     threshold_value: int = 128
-    border_size: int = 10
+    border_size: int = 16
     scale_factor: int = 2
-    noise_removal_blob_threshold: int = 50
+    noise_removal_blob_threshold: int = 25
 
 
 @dataclass

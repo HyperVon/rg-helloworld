@@ -68,7 +68,7 @@ def compose_phrase(
 
     margin_left, margin_top, margin_right, margin_bottom = phrase_margins
     total_advance = sum((1 if g.kind == "GAP" else 1) * g.advance_width for g in sorted_glyphs)
-    pixels_per_em = 128
+    pixels_per_em = 192
     max_glyph_height = max(
         (g.height for g in sorted_glyphs if g.kind == "DRAWABLE" and g.image_bytes is not None),
         default=pixels_per_em,

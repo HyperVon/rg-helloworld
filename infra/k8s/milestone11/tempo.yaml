@@ -21,8 +21,6 @@ spec:
           image: grafana/tempo:2.4.0
           args:
             - '-config.file=/etc/tempo.yaml'
-            - '-enable-search'
-            - '-target=all'
           ports:
             - containerPort: 3200
               name: http
@@ -80,29 +78,14 @@ data:
   tempo.yaml: |
     server:
       http_listen_port: 3200
-      grpc_listen_port: 4317
-    telemetry:
-      metrics:
-        disable: true
-      traces:
-        sampling:
-          percent: 100
-    distributor:
-      receivers:
-        otlp:
-          protocols:
-            grpc:
-            http:
-    searcher:
-      backend: local
-      local:
-        backlog_size: 50000
-        max_block_size: 100
+      grpc_listen_port: 9095
+    compactor:
+      compaction:
+        block_retention: 24h
     storage:
       trace:
         backend: local
         local:
-          path: /tmp/tempo/traces
-        pool:
-          max_jobs: 100
-          max_retries: 10
+          path: /tmp/tempo/blocks
+        wal:
+          path: /tmp/tempo/wal

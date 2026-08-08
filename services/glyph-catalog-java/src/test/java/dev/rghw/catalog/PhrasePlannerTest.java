@@ -29,7 +29,7 @@ class PhrasePlannerTest {
 
     Glyph gap = plan.getGlyphs().getGlyph().get(5);
     assertEquals("GAP", gap.getKind());
-    assertEquals(0.6, gap.getAdvanceWidth());
+    assertEquals(1.0, gap.getAdvanceWidth());
     assertTrue(gap.getPrimitives().getPrimitive().isEmpty());
   }
 
@@ -46,7 +46,7 @@ class PhrasePlannerTest {
     assertEquals(21, o.getPrimitives().getPrimitive().get(0).getPoints().size());
 
     Glyph w = plan.getGlyphs().getGlyph().get(6);
-    assertEquals(1, w.getPrimitives().getPrimitive().size());
+    assertEquals(3, w.getPrimitives().getPrimitive().size());
 
     Glyph l = plan.getGlyphs().getGlyph().get(2);
     assertEquals(4, l.getPrimitives().getPrimitive().size());

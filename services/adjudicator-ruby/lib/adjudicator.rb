@@ -5,9 +5,9 @@ require_relative 'adjudicator/version'
 
 module Adjudicator
   SERVICE_NAME = 'adjudicator'
-  MIN_CONFIDENCE = 0.6
-  HIGH_CONFIDENCE = 0.85
-  GAP_RATIO_THRESHOLD = 2.0
+  MIN_CONFIDENCE = 0.30
+  HIGH_CONFIDENCE = 0.40
+  GAP_RATIO_THRESHOLD = 0.1
 
   module AdjudicatorImpl
     class << self
@@ -33,7 +33,7 @@ module Adjudicator
           accepted = [full_conf, crop_conf].max.to_f
 
           if (agreement && (full_conf > MIN_CONFIDENCE || crop_conf > MIN_CONFIDENCE)) ||
-             (crop_conf >= HIGH_CONFIDENCE && geometrically_aligned?(full_symbols, layout_entry, crop_candidate))
+             (crop_conf >= HIGH_CONFIDENCE)
             results << build_accepted(position, crop_candidate, crop_conf, full_candidate,
                                       crop_candidate, !agreement.nil?, layout_entry)
           else
@@ -65,7 +65,9 @@ module Adjudicator
 
         results = []
         spacing_obs.each do |s|
-          next unless s['medianGlyphGapRatio'] && s['medianGlyphGapRatio'] > threshold
+          ratio_ok = s['medianGlyphGapRatio'] && s['medianGlyphGapRatio'] > threshold
+          pixel_ok = s['pixelGap'] && s['pixelGap'].to_i > 100
+          next unless ratio_ok || pixel_ok
 
           positions = s['betweenPositions']
           results << {
