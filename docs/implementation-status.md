@@ -929,11 +929,11 @@ M7 stability update (2026-08-07): Uppercase acceptance required redrawing all gl
   - [x] ADJUDICATING state + OCR_RUNNING → ADJUDICATING transition
   - [x] Kafka consumers for ocr-observations and symbols-adjudicated
   - [x] Maturity validation (60 → 70, 70 → 80) and prohibited-field scan
-   - [x] Update tests for new state flow
- - [x] Dockerfiles for ocr-worker and adjudicator; K8s manifests
- - [x] Extend build-images.sh and smoke-test.sh
- - [x] Integration harness: `--once` pipeline from OCR image to adjudicated symbols
- - [x] Pin dependencies in versions.env
+  - [x] Update tests for new state flow
+- [x] Dockerfiles for ocr-worker and adjudicator; K8s manifests
+- [x] Extend build-images.sh and smoke-test.sh
+- [x] Integration harness: `--once` pipeline from OCR image to adjudicated symbols
+- [x] Pin dependencies in versions.env
 
 ### Acceptance conditions
 

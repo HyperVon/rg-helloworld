@@ -4,6 +4,7 @@
 # a 4GiB total cluster memory budget.
 set -euo pipefail
 
+# shellcheck disable=SC2034 # ROOT is documented for future use
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 NS="rube-goldberg"
 

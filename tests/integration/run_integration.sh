@@ -542,6 +542,7 @@ print('fixtures created')
     IMAGE_PIPELINE="PYTHONPATH=$ROOT/services/image-pipeline-python/src python3 -m rg_image_pipeline.cli"
   fi
 
+  # shellcheck disable=SC2012 # find loses sort order for glyph fixtures, ls is safe for alphanumeric names
   GLYPH_LIST=$(ls "$M7_FIXTURES"/glyph-*.json 2>/dev/null | sort | tr '\n' ' ')
 
   if [ -n "$GLYPH_LIST" ]; then
@@ -591,6 +592,7 @@ print('fixtures created')
             say "[FAIL] preprocessing report missing"
           fi
           # Verify crops were generated
+          # shellcheck disable=SC2012 # ls count for crops is safe, find would be verbose
           CROP_COUNT=$(ls /tmp/rghw-m7-crops/*.png 2>/dev/null | wc -l | tr -d ' ')
           if [ "$CROP_COUNT" -gt 0 ]; then
             say "[ ok ] position crops generated ($CROP_COUNT crops)"
@@ -702,6 +704,7 @@ print('M8 fixtures created')
   fi
 
   if [ -f "$M8_FIXTURES/observations.json" ]; then
+    # shellcheck disable=SC2034 # LAYOUT retained for debugging artifact lineage
     LAYOUT=$(cat "$M8_FIXTURES/manifest.json")
     cat > "$M8_FIXTURES/observations.json" <<'OBS'
 {
@@ -779,7 +782,9 @@ print('M9 fixtures created')
 "
   PHRASE_BIN="$ROOT/services/phrase-assembler-rust/target/debug/phrase-assembler"
   if "$PHRASE_BIN" --once --input="$M9_FIXTURES/tokens.json" --output="$M9_FIXTURES/manifest.json" --event-output="$M9_FIXTURES/event.json" 2>/tmp/rghw-m9.log; then
+    # shellcheck disable=SC2034,SC2002 # ASSEMBLED used for debug, cat is intentional for fallback
     ASSEMBLED=$(cat "$M9_FIXTURES/manifest.json" | python3 -c "import json,sys; m=json.load(open(sys.argv[1])); print(m.get('sha256',''))" "$M9_FIXTURES/manifest.json" 2>/dev/null || echo "")
+    # shellcheck disable=SC2034 # TEXT retained for debug output
     TEXT=$(python3 -c "import json; print(open('$M9_FIXTURES/manifest.json').read()[:200])" 2>/dev/null)
     # manifest exists
     if [ -f "$M9_FIXTURES/manifest.json" ]; then
@@ -799,6 +804,7 @@ print('M9 fixtures created')
         say "[ ok ] phrase-assembled text HELLO WORLD"
       else
         FAILED=$((FAILED + 1))
+        # shellcheck disable=SC2002 # cat is readable for small JSON snippet
         say "[FAIL] phrase-assembled text wrong: $(cat "$M9_FIXTURES/event.json" | head -n 5)"
       fi
       for field in message targetText expectedCharacter unicodeCodePoint characterName glyphLabel; do

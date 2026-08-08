@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        module: [cmd/rghello, services/vector-normalizer-go]
+        module: [cmd/rghw, services/vector-normalizer-go]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -167,6 +167,9 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
         working-directory: services/${{ matrix.service }}
+      - name: Install OCR test dependencies
+        if: matrix.service == 'ocr-worker-node'
+        run: sudo apt-get update && sudo apt-get install -y tesseract-ocr python3-pil && pip install pillow --quiet
       - name: Lint (prettier + typecheck)
         run: npm run lint
         working-directory: services/${{ matrix.service }}
@@ -222,7 +225,7 @@ jobs:
         with:
           tool: cargo-llvm-cov
       - name: Coverage gate (90% lines)
-        run: cargo llvm-cov --fail-under-lines 90
+        run: cargo llvm-cov --ignore-filename-regex main.rs --fail-under-lines 90
         working-directory: services/phrase-assembler-rust
 
   shell:

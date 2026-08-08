@@ -35,6 +35,7 @@ vector glyph blueprints
 **Milestone 12 (Hardening and demonstration) is complete.**
 
 The system now includes:
+
 - Full pipeline: CLI → orchestrator → glyph catalog → geometry → rasterization → composition → OCR → adjudication → assembly → SSE
 - 10 programming languages (Go, Kotlin, Java, C++, C#, Python, TypeScript, Ruby, Rust)
 - Kafka, Redis Streams, PostgreSQL, MinIO, Kubernetes (k3d)

@@ -7,11 +7,13 @@
 **Symptoms:** CLI starts but never prints progress or final result.
 
 **Causes:**
+
 - Orchestrator SSE endpoint unreachable
 - Kafka consumer lag causing delayed events
 - Redis Streams backlog preventing snapshot delivery
 
 **Remediation:**
+
 ```bash
 # Check orchestrator health
 curl -sf http://localhost:8080/healthz
@@ -29,11 +31,13 @@ kubectl exec -n rube-goldberg deploy/redis -- redis-cli XLEN rg:run:<runId>:even
 **Symptoms:** `kubectl get pods` shows `Pending` status.
 
 **Causes:**
+
 - Ephemeral-storage capacity issues on k3d nodes
 - Resource requests exceeding node capacity
 - PVC binding failures
 
 **Remediation:**
+
 ```bash
 # Check node capacity
 kubectl describe nodes | grep -A5 "Allocated resources"
@@ -51,11 +55,13 @@ k3d cluster create rube-goldberg --config infra/k3d/cluster.yaml
 **Symptoms:** `ImagePullBackOff` or `ErrImagePull` status.
 
 **Causes:**
+
 - Local registry not running
 - Image not built or pushed
 - Network policy blocking registry access
 
 **Remediation:**
+
 ```bash
 # Check registry
 kubectl get pods -n kube-system -l app=registry
@@ -70,11 +76,13 @@ bash scripts/build-images.sh
 **Symptoms:** OCR worker reports `ENOENT` or `tesseract not found`.
 
 **Causes:**
+
 - Tesseract binary not installed in container
 - Wrong `tesseract-ocr` package version
 - Language data missing (`eng.traineddata`)
 
 **Remediation:**
+
 ```bash
 # Verify tesseract in pod
 kubectl exec -n rube-goldberg deploy/ocr-worker -- tesseract --version
@@ -88,11 +96,13 @@ kubectl exec -n rube-goldberg deploy/ocr-worker -- ls /usr/share/tesseract-ocr/4
 **Symptoms:** Rasterizer or vector-normalizer cannot connect via gRPC.
 
 **Causes:**
+
 - Service not ready
 - Port-forward not established
 - Network policy blocking
 
 **Remediation:**
+
 ```bash
 # Check service endpoints
 kubectl get endpoints -n rube-goldberg
@@ -106,11 +116,13 @@ kubectl port-forward -n rube-goldberg svc/rasterizer 50051:50051 &
 **Symptoms:** High rebalance rate, no message consumption.
 
 **Causes:**
+
 - Too many concurrent consumers
 - Session timeout too short
 - Poll interval too long
 
 **Remediation:**
+
 ```yaml
 # Adjust consumer config in K8s manifest:
 env:
@@ -125,11 +137,13 @@ env:
 **Symptoms:** Pod terminated with `OOMKilled` status.
 
 **Causes:**
+
 - Memory limit too low
 - Memory leak in service
 - Tesseract OCR consuming excessive memory
 
 **Remediation:**
+
 ```bash
 # Check pod events
 kubectl describe pod -n rube-goldberg <pod-name> | grep -A10 "Last State"
@@ -144,10 +158,12 @@ kubectl describe pod -n rube-goldberg <pod-name> | grep -A10 "Last State"
 **Symptoms:** `rasterizer` returns `UNIMPLEMENTED` or `INVALID_ARGUMENT`.
 
 **Causes:**
+
 - Generated Go client out of sync with proto contract
 - C# server using different proto version
 
 **Remediation:**
+
 ```bash
 # Regenerate Go client
 bash scripts/gen-proto.sh
