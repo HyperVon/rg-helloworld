@@ -63,17 +63,34 @@ export function RunSelector({ onSelectRun, currentRunId, availableRuns = [] }: R
           )}
         </>
       ) : null}
-      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '0.5rem', flex: 1 }}>
-        <input
-          type="text"
-          value={inputValue}
-          placeholder={availableRuns.length ? 'Or enter run ID manually...' : 'Enter run ID...'}
-          onChange={(e) => setInputValue(e.target.value)}
-        />
-        <button type="submit" disabled={!inputValue.trim()}>
-          Load Run
-        </button>
-      </form>
+      {availableRuns.length > 0 ? (
+        <details style={{ flex: 1 }}>
+          <summary style={{ cursor: 'pointer', fontSize: '0.85rem', opacity: 0.7 }}>Or enter run ID manually</summary>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+            <input
+              type="text"
+              value={inputValue}
+              placeholder="Enter run ID..."
+              onChange={(e) => setInputValue(e.target.value)}
+            />
+            <button type="submit" disabled={!inputValue.trim()}>
+              Go →
+            </button>
+          </form>
+        </details>
+      ) : (
+        <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '0.5rem', flex: 1 }}>
+          <input
+            type="text"
+            value={inputValue}
+            placeholder="Enter run ID..."
+            onChange={(e) => setInputValue(e.target.value)}
+          />
+          <button type="submit" disabled={!inputValue.trim()}>
+            Load Run
+          </button>
+        </form>
+      )}
       {!availableRuns.length && !currentRunId && (
         <span className="hint">No runs yet — run <code>./rghw.sh</code> or <code>rghw run</code></span>
       )}

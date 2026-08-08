@@ -67,4 +67,30 @@ class ArtifactListerTest < Minitest::Test
     assert_includes html, '&lt;script&gt;'
     refute_includes html, '<script>alert(1)</script>'
   end
+
+  def test_list_runs_sorts_desc
+    fake_json = {
+      'runs' => [
+        { 'runId' => 'old', 'status' => 'SUCCEEDED', 'createdAt' => '2026-01-01T00:00:00Z' },
+        { 'runId' => 'new', 'status' => 'FAILED', 'createdAt' => '2026-08-08T12:00:00Z' }
+      ]
+    }.to_json
+    orig = Net::HTTP.method(:get)
+    Net::HTTP.define_singleton_method(:get) { |_uri| fake_json }
+    runs = @lister.list_runs
+    assert_equal 2, runs.size
+    assert_equal 'new', runs.first['runId']
+    assert_equal 'old', runs.last['runId']
+  ensure
+    Net::HTTP.define_singleton_method(:get, orig)
+  end
+
+  def test_list_runs_returns_empty_on_failure
+    orig = Net::HTTP.method(:get)
+    Net::HTTP.define_singleton_method(:get) { |_uri| raise StandardError, 'boom' }
+    runs = @lister.list_runs
+    assert_equal [], runs
+  ensure
+    Net::HTTP.define_singleton_method(:get, orig)
+  end
 end

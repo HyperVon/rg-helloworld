@@ -23,6 +23,19 @@ module ArtifactInspector
       fetch_artifacts(run_id).find { |a| a['artifactId'] == artifact_id }
     end
 
+    def list_runs
+      fetch_runs
+    end
+
+    def fetch_runs
+      uri = URI("#{api_url}/api/v1/runs")
+      resp = JSON.parse(Net::HTTP.get(uri))
+      runs = resp['runs'] || []
+      runs.sort_by { |r| r['createdAt'] }.reverse
+    rescue StandardError
+      []
+    end
+
     # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
     def to_html(artifacts, run_id)
       rows = if artifacts.empty?

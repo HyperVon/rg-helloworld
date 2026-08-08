@@ -24,6 +24,8 @@ get '/' do
       .body{padding:1.5rem}
       .hero{font-size:.95rem;line-height:1.6;opacity:.85;margin:0 0 1rem}
       .glass{display:flex;gap:.5rem;background:rgba(30,41,59,0.6);border:1px solid rgba(148,163,184,0.15);border-radius:12px;padding:.5rem}
+      select{flex:1;background:rgba(2,6,23,0.6);border:1px solid rgba(148,163,184,0.2);color:#f1f5f9;border-radius:8px;padding:.6rem .8rem;outline:none}
+      select:focus{border-color:#22d3ee;box-shadow:0 0 0 3px rgba(34,211,238,0.2)}
       input{flex:1;background:rgba(2,6,23,0.6);border:1px solid rgba(148,163,184,0.2);color:#f1f5f9;border-radius:8px;padding:.6rem .8rem;outline:none}
       input:focus{border-color:#22d3ee;box-shadow:0 0 0 3px rgba(34,211,238,0.2)}
       button{background:linear-gradient(135deg,#8b5cf6,#06b6d4);color:white;border:0;border-radius:8px;padding:.6rem 1rem;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(109,40,217,0.4)}
@@ -35,6 +37,9 @@ get '/' do
       .particles{position:fixed;inset:0;pointer-events:none;overflow:hidden}
       .dot{position:absolute;width:4px;height:4px;background:rgba(34,211,238,0.5);border-radius:50%;animation:float 12s infinite}
       @keyframes float{from{transform:translateY(110vh)}to{transform:translateY(-10vh)}}
+      details{margin-top:1rem}
+      summary{cursor:pointer;font-size:.85rem;opacity:.7}
+      summary:hover{opacity:1}
     </style>
     </head><body>
     <div class="particles"><div class="dot" style="left:12%;animation-delay:0s"></div><div class="dot" style="left:28%;animation-delay:2s"></div><div class="dot" style="left:45%;animation-delay:4s"></div><div class="dot" style="left:68%;animation-delay:1s"></div><div class="dot" style="left:84%;animation-delay:3s"></div></div>
@@ -42,14 +47,34 @@ get '/' do
       <div class="header"><div class="logo">RG</div><div><h1>Artifact Inspector</h1><p class="sub">Rube Goldberg Hello World — 11 services → one line</p></div></div>
       <div class="body">
         <p class="hero">Inspect every intermediate artifact: vector glyphs → geometry → SVG → raster → phrase image → OCR → assembly. Dark glass, live data, zero cloud.</p>
-        <form class="glass" onsubmit="event.preventDefault();var v=document.getElementById('run').value.trim(); if(v) location.href='/inspector/runs/'+encodeURIComponent(v);">
-          <input id="run" placeholder="Enter runId (auto-listed in Web Shell)" />
-          <button type="submit">Open →</button>
-        </form>
-        <div class="meta"><span>API: <code>GET /inspector/runs/:runId/artifacts</code></span><span><a href="/health" style="color:#22d3ee;text-decoration:none">/health</a></span></div>
-        <div class="tip">Tip: grab a runId from <a href="http://localhost:3000">Web Shell</a> (dropdown at top) — no manual copy-paste needed. Or <code>go -C cmd/rghw run . run --api-url http://localhost:8080</code></div>
+        <div class="glass" id="run-picker"><select id="run-select" style="flex:1"><option value="">Loading runs…</option></select><button type="button" id="run-open">Open →</button></div>
+        <div class="meta"><span>API: <code>GET /inspector/runs/:runId/artifacts</code></span><span><a href="/health" style="color:#22d3ee;text-decoration:none">/health</a></span><span><a href="/api/v1/runs" style="color:#22d3ee;text-decoration:none">/api/v1/runs</a></span></div>
+        <details><summary>Or enter run ID manually</summary>
+          <form class="glass" style="margin-top:.5rem" onsubmit="event.preventDefault();var v=document.getElementById('run').value.trim(); if(v) location.href='/inspector/runs/'+encodeURIComponent(v);">
+            <input id="run" placeholder="Enter runId" />
+            <button type="submit">Go →</button>
+          </form>
+        </details>
+        <div class="tip">Tip: pick the most recent run at the top (sorted by date desc). Or <code>go -C cmd/rghw run . run --api-url http://localhost:8080</code></div>
       </div>
     </div>
+    <script>
+      (function(){
+        const sel=document.getElementById('run-select'), btn=document.getElementById('run-open');
+        function fmt(r){ try{return r.runId.slice(0,8)+'\\u2026 \\u2014 '+r.status+' \\u2014 '+new Date(r.createdAt).toLocaleString()}catch(e){return r.runId} }
+        fetch('/api/v1/runs').then(r=>r.json()).then(j=>{
+          const runs=(j.runs||[]).slice().sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+          if(!runs.length){ sel.innerHTML='<option value="">No runs yet \\u2014 run ./rghw.sh</option>'; btn.disabled=true; return; }
+          sel.innerHTML='';
+          runs.forEach(r=>{
+            const o=document.createElement('option'); o.value=r.runId; o.textContent=fmt(r); sel.appendChild(o);
+          });
+          if(runs[0]) sel.value=runs[0].runId;
+        }).catch(()=>{ sel.innerHTML='<option value="">Failed to load runs</option>'; });
+        btn.addEventListener('click',()=>{ const v=sel.value.trim(); if(v) location.href='/inspector/runs/'+encodeURIComponent(v); });
+        sel.addEventListener('change',()=>{ const v=sel.value.trim(); if(v) location.href='/inspector/runs/'+encodeURIComponent(v); });
+      })();
+    </script>
     </body></html>
   HTML
 end
@@ -69,23 +94,48 @@ get '/inspector' do # rubocop:disable Metrics/BlockLength
       h1{margin:0;font-size:1.1rem}
       .body{padding:1.5rem}
       .glass{display:flex;gap:.5rem;background:rgba(30,41,59,0.6);border-radius:12px;padding:.5rem}
+      select{flex:1;background:rgba(2,6,23,0.6);border:1px solid rgba(148,163,184,0.2);color:#f1f5f9;border-radius:8px;padding:.6rem .8rem}
       input{flex:1;background:rgba(2,6,23,0.6);border:1px solid rgba(148,163,184,0.2);color:#f1f5f9;border-radius:8px;padding:.6rem .8rem}
       button{background:linear-gradient(135deg,#8b5cf6,#06b6d4);color:white;border:0;border-radius:8px;padding:.6rem 1rem;font-weight:700;cursor:pointer}
+      summary{cursor:pointer;font-size:.85rem;opacity:.7}
     </style>
     </head><body>
     <div class="card">
       <div class="header"><div class="logo">RG</div><div><h1>Artifact Inspector</h1><p style="margin:0;opacity:.7;font-size:.85rem">11 services → one line</p></div></div>
       <div class="body">
-        <p style="opacity:.85">Inspect every intermediate artifact live.</p>
-        <form class="glass" onsubmit="event.preventDefault();var v=document.getElementById('run').value.trim(); if(v) location.href='/inspector/runs/'+encodeURIComponent(v);">
-          <input id="run" placeholder="Enter runId" />
-          <button type="submit">Open →</button>
-        </form>
-        <p style="font-size:.8rem;opacity:.6">API: <code>GET /inspector/runs/:runId/artifacts</code> · <a href="/health" style="color:#22d3ee">/health</a></p>
+        <p style="opacity:.85">Inspect every intermediate artifact live — pick a run below.</p>
+        <div class="glass"><select id="run-select" style="flex:1"><option>Loading runs…</option></select><button type="button" id="run-open">Open →</button></div>
+        <details style="margin-top:1rem"><summary>Or enter run ID manually</summary>
+          <form class="glass" style="margin-top:.5rem" onsubmit="event.preventDefault();var v=document.getElementById('run').value.trim(); if(v) location.href='/inspector/runs/'+encodeURIComponent(v);">
+            <input id="run" placeholder="Enter runId" />
+            <button type="submit">Go →</button>
+          </form>
+        </details>
+        <p style="font-size:.8rem;opacity:.6">API: <code>GET /inspector/runs/:runId/artifacts</code> · <a href="/health" style="color:#22d3ee">/health</a> · <a href="/api/v1/runs" style="color:#22d3ee">/api/v1/runs</a></p>
       </div>
     </div>
+    <script>
+      (function(){
+        const sel=document.getElementById('run-select'), btn=document.getElementById('run-open');
+        function fmt(r){ try{return r.runId.slice(0,8)+'… — '+r.status+' — '+new Date(r.createdAt).toLocaleString()}catch(e){return r.runId} }
+        fetch('/api/v1/runs').then(r=>r.json()).then(j=>{
+          const runs=(j.runs||[]).slice().sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+          if(!runs.length){ sel.innerHTML='<option>No runs yet — run ./rghw.sh</option>'; btn.disabled=true; return; }
+          sel.innerHTML='';
+          runs.forEach(r=>{ const o=document.createElement('option'); o.value=r.runId; o.textContent=fmt(r); sel.appendChild(o); });
+        }).catch(()=>{ sel.innerHTML='<option>Failed to load runs</option>'; });
+        btn.addEventListener('click',()=>{ const v=sel.value.trim(); if(v) location.href='/inspector/runs/'+encodeURIComponent(v); });
+        sel.addEventListener('change',()=>{ const v=sel.value.trim(); if(v) location.href='/inspector/runs/'+encodeURIComponent(v); });
+      })();
+    </script>
     </body></html>
   HTML
+end
+
+get '/api/v1/runs' do
+  lister = ArtifactInspector::ArtifactLister.new(ENV['ORCHESTRATOR_URL'] || 'http://localhost:4567')
+  content_type :json
+  { runs: lister.list_runs }.to_json
 end
 
 get '/health' do
