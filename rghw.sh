@@ -22,12 +22,14 @@ SKIP_IMAGES=0
 SKIP_INFRA=0
 OPEN_BROWSER=0
 DRY_RUN=0
+QUIET=0
+FRESH=0
 
 RED=$'\033[0;31m'; GREEN=$'\033[0;32m'; YELLOW=$'\033[1;33m'; CYAN=$'\033[0;36m'; BOLD=$'\033[1m'; NC=$'\033[0m'
 
-say() { echo -e "${CYAN}[rghw]${NC} $*"; }
-ok()  { echo -e "${GREEN}[ok]${NC} $*"; }
-warn(){ echo -e "${YELLOW}[warn]${NC} $*"; }
+say() { [[ $QUIET -eq 1 ]] && return; echo -e "${CYAN}[rghw]${NC} $*" >&2; }
+ok()  { [[ $QUIET -eq 1 ]] && return; echo -e "${GREEN}[ok]${NC} $*" >&2; }
+warn(){ [[ $QUIET -eq 1 ]] && return; echo -e "${YELLOW}[warn]${NC} $*" >&2; }
 die() { echo -e "${RED}[error]${NC} $*" >&2; exit 1; }
 
 usage() {
@@ -45,6 +47,8 @@ Options:
   --timeout D       rghw run timeout (default: 3m)
   --dry-run         Print plan and URLs without executing
   --api-url URL     Override orchestrator URL (default: http://localhost:8080)
+  --quiet, --silent Only print HELLO WORLD to stdout (suppress progress/URL table)
+  --fresh           Clean existing rube-goldberg state before bring-up (kill forwards + delete namespace)
 
 What it does:
   1. make prerequisites (if needed) / checks colima on macOS
@@ -81,6 +85,8 @@ while [[ $# -gt 0 ]]; do
     --skip-infra) SKIP_INFRA=1; shift ;;
     --open) OPEN_BROWSER=1; shift ;;
     --dry-run) DRY_RUN=1; shift ;;
+    --quiet|--silent) QUIET=1; shift ;;
+    --fresh) FRESH=1; shift ;;
     --timeout) TIMEOUT="$2"; shift 2 ;;
     --timeout=*) TIMEOUT="${1#*=}"; shift ;;
     --api-url) API_URL="$2"; shift 2 ;;
@@ -90,6 +96,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 print_urls() {
+  [[ $QUIET -eq 1 ]] && return
   cat <<URLS
 
 ${BOLD}Web URLs -- Rube Goldberg Hello World${NC}
@@ -121,6 +128,7 @@ URLS
 }
 
 open_urls() {
+  [[ $QUIET -eq 1 ]] && return
   local urls=(
     "http://localhost:3000"
     "http://localhost:3001"
@@ -136,6 +144,10 @@ open_urls() {
 }
 
 if [[ $DRY_RUN -eq 1 ]]; then
+  if [[ $QUIET -eq 1 ]]; then
+    echo "HELLO WORLD"
+    exit 0
+  fi
   say "Dry run -- would execute:"
   echo "  make prerequisites"
   echo "  make cluster"
@@ -146,6 +158,19 @@ if [[ $DRY_RUN -eq 1 ]]; then
   echo "  rghw run --api-url $API_URL --timeout $TIMEOUT"
   print_urls
   exit 0
+fi
+
+if [[ $FRESH -eq 1 ]]; then
+  say "Fresh mode -- cleaning existing rube-goldberg state..."
+  pkill -f "kubectl port-forward -n $NAMESPACE" 2>/dev/null || true
+  if command -v lsof >/dev/null 2>&1; then
+    lsof -ti tcp:3000,3001,8080,8081,3002,9090,3100,3200,9000 2>/dev/null | xargs kill -9 2>/dev/null || true
+  fi
+  if [[ $QUIET -eq 1 ]]; then
+    kubectl delete namespace "$NAMESPACE" --ignore-not-found --wait --timeout=60s >/tmp/rghw-fresh.log 2>&1 || true
+  else
+    kubectl delete namespace "$NAMESPACE" --ignore-not-found --wait --timeout=60s 2>&1 | sed 's/^/[fresh] /' >&2 || true
+  fi
 fi
 
 say "${BOLD}Rube Goldberg Hello World -- demo${NC} (timeout $TIMEOUT, api $API_URL)"
@@ -160,53 +185,89 @@ fi
 
 # 1. Prerequisites (best-effort)
 if [[ -x "$PROJECT_ROOT/scripts/prerequisites.sh" ]]; then
-  say "Checking prerequisites..."
-  bash "$PROJECT_ROOT/scripts/prerequisites.sh" || warn "prerequisites reported issues (ignored, CI runs STRICT=1)"
+  if [[ $QUIET -eq 1 ]]; then
+    bash "$PROJECT_ROOT/scripts/prerequisites.sh" >/tmp/rghw-prereq.log 2>&1 || true
+  else
+    say "Checking prerequisites..."
+    bash "$PROJECT_ROOT/scripts/prerequisites.sh" || warn "prerequisites reported issues (ignored, CI runs STRICT=1)"
+  fi
 fi
 
 # 2. Cluster
-say "Ensuring k3d cluster '$NAMESPACE'..."
-if ! make -C "$PROJECT_ROOT" cluster; then
-  warn "make cluster reported timeout (often due to Completed jobs) — checking if cluster is still usable..."
-  if kubectl get nodes 2>/dev/null | grep -q " Ready " && kubectl get pods -n "$NAMESPACE" 2>/dev/null | grep -q "Running"; then
-    warn "Cluster node is Ready and rube-goldberg pods are Running — continuing despite make cluster timeout"
-  else
-    die "make cluster failed and cluster not ready — check docker/colima and k3d"
+if [[ $QUIET -eq 1 ]]; then
+  if ! make -C "$PROJECT_ROOT" cluster >/tmp/rghw-make-cluster.log 2>&1; then
+    if kubectl get nodes 2>/dev/null | grep -q " Ready " && kubectl get pods -n "$NAMESPACE" 2>/dev/null | grep -q "Running"; then
+      : # usable despite timeout, continue silently
+    else
+      die "make cluster failed and cluster not ready — check docker/colima and k3d (see /tmp/rghw-make-cluster.log)"
+    fi
+  fi
+else
+  say "Ensuring k3d cluster '$NAMESPACE'..."
+  if ! make -C "$PROJECT_ROOT" cluster; then
+    warn "make cluster reported timeout (often due to Completed jobs) — checking if cluster is still usable..."
+    if kubectl get nodes 2>/dev/null | grep -q " Ready " && kubectl get pods -n "$NAMESPACE" 2>/dev/null | grep -q "Running"; then
+      warn "Cluster node is Ready and rube-goldberg pods are Running — continuing despite make cluster timeout"
+    else
+      die "make cluster failed and cluster not ready — check docker/colima and k3d"
+    fi
   fi
 fi
 
 # 3. Images
-if [[ $SKIP_IMAGES -eq 0 ]]; then
-  say "Building and pushing images to localhost:5001 (this may take a few minutes)..."
-  make -C "$PROJECT_ROOT" images || die "make images failed"
+if [[ $QUIET -eq 1 ]]; then
+  if [[ $SKIP_IMAGES -eq 0 ]]; then
+    make -C "$PROJECT_ROOT" images >/tmp/rghw-make-images.log 2>&1 || die "make images failed (see /tmp/rghw-make-images.log)"
+  fi
 else
-  say "Skipping make images (--skip-images)"
+  if [[ $SKIP_IMAGES -eq 0 ]]; then
+    say "Building and pushing images to localhost:5001 (this may take a few minutes)..."
+    make -C "$PROJECT_ROOT" images || die "make images failed"
+  else
+    say "Skipping make images (--skip-images)"
+  fi
 fi
 
 # 4. Infra
-if [[ $SKIP_INFRA -eq 0 ]]; then
-  say "Applying Terraform infra..."
-  make -C "$PROJECT_ROOT" infra || die "make infra failed"
+if [[ $QUIET -eq 1 ]]; then
+  if [[ $SKIP_INFRA -eq 0 ]]; then
+    make -C "$PROJECT_ROOT" infra >/tmp/rghw-make-infra.log 2>&1 || die "make infra failed (see /tmp/rghw-make-infra.log)"
+  fi
 else
-  say "Skipping make infra (--skip-infra)"
+  if [[ $SKIP_INFRA -eq 0 ]]; then
+    say "Applying Terraform infra..."
+    make -C "$PROJECT_ROOT" infra || die "make infra failed"
+  else
+    say "Skipping make infra (--skip-infra)"
+  fi
 fi
 
 # 4b. Deploy app services
-say "Deploying app services (milestones 5-11)..."
-make -C "$PROJECT_ROOT" deploy || die "make deploy failed"
+if [[ $QUIET -eq 1 ]]; then
+  make -C "$PROJECT_ROOT" deploy >/tmp/rghw-make-deploy.log 2>&1 || die "make deploy failed (see /tmp/rghw-make-deploy.log)"
+else
+  say "Deploying app services (milestones 5-11)..."
+  make -C "$PROJECT_ROOT" deploy || die "make deploy failed"
+fi
 
 # 5. Wait
-say "Waiting for pods to be Ready (300s)..."
-make -C "$PROJECT_ROOT" wait || {
-  warn "make wait timed out -- dumping pod status"
-  kubectl get pods -n "$NAMESPACE" || true
-  kubectl get events -n "$NAMESPACE" --sort-by='.lastTimestamp' | tail -n 20 || true
-  die "Cluster not ready"
-}
-ok "All pods Ready"
+if [[ $QUIET -eq 1 ]]; then
+  make -C "$PROJECT_ROOT" wait >/tmp/rghw-make-wait.log 2>&1 || die "Cluster not ready (see /tmp/rghw-make-wait.log)"
+else
+  say "Waiting for pods to be Ready (300s)..."
+  make -C "$PROJECT_ROOT" wait || {
+    warn "make wait timed out -- dumping pod status"
+    kubectl get pods -n "$NAMESPACE" || true
+    kubectl get events -n "$NAMESPACE" --sort-by='.lastTimestamp' | tail -n 20 || true
+    die "Cluster not ready"
+  }
+  ok "All pods Ready"
+fi
 
 # 6. Port-forwards (background)
-say "Starting port-forwards for web UIs (background)..."
+if [[ $QUIET -eq 0 ]]; then
+  say "Starting port-forwards for web UIs (background)..."
+fi
 declare -a PF_PIDS=()
 declare -a PF_SVCS=()
 pf() {
@@ -229,7 +290,9 @@ pf() {
     pid=$!
     PF_PIDS[-1]=$pid
   fi
-  say "  $svc  $local_port->$remote_port  pid $pid"
+  if [[ $QUIET -eq 0 ]]; then
+    say "  $svc  $local_port->$remote_port  pid $pid"
+  fi
 }
 
 pf run-orchestrator 8080 8080
@@ -242,30 +305,42 @@ pf loki 3100 3100
 pf tempo 3200 3200
 pf minio 9000 9000
 
-sleep 3
-# summarize -- don't use `jobs` (shows unexpanded function body); use PIDs we tracked + pgrep
-ok "Port-forwards up (logs: /tmp/rghw-pf-*.log)"
-for i in "${!PF_PIDS[@]}"; do
-  pid="${PF_PIDS[$i]}"
-  svc="${PF_SVCS[$i]}"
-  if kill -0 "$pid" 2>/dev/null; then
-    echo "  [$((i+1))] $svc pid $pid Running"
-  else
-    echo "  [$((i+1))] $svc pid $pid not running — check /tmp/rghw-pf-${svc%%:*}.log"
-  fi
-done
-kubectl get pods -n "$NAMESPACE" | head -n 5 || true
+if [[ $QUIET -eq 0 ]]; then
+  sleep 3
+  # summarize -- don't use `jobs` (shows unexpanded function body); use PIDs we tracked + pgrep
+  ok "Port-forwards up (logs: /tmp/rghw-pf-*.log)"
+  for i in "${!PF_PIDS[@]}"; do
+    pid="${PF_PIDS[$i]}"
+    svc="${PF_SVCS[$i]}"
+    if kill -0 "$pid" 2>/dev/null; then
+      echo "  [$((i+1))] $svc pid $pid Running" >&2
+    else
+      echo "  [$((i+1))] $svc pid $pid not running — check /tmp/rghw-pf-${svc%%:*}.log" >&2
+    fi
+  done
+  kubectl get pods -n "$NAMESPACE" 2>&1 | head -n 5 >&2 || true
+else
+  sleep 3
+fi
 
 print_urls
 
 # 7. Run rghw
-say "Running rghw -- this will print HELLO WORLD to stdout and progress to stderr..."
+if [[ $QUIET -eq 0 ]]; then
+  say "Running rghw -- this will print HELLO WORLD to stdout and progress to stderr..."
+fi
+RGHW_QUIET_FLAG=""
+if [[ $QUIET -eq 1 ]]; then
+  RGHW_QUIET_FLAG=" --quiet"
+fi
 set +e
 if [[ -x "$PROJECT_ROOT/cmd/rghw/rghw" ]]; then
-  "$PROJECT_ROOT/cmd/rghw/rghw" run --api-url "$API_URL" --timeout "$TIMEOUT"
+  # shellcheck disable=SC2086
+  "$PROJECT_ROOT/cmd/rghw/rghw" run --api-url "$API_URL" --timeout "$TIMEOUT"$RGHW_QUIET_FLAG
   RC=$?
 elif command -v go >/dev/null 2>&1; then
-  (cd "$PROJECT_ROOT/cmd/rghw" && go run . run --api-url "$API_URL" --timeout "$TIMEOUT")
+  # shellcheck disable=SC2086
+  (cd "$PROJECT_ROOT/cmd/rghw" && go run . run --api-url "$API_URL" --timeout "$TIMEOUT"$RGHW_QUIET_FLAG)
   RC=$?
 else
   warn "Go not found and no binary at cmd/rghw/rghw -- trying 'make run'"
@@ -275,7 +350,9 @@ fi
 set -e
 
 if [[ $RC -eq 0 ]]; then
-  ok "rghw run succeeded -- stdout was HELLO WORLD"
+  if [[ $QUIET -eq 0 ]]; then
+    ok "rghw run succeeded -- stdout was HELLO WORLD"
+  fi
 else
   warn "rghw run exited $RC -- check orchestrator logs: kubectl logs -n $NAMESPACE deploy/run-orchestrator | tail -n 100"
 fi
@@ -287,19 +364,21 @@ if [[ $OPEN_BROWSER -eq 1 ]]; then
   open_urls
 fi
 
-say "Port-forwards still running in background:"
-for i in "${!PF_PIDS[@]}"; do
-  pid="${PF_PIDS[$i]}"
-  svc="${PF_SVCS[$i]}"
-  if kill -0 "$pid" 2>/dev/null; then
-    echo "  [$((i+1))] $svc pid $pid Running"
-  else
-    echo "  [$((i+1))] $svc pid $pid not running — check /tmp/rghw-pf-${svc%%:*}.log"
-  fi
-done
-say "Stop with:  kill ${PF_PIDS[*]}  # or: pkill -f 'kubectl port-forward -n $NAMESPACE'"
-say "Re-run:     ./rghw.sh --skip-images --skip-infra  # fast restart"
-say "Logs:       tail -f /tmp/rghw-pf-*.log"
-say "Docs:       docs/runbook.md section 6 for full UI catalog"
+if [[ $QUIET -eq 0 ]]; then
+  say "Port-forwards still running in background:"
+  for i in "${!PF_PIDS[@]}"; do
+    pid="${PF_PIDS[$i]}"
+    svc="${PF_SVCS[$i]}"
+    if kill -0 "$pid" 2>/dev/null; then
+      echo "  [$((i+1))] $svc pid $pid Running" >&2
+    else
+      echo "  [$((i+1))] $svc pid $pid not running — check /tmp/rghw-pf-${svc%%:*}.log" >&2
+    fi
+  done
+  say "Stop with:  kill ${PF_PIDS[*]}  # or: pkill -f 'kubectl port-forward -n $NAMESPACE'"
+  say "Re-run:     ./rghw.sh --skip-images --skip-infra  # fast restart"
+  say "Logs:       tail -f /tmp/rghw-pf-*.log"
+  say "Docs:       docs/runbook.md section 6 for full UI catalog"
+fi
 
 exit $RC
