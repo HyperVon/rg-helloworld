@@ -13,6 +13,12 @@ if(NOT RDKAFKA_INCLUDE_DIR OR NOT RDKAFKA_LIBRARY)
   message(FATAL_ERROR "librdkafka not found (brew install librdkafka / apt install librdkafka-dev)")
 endif()
 
+option(ENABLE_COVERAGE "Build with coverage instrumentation" OFF)
+if(ENABLE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+  add_compile_options(--coverage -O0)
+  add_link_options(--coverage)
+endif()
+
 add_library(geometry_lib STATIC
   src/json.cpp
   src/sha256.cpp
@@ -46,10 +52,4 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
     set_source_files_properties(src/kafka.cpp PROPERTIES
       COMPILE_OPTIONS "-Wno-error=ignored-qualifiers;-Wno-error=pedantic")
   endif()
-endif()
-
-option(ENABLE_COVERAGE "Build with coverage instrumentation" OFF)
-if(ENABLE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-  add_compile_options(--coverage -O0)
-  add_link_options(--coverage)
 endif()

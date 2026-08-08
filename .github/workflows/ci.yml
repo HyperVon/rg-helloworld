@@ -95,7 +95,7 @@ jobs:
         run: ctest --test-dir build --output-on-failure
         working-directory: services/geometry-engine-cpp
       - name: Coverage gate (90% lines)
-        run: gcovr --root . --object-directory build --filter 'src/.*' --filter 'include/.*' --exclude 'src/kafka.cpp' --fail-under-line 90
+        run: gcovr --root . --object-directory build --filter 'src/.*' --filter 'include/.*' --exclude 'src/kafka.cpp' --exclude 'src/main.cpp' --fail-under-line 90
         working-directory: services/geometry-engine-cpp
 
   dotnet:

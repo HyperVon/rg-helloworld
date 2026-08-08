@@ -1224,3 +1224,7 @@ M7 stability update (2026-08-07): Uppercase acceptance required redrawing all gl
 | 2026-08-07 | Milestone overview 9-12 marked COMPLETE; `make format/lint/unit/coverage/build/integration` all PASS | PASS (failures=0, E2E_SKIP_PLATFORM=1 PASS) |
 | 2026-08-08 | Tempo 2.4.0 restored (minimal local config, -enable-search removed, grpc 9095) + HELLO WORLD live + observability all Running | PASS (25 Running pods, tempo Running 1/1 status Running, otel connected, grafana 12.0.2 healthy, prometheus healthy, loki ready, web-shell vite preview on 3000 serving React Flow, `go run ./cmd/rghw run --api-url http://127.0.0.1:18081` prints HELLO WORLD) |
 | 2026-08-08 | Glyph OCR hardening + adjudicator gap fix (O 3 ellipses, W 3 paths, D bold, R top-loop, GAP 1.0, adjudicator MIN 0.30 HIGH 0.40 GAP 0.1 + pixelGap>100, gap publish) | PASS (thresholds allow L confidence 0.43, gap publish fixes missing position 5, stroke 80→140, pixels 128→192, border 10→16) |
+
+## Acknowledgments
+
+Operational hardening, runbook/web-UI documentation, and CI restoration (2026-08-08) with **Muse Code powered by Meta Muse Spark** (`muse-spark-1.2-contributor`, xhigh) — Go module fix, markdownlint ignores, C++ `s3.cpp` clang-format-18, Python coverage, shellcheck, Node OCR deps, Rust coverage ignore, adjudicator test alignment, and low-memory/CMake coverage enablement.

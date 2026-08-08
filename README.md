@@ -151,12 +151,11 @@ make destroy         delete the local environment (later milestone)
 
 ## Tooling
 
-This repository was scaffolded and milestone-tracked with the help of an AI
-coding agent:
+This repository was scaffolded and milestone-tracked with the help of AI
+coding agents:
 
-- Agent harness: KiloCode (Kilo CLI)
-- Model: `opencode-go/deepseek-v4-flash`
-- Scaffolded: 2026-08-04
+- Scaffold harness: KiloCode (Kilo CLI) — `opencode-go/deepseek-v4-flash` (2026-08-04)
+- Hardening and operationalization: **Muse Code powered by Meta Muse Spark** — `muse-spark-1.2-contributor` (xhigh) — runbook expansion, web UI documentation, CI restoration (Go/Docs/C++/Python/Shell/Node/Rust coverage), adjudicator threshold alignment, and low-memory profile hardening (2026-08-08)
 
 Agent guidance lives in `AGENTS.md` (canonical), with harness-specific copies
 in `CLAUDE.md`, `.github/copilot-instructions.md`, `.cursor/rules/`,
