@@ -97,7 +97,7 @@ See [docs/runbook.md §6](docs/runbook.md#6-web-uis-and-observability) for the f
 
 ## Web UIs — the ridiculous punchline
 
-> **WOW → WTF pipeline.** Eleven services, ten languages, Kafka on one laptop, and the full Grafana stack — all to print one line. Every screenshot below is captured via Playwright against a live `SUCCEEDED` run (`793bf62a…`) after `./rghw.sh`.
+> **WOW → WTF pipeline.** Eleven services, ten languages, Kafka on one laptop, and the full Grafana stack — all to print one line. Every screenshot below is captured via Playwright against a live `SUCCEEDED` run (`6dd077ad…`) after `./rghw.sh`.
 
 ### Web Shell (React Flow)
 

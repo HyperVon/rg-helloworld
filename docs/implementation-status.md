@@ -1225,6 +1225,7 @@ M7 stability update (2026-08-07): Uppercase acceptance required redrawing all gl
 | 2026-08-08 | Tempo 2.4.0 restored (minimal local config, -enable-search removed, grpc 9095) + HELLO WORLD live + observability all Running | PASS (25 Running pods, tempo Running 1/1 status Running, otel connected, grafana 12.0.2 healthy, prometheus healthy, loki ready, web-shell vite preview on 3000 serving React Flow, `go run ./cmd/rghw run --api-url http://127.0.0.1:18081` prints HELLO WORLD) |
 | 2026-08-08 | Glyph OCR hardening + adjudicator gap fix (O 3 ellipses, W 3 paths, D bold, R top-loop, GAP 1.0, adjudicator MIN 0.30 HIGH 0.40 GAP 0.1 + pixelGap>100, gap publish) | PASS (thresholds allow L confidence 0.43, gap publish fixes missing position 5, stroke 80→140, pixels 128→192, border 10→16) |
 | 2026-08-08 | CI green restoration (markdownlint MD032/MD036, C++ clang-18/22 drift `= {}`, Kotlin 91.6% via `collectRedisRuns` + `listRuns`/`collectRedisRuns` tests) | PASS (`npx markdownlint-cli2` 0 issues, `clang-format-18` + `22` both `= {}` 0 diff, `make lint`/`unit`/`coverage`/`build`/`integration` all 0 failures, `go -C cmd/rghw run . run --api-url http://localhost:8080` prints `HELLO WORLD`) |
+| 2026-08-08 | Screenshots retaken at SUCCEEDED `6dd077ad` (256K web-shell, 259K inspector) + CI 31241984968 green (15/15 jobs) | PASS (Playwright 1280×800 capture, `web-shell.png` shows `SUCCEEDED` 11 stages green, `artifact-inspector` glass, `grafana.png` 568K, `prometheus` healthy, `rghw run` `6dd077ad→SUCCEEDED`) |
 
 ## Acknowledgments
 
