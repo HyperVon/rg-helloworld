@@ -23,7 +23,7 @@ SKIP_INFRA=0
 OPEN_BROWSER=0
 DRY_RUN=0
 
-RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; BOLD='\033[1m'; NC='\033[0m'
+RED=$'\033[0;31m'; GREEN=$'\033[0;32m'; YELLOW=$'\033[1;33m'; CYAN=$'\033[0;36m'; BOLD=$'\033[1m'; NC=$'\033[0m'
 
 say() { echo -e "${CYAN}[rghw]${NC} $*"; }
 ok()  { echo -e "${GREEN}[ok]${NC} $*"; }
@@ -208,13 +208,28 @@ ok "All pods Ready"
 # 6. Port-forwards (background)
 say "Starting port-forwards for web UIs (background)..."
 declare -a PF_PIDS=()
+declare -a PF_SVCS=()
 pf() {
   local svc="$1" local_port="$2" remote_port="$3"
-  lsof -ti tcp:"$local_port" 2>/dev/null | xargs kill -9 2>/dev/null || true
+  # free local port if still bound from previous run
+  if command -v lsof >/dev/null 2>&1; then
+    lsof -ti tcp:"$local_port" 2>/dev/null | xargs kill -9 2>/dev/null || true
+  fi
   # shellcheck disable=SC2086
   kubectl port-forward -n "$NAMESPACE" svc/"$svc" ${local_port}:${remote_port} >/tmp/rghw-pf-${svc}.log 2>&1 &
-  PF_PIDS+=($!)
-  say "  $svc  $local_port->$remote_port  pid $!"
+  local pid=$!
+  PF_PIDS+=($pid)
+  PF_SVCS+=("$svc:$local_port->$remote_port")
+  # give it a moment and warn if it died immediately
+  sleep 0.8
+  if ! kill -0 "$pid" 2>/dev/null; then
+    warn "port-forward $svc $local_port->$remote_port died quickly — see /tmp/rghw-pf-${svc}.log (retrying once)"
+    sleep 1
+    kubectl port-forward -n "$NAMESPACE" svc/"$svc" ${local_port}:${remote_port} >/tmp/rghw-pf-${svc}.log 2>&1 &
+    pid=$!
+    PF_PIDS[-1]=$pid
+  fi
+  say "  $svc  $local_port->$remote_port  pid $pid"
 }
 
 pf run-orchestrator 8080 8080
@@ -228,7 +243,17 @@ pf tempo 3200 3200
 pf minio 9000 9000
 
 sleep 3
+# summarize -- don't use `jobs` (shows unexpanded function body); use PIDs we tracked + pgrep
 ok "Port-forwards up (logs: /tmp/rghw-pf-*.log)"
+for i in "${!PF_PIDS[@]}"; do
+  pid="${PF_PIDS[$i]}"
+  svc="${PF_SVCS[$i]}"
+  if kill -0 "$pid" 2>/dev/null; then
+    echo "  [$((i+1))] $svc pid $pid Running"
+  else
+    echo "  [$((i+1))] $svc pid $pid not running — check /tmp/rghw-pf-${svc%%:*}.log"
+  fi
+done
 kubectl get pods -n "$NAMESPACE" | head -n 5 || true
 
 print_urls
@@ -262,8 +287,16 @@ if [[ $OPEN_BROWSER -eq 1 ]]; then
   open_urls
 fi
 
-say "Port-forwards still running in background (jobs):"
-jobs || pgrep -a "kubectl port-forward" || true
+say "Port-forwards still running in background:"
+for i in "${!PF_PIDS[@]}"; do
+  pid="${PF_PIDS[$i]}"
+  svc="${PF_SVCS[$i]}"
+  if kill -0 "$pid" 2>/dev/null; then
+    echo "  [$((i+1))] $svc pid $pid Running"
+  else
+    echo "  [$((i+1))] $svc pid $pid not running — check /tmp/rghw-pf-${svc%%:*}.log"
+  fi
+done
 say "Stop with:  kill ${PF_PIDS[*]}  # or: pkill -f 'kubectl port-forward -n $NAMESPACE'"
 say "Re-run:     ./rghw.sh --skip-images --skip-infra  # fast restart"
 say "Logs:       tail -f /tmp/rghw-pf-*.log"
