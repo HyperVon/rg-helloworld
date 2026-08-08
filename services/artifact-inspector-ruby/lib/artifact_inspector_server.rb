@@ -6,6 +6,43 @@ require_relative 'artifact_inspector'
 set :port, ENV.fetch('PORT', 4568)
 set :bind, '0.0.0.0'
 
+get '/' do
+  content_type :html
+  <<~HTML
+    <!DOCTYPE html>
+    <html><head><meta charset="utf-8"><title>Artifact Inspector</title>
+    <style>body{font-family:helvetica,arial,sans-serif;margin:2rem;max-width:700px}input{padding:.4rem;width:320px}button{padding:.4rem .8rem;margin-left:.5rem}</style>
+    </head><body>
+    <h1>Artifact Inspector</h1>
+    <p>View intermediate images and metadata for a run.</p>
+    <form onsubmit="event.preventDefault();var v=document.getElementById('run').value.trim(); if(v) location.href='/inspector/runs/'+encodeURIComponent(v);">
+      <input id="run" placeholder="Enter runId (e.g. from rghw run output)" />
+      <button type="submit">Open</button>
+    </form>
+    <p>API: <code>GET /inspector/runs/:runId/artifacts</code> &middot; Health: <a href="/health">/health</a></p>
+    <p>Tip: get a runId from <code>kubectl logs -n rube-goldberg deploy/run-orchestrator</code> or from Web Shell at <a href="http://localhost:3000">http://localhost:3000</a></p>
+    </body></html>
+  HTML
+end
+
+get '/inspector' do
+  content_type :html
+  <<~HTML
+    <!DOCTYPE html>
+    <html><head><meta charset="utf-8"><title>Artifact Inspector</title>
+    <style>body{font-family:helvetica,arial,sans-serif;margin:2rem;max-width:700px}input{padding:.4rem;width:320px}button{padding:.4rem .8rem;margin-left:.5rem}</style>
+    </head><body>
+    <h1>Artifact Inspector</h1>
+    <p>View intermediate images and metadata for a run.</p>
+    <form onsubmit="event.preventDefault();var v=document.getElementById('run').value.trim(); if(v) location.href='/inspector/runs/'+encodeURIComponent(v);">
+      <input id="run" placeholder="Enter runId" />
+      <button type="submit">Open</button>
+    </form>
+    <p>API: <code>GET /inspector/runs/:runId/artifacts</code> &middot; Health: <a href="/health">/health</a></p>
+    </body></html>
+  HTML
+end
+
 get '/health' do
   content_type :json
   { status: 'ok', service: ArtifactInspector::SERVICE_NAME, version: ArtifactInspector::VERSION }.to_json

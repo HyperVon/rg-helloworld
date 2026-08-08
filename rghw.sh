@@ -57,15 +57,15 @@ What it does:
   8. Prints URL table (ingress vs port-forward) and leaves forwards running
 
 Web UIs (after port-forwards):
-  Web Shell (React Flow) : http://rghw.localhost/          -> http://localhost:3000
-  Artifact Inspector     : http://rghw.localhost/inspector/ -> http://localhost:3001
-  Event Gateway (SSE)    : http://rghw.localhost/api/       -> http://localhost:8081
-  Grafana                : http://grafana.rghw.localhost/   -> http://localhost:3002
-  Prometheus             :                                    -> http://localhost:9090
-  Loki                   :                                    -> http://localhost:3100
-  Tempo                  :                                    -> http://localhost:3200
-  MinIO (API)            : http://minio.rghw.localhost/     -> http://localhost:9000
-  Orchestrator API       : http://rghw.localhost/api/       -> http://localhost:8080
+  Web Shell (React Flow) : http://rghw.localhost/                -> http://localhost:3000  (enter runId; /api proxied to orchestrator:8080)
+  Artifact Inspector     : http://rghw.localhost/inspector/runs/{runId} -> http://localhost:3001/ (or /inspector; enter runId)
+  Event Gateway (SSE)    : http://rghw.localhost/api/v1/runs/{runId}/stream -> http://localhost:8081 (svc/event-gateway, also via orchestrator:8080)
+  Grafana                : http://grafana.rghw.localhost/       -> http://localhost:3002
+  Prometheus             :                                        -> http://localhost:9090
+  Loki                   :                                        -> http://localhost:3100
+  Tempo                  :                                        -> http://localhost:3200
+  MinIO (API)            : http://minio.rghw.localhost/         -> http://localhost:9000
+  Orchestrator API       : http://rghw.localhost/api/v1/runs    -> http://localhost:8080
 
 Stop forwards:  jobs          # list
                 kill %1 %2... # or pkill -f "kubectl port-forward -n rube-goldberg"
@@ -95,12 +95,12 @@ print_urls() {
 ${BOLD}Web URLs -- Rube Goldberg Hello World${NC}
 ${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}
   ${BOLD}Web Shell (React Flow)${NC}   Ingress: ${GREEN}http://rghw.localhost/${NC}
-                              Port-fwd: ${GREEN}http://localhost:3000${NC}   (svc/web-shell)
-  ${BOLD}Artifact Inspector${NC}       Ingress: ${GREEN}http://rghw.localhost/inspector/${NC}
-                              Port-fwd: ${GREEN}http://localhost:3001${NC}   (svc/artifact-inspector)
+                              Port-fwd: ${GREEN}http://localhost:3000/${NC}   (svc/web-shell)  -- enter runId after run
+  ${BOLD}Artifact Inspector${NC}       Ingress: ${GREEN}http://rghw.localhost/inspector/runs/{runId}${NC}
+                              Port-fwd: ${GREEN}http://localhost:3001/${NC}   (svc/artifact-inspector) -- shows form, then /inspector/runs/{runId}
   ${BOLD}Event Gateway (SSE)${NC}      Ingress: ${GREEN}http://rghw.localhost/api/v1/runs/{runId}/stream${NC}
                               Port-fwd: ${GREEN}http://localhost:8081${NC}   (svc/event-gateway)
-                              CLI:    ${GREEN}http://localhost:8080${NC}   (svc/run-orchestrator)
+                              CLI/API:${GREEN}http://localhost:8080/api/v1/runs${NC} (svc/run-orchestrator) -- also serves stream
   ${BOLD}Grafana${NC}                  Ingress: ${GREEN}http://grafana.rghw.localhost/${NC}
                               Port-fwd: ${GREEN}http://localhost:3002${NC}   (svc/grafana)
   ${BOLD}Prometheus${NC}               Port-fwd: ${GREEN}http://localhost:9090${NC}   (svc/prometheus)  -> /-/healthy
@@ -142,7 +142,7 @@ if [[ $DRY_RUN -eq 1 ]]; then
   if [[ $SKIP_IMAGES -eq 0 ]]; then echo "  make images"; else echo "  (skip) make images"; fi
   if [[ $SKIP_INFRA -eq 0 ]]; then echo "  make infra"; else echo "  (skip) make infra"; fi
   echo "  make wait"
-  echo "  kubectl port-forward x8 (web-shell:3000, event-gateway:8081, artifact-inspector:3001, grafana:3002, prometheus:9090, loki:3100, tempo:3200, minio:9000, orchestrator:8080)"
+  echo "  kubectl port-forward x8 (web-shell:3000->80, event-gateway:8081->80, artifact-inspector:3001->80, grafana:3002->80, prometheus:9090, loki:3100, tempo:3200, minio:9000, orchestrator:8080)"
   echo "  rghw run --api-url $API_URL --timeout $TIMEOUT"
   print_urls
   exit 0
@@ -234,9 +234,9 @@ pf() {
 
 pf run-orchestrator 8080 8080
 pf web-shell 3000 80
-pf event-gateway 8081 8080
+pf event-gateway 8081 80
 pf artifact-inspector 3001 80
-pf grafana 3002 3000
+pf grafana 3002 80
 pf prometheus 9090 9090
 pf loki 3100 3100
 pf tempo 3200 3200

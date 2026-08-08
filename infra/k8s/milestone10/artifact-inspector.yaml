@@ -21,8 +21,8 @@ spec:
           image: rghello-registry:5001/artifact-inspector:milestone11
           imagePullPolicy: Always
           env:
-            - name: EVENT_GATEWAY_URL
-              value: "http://event-gateway.rube-goldberg.svc.cluster.local"
+            - name: ORCHESTRATOR_URL
+              value: "http://run-orchestrator.rube-goldberg.svc.cluster.local:8080"
           ports:
             - containerPort: 4568
               name: http

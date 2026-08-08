@@ -11,18 +11,67 @@ function prefersReducedMotion(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
+function apiBase(): string {
+  if (typeof window !== 'undefined' && window.location.hostname === 'localhost' && window.location.port === '3000') {
+    return 'http://localhost:8080';
+  }
+  return '';
+}
+
+interface RunListItem {
+  runId: string;
+  status: string;
+  createdAt: string;
+  message?: string;
+}
+
 export function App() {
-  const [runId, setRunId] = useState<string | null>(null);
+  const [runId, setRunId] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('rghw:lastRunId');
+    } catch {
+      return null;
+    }
+  });
+  const [availableRuns, setAvailableRuns] = useState<RunListItem[]>([]);
   const [showArtifacts, setShowArtifacts] = useState(false);
-  const streamUrl = runId ? `/api/v1/runs/${runId}/stream` : '';
+  const base = apiBase();
+  const streamUrl = runId ? `${base}/api/v1/runs/${runId}/stream` : '';
 
   const { summary, connected, error, eventTypeCount } = useSseStream(streamUrl, 5000);
 
   const [artifacts, setArtifacts] = useState<ArtifactNode[]>([]);
 
   useEffect(() => {
+    let cancelled = false;
+    const loadRuns = async () => {
+      try {
+        const r = await fetch(`${base}/api/v1/runs`);
+        if (!r.ok) return;
+        const data = (await r.json()) as { runs: RunListItem[] };
+        if (cancelled) return;
+        const list = data.runs || [];
+        setAvailableRuns(list);
+        if (!runId && list.length > 0) {
+          const latest = list[0].runId;
+          setRunId(latest);
+          try {
+            localStorage.setItem('rghw:lastRunId', latest);
+          } catch {}
+        }
+      } catch {}
+    };
+    loadRuns();
+    const id = window.setInterval(loadRuns, 5000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [base, runId]);
+
+  useEffect(() => {
     if (!runId) return;
-    fetch(`/api/v1/runs/${runId}/artifacts`)
+    fetch(`${base}/api/v1/runs/${runId}/artifacts`)
       .then((r) => r.json())
       .then((data) => setArtifacts((data as { artifacts: ArtifactNode[] }).artifacts || []))
       .catch(() => {});
@@ -35,6 +84,9 @@ export function App() {
 
   const handleSelectRun = (id: string) => {
     setRunId(id);
+    try {
+      localStorage.setItem('rghw:lastRunId', id);
+    } catch {}
   };
 
   const currentStage = summary?.currentStage ?? 'CREATED';
@@ -51,7 +103,7 @@ export function App() {
         {error && <span className="error">{error}</span>}
       </header>
 
-      <RunSelector onSelectRun={handleSelectRun} currentRunId={runId} />
+      <RunSelector onSelectRun={handleSelectRun} currentRunId={runId} availableRuns={availableRuns} />
 
       {runId && (
         <>

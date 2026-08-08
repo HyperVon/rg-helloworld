@@ -1,11 +1,19 @@
 import { useState } from 'react';
 
+interface RunListItem {
+  runId: string;
+  status: string;
+  createdAt: string;
+  message?: string;
+}
+
 interface RunSelectorProps {
   onSelectRun: (runId: string) => void;
   currentRunId: string | null;
+  availableRuns?: RunListItem[];
 }
 
-export function RunSelector({ onSelectRun, currentRunId }: RunSelectorProps) {
+export function RunSelector({ onSelectRun, currentRunId, availableRuns = [] }: RunSelectorProps) {
   const [inputValue, setInputValue] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -16,19 +24,59 @@ export function RunSelector({ onSelectRun, currentRunId }: RunSelectorProps) {
     }
   };
 
+  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const v = e.target.value;
+    if (v) onSelectRun(v);
+  };
+
+  const handleClear = () => {
+    setInputValue('');
+    try {
+      localStorage.removeItem('rghw:lastRunId');
+    } catch {}
+    // reload to clear selection; parent will clear runId on next render if we force
+    // for now, just reload page to reset
+    window.location.reload();
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="run-selector">
-      <input
-        type="text"
-        value={inputValue}
-        placeholder="Enter run ID..."
-        onChange={(e) => setInputValue(e.target.value)}
-        disabled={!!currentRunId}
-      />
-      <button type="submit" disabled={!!currentRunId || !inputValue.trim()}>
-        Load Run
-      </button>
-      {currentRunId && <span className="current-run">Viewing: {currentRunId}</span>}
+    <div className="run-selector">
+      {availableRuns.length > 0 ? (
+        <>
+          <select value={currentRunId ?? ''} onChange={handleSelectChange} aria-label="Select run">
+            <option value="" disabled>
+              {currentRunId ? `Viewing: ${currentRunId.slice(0, 8)}…` : 'Select a run — auto-loaded latest'}
+            </option>
+            {availableRuns.map((r) => (
+              <option key={r.runId} value={r.runId}>
+                {r.runId.slice(0, 8)}… — {r.status} — {new Date(r.createdAt).toLocaleString()}
+              </option>
+            ))}
+          </select>
+          <span className="current-run" title={currentRunId ?? ''}>
+            {currentRunId ? `Viewing: ${currentRunId}` : `Auto-selected latest of ${availableRuns.length}`}
+          </span>
+          {currentRunId && (
+            <button type="button" onClick={handleClear} className="clear-btn">
+              Clear
+            </button>
+          )}
+        </>
+      ) : null}
+      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '0.5rem', flex: 1 }}>
+        <input
+          type="text"
+          value={inputValue}
+          placeholder={availableRuns.length ? 'Or enter run ID manually...' : 'Enter run ID...'}
+          onChange={(e) => setInputValue(e.target.value)}
+        />
+        <button type="submit" disabled={!inputValue.trim()}>
+          Load Run
+        </button>
+      </form>
+      {!availableRuns.length && !currentRunId && (
+        <span className="hint">No runs yet — run <code>./rghw.sh</code> or <code>rghw run</code></span>
+      )}
       <style>{`
         .run-selector {
           display: flex;
@@ -59,7 +107,10 @@ export function RunSelector({ onSelectRun, currentRunId }: RunSelectorProps) {
           font-size: 0.875rem;
           color: #6b7280;
         }
+        .hint { font-size: 0.8rem; color: #6b7280; }
+        select { padding: 0.4rem; border: 1px solid #d1d5db; border-radius: 4px; }
+        .clear-btn { background: #ef4444; }
       `}</style>
-    </form>
+    </div>
   );
 }

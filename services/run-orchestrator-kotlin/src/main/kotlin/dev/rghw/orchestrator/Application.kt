@@ -80,6 +80,20 @@ data class Links(
 )
 
 @Serializable
+data class RunListItemResponse(
+    val runId: String,
+    val status: String,
+    val createdAt: String,
+    val message: String,
+    val links: Links,
+)
+
+@Serializable
+data class RunListResponse(
+    val runs: List<RunListItemResponse>,
+)
+
+@Serializable
 data class CloudEvent(
     val specversion: String,
     val id: String,
@@ -390,6 +404,7 @@ fun Application.module() {
     routing {
         route("api/v1") {
             route("runs") {
+                get { handleListRuns(call) }
                 post { handleCreateRun(call) }
                 route("{runId}") {
                     get { handleGetRun(call) }
@@ -638,6 +653,22 @@ fun isValidUtf8(value: String): Boolean =
     } catch (e: CharacterCodingException) {
         false
     }
+
+suspend fun handleListRuns(call: ApplicationCall) {
+    val list =
+        runs.values
+            .sortedByDescending { it.createdAt }
+            .map { state ->
+                RunListItemResponse(
+                    runId = state.runId,
+                    status = Services.runStateStore?.getRunStatus(state.runId) ?: state.status.name,
+                    createdAt = state.createdAt.toString(),
+                    message = state.message,
+                    links = buildLinks(state.runId),
+                )
+            }
+    call.respond(RunListResponse(runs = list))
+}
 
 suspend fun handleGetRun(call: ApplicationCall) {
     val runId =

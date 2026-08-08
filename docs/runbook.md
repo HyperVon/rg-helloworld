@@ -82,11 +82,11 @@ This is the recommended way on a fresh laptop and what the trajectory `DoD VERIF
 ```bash
 # orchestrator (required for rghw run)
 kubectl port-forward -n rube-goldberg svc/run-orchestrator 8080:8080 &
-# web UIs
-kubectl port-forward -n rube-goldberg svc/web-shell 3000:3000 &
-kubectl port-forward -n rube-goldberg svc/event-gateway 8081:8080 &
-kubectl port-forward -n rube-goldberg svc/artifact-inspector 3001:3000 &
-kubectl port-forward -n rube-goldberg svc/grafana 3002:3000 &
+# web UIs (svc port is 80 for web-shell, artifact-inspector, event-gateway, grafana)
+kubectl port-forward -n rube-goldberg svc/web-shell 3000:80 &
+kubectl port-forward -n rube-goldberg svc/event-gateway 8081:80 &
+kubectl port-forward -n rube-goldberg svc/artifact-inspector 3001:80 &
+kubectl port-forward -n rube-goldberg svc/grafana 3002:80 &
 kubectl port-forward -n rube-goldberg svc/prometheus 9090:9090 &
 kubectl port-forward -n rube-goldberg svc/loki 3100:3100 &
 kubectl port-forward -n rube-goldberg svc/tempo 3200:3200 &
@@ -214,13 +214,13 @@ All UIs are namespace `rube-goldberg`. The stack includes 4 Grafana dashboards (
 
 ### 6.1 UI catalog
 
-| UI | Ingress URL | Port-forward | What you see | Tech |
+| UI | Ingress URL | Port-forward (svc port 80 where noted) | What you see | Tech |
 | --- | --- | --- | --- | --- |
-| **Web Shell** (primary) | `http://rghw.localhost/` | `kubectl port-forward svc/web-shell 3000:3000` → `http://localhost:3000` | React Flow process graph of the pipeline, run state, maturity progression `0→100`, SSE live updates | React + Vite + React Flow (`web/shell-react`, `infra/k8s/milestone10/web-shell.yaml:22` image `rghello-registry:5001/web-shell:milestone11`) |
+| **Web Shell** (primary) | `http://rghw.localhost/` | `kubectl port-forward svc/web-shell 3000:80` → `http://localhost:3000` — auto-lists runs via `GET /api/v1/runs`, auto-selects latest, dropdown + manual input | React Flow process graph of the pipeline, run state, maturity progression `0→100`, SSE live updates (see §6.1.1) | React + Vite + React Flow (`services/web-shell`, `infra/k8s/milestone10/web-shell.yaml:22` image `rghello-registry:5001/web-shell:milestone11`) |
 | **Telemetry Panel** | embedded in Web Shell | same as web-shell | Run ledger, numeric telemetry, `rg_runs_total`, `rg_step_duration_seconds` | Angular Elements `<rg-telemetry-panel>` (`services/telemetry-element`, `web/telemetry-angular`) |
-| **Artifact Inspector** | `http://rghw.localhost/inspector/` | `kubectl port-forward svc/artifact-inspector 3001:3000` → `http://localhost:3001` | HTMX-rendered intermediate images (glyph blueprints, geometry JSON, SVG, raster PNG, phrase image), metadata, SHA-256 lineage | Ruby + HTMX (`services/artifact-inspector-ruby`) |
-| **Event Gateway (SSE)** | `http://rghw.localhost/api/v1/runs/{runId}/stream` | `kubectl port-forward svc/event-gateway 8081:8080` → `http://localhost:8081` | Raw Server-Sent Events: snapshot + heartbeats every 15s, `Last-Event-ID` replay, closes after terminal event (§19.5) | TypeScript NestJS (`services/event-gateway-node`, Redis Streams) |
-| **Grafana** | `http://grafana.rghw.localhost/` | `kubectl port-forward svc/grafana 3002:3000` → `http://localhost:3002` | 4 provisioned dashboards (see §6.2), Explore for Prometheus/Loki/Tempo | Grafana Enterprise 12.0.2 (`infra/k8s/milestone11/grafana.yaml`) |
+| **Artifact Inspector** | `http://rghw.localhost/inspector/runs/{runId}` | `kubectl port-forward svc/artifact-inspector 3001:80` → `http://localhost:3001` (landing at `/` shows form, then `/inspector/runs/{runId}`) | HTMX-rendered intermediate images (glyph blueprints, geometry JSON, SVG, raster PNG, phrase image), metadata, SHA-256 lineage | Ruby + HTMX (`services/artifact-inspector-ruby`, `GET /` and `/inspector` now show a form) |
+| **Event Gateway (SSE)** | `http://rghw.localhost/api/v1/runs/{runId}/stream` | `kubectl port-forward svc/event-gateway 8081:80` → `http://localhost:8081/health` → `{"status":"ok"}`; stream also via orchestrator `http://localhost:8080/api/v1/runs/{runId}/stream` | Raw Server-Sent Events: snapshot + heartbeats every 15s, `Last-Event-ID` replay, closes after terminal event (§19.5) | TypeScript (`services/event-gateway-node`, Redis Streams) + Kotlin orchestrator stream |
+| **Grafana** | `http://grafana.rghw.localhost/` | `kubectl port-forward svc/grafana 3002:80` → `http://localhost:3002` (→ `/login`) | 4 provisioned dashboards (see §6.2), Explore for Prometheus/Loki/Tempo | Grafana Enterprise 12.0.2 (`infra/k8s/milestone11/grafana.yaml`) |
 | **Prometheus** | — | `kubectl port-forward svc/prometheus 9090:9090` → `http://localhost:9090`/-/healthy → `Prometheus Server is Healthy` | Metrics: `rg_runs_total{status}`, `rg_active_runs`, `rg_step_*`, `rg_kafka_consumer_lag`, `rg_ocr_confidence` (§20.2) | Prometheus 3.5.0 |
 | **Loki** | — | `kubectl port-forward svc/loki 3100:3100` → `http://localhost:3100`/ready → `ready` | JSON structured logs from every service (§20.3) | Grafana Loki 3.5.2 |
 | **Tempo** | — | `kubectl port-forward svc/tempo 3200:3200` → `http://localhost:3200`/status | Distributed traces: one `rube-goldberg.run` root span per run with children `orchestrator.create-run`, `soap.plan-phrase`, `kafka.produce/consume`, `geometry.expand`, `grpc.render-glyph`, `image.compose`, `ocr.*`, `adjudicate.symbol`, `assemble.phrase` (§20.1) | Grafana Tempo 2.4.0 (minimal local backend `/tmp/tempo/blocks`) |
@@ -228,6 +228,45 @@ All UIs are namespace `rube-goldberg`. The stack includes 4 Grafana dashboards (
 | **MinIO Console** | `http://minio.rghw.localhost/` | `kubectl port-forward svc/minio 9000:9000` (API) / 9001 (console if enabled) → `http://localhost:9000` | Bucket `rube-goldberg-artifacts`, artifact MinIO keys, SHA-256 verification | MinIO |
 | **PostgreSQL** | — | `kubectl port-forward svc/postgresql 5432:5432` → `psql -h localhost -U postgres` | Run projections, expected-codepoint table (restricted to orchestrator role) | PostgreSQL |
 | **Redis** | — | `kubectl port-forward svc/redis-master 6379:6379` → `redis-cli` | Redis Streams `rg:run:{runId}:events` backing SSE | Redis |
+
+#### 6.1.1 Web Shell — auto-select and screenshots
+
+The Web Shell no longer requires manual Run ID entry. On load it:
+
+1. `GET http://localhost:8080/api/v1/runs` (or `GET /api/v1/runs` via ingress) — lists recent runs, newest first
+2. Auto-selects the latest run (also restores `localStorage.rghw:lastRunId`) — shows the React Flow graph immediately
+3. Populates a dropdown of recent runs; the manual text field remains as a fallback
+
+Screenshots (captured via Playwright `chromium` against `http://localhost:3000` and `http://localhost:3001` after `make images && make deploy && rghw run`):
+
+**Web Shell — auto-selected run (PREPROCESSING stage, events streaming):**
+![Web Shell with run](screenshots/web-shell.png)
+*Header shows “Connected”, dropdown `6d8a66c6… — PREPROCESSING — 8/7/2026`, “Viewing: <full runId>”, `Clear`, and manual input. Process Graph shows `Run Planning` through `Phrase Composition` as `completed` (green), `OCR Preprocessing` as `running` (yellow), downstream as `pending`. Telemetry shows `Stage: PREPROCESSING`, `Events received: 1`.*
+
+**Web Shell — same view (full page):**
+![Web Shell full](screenshots/web-shell-with-run.png)
+
+**Artifact Inspector — landing (no runId yet):**
+![Artifact Inspector landing](screenshots/artifact-inspector-landing.png)
+*GET `/` and `/inspector` now render a form: “Enter runId (e.g. from rghw run output)” → `Open` navigates to `/inspector/runs/{runId}`. This replaces the previous `404 Sinatra doesn’t know this ditty` for `http://localhost:3001`.*
+
+**Artifact Inspector — run view (empty until OCR completes):**
+![Artifact Inspector run](screenshots/artifact-inspector-run.png)
+
+**Grafana — login (provisioned, port-forward 3002:80):**
+![Grafana](screenshots/grafana.png)
+
+**Prometheus — healthy:**
+![Prometheus](screenshots/prometheus.png)
+`curl http://localhost:9090/-/healthy` → `Prometheus Server is Healthy`
+
+**Loki — ready:**
+![Loki](screenshots/loki.png)
+`curl http://localhost:3100/ready` → `ready`
+
+**MinIO — live:**
+![MinIO](screenshots/minio.png)
+`curl http://localhost:9000/minio/health/live` → `200 OK`
 
 ### 6.2 Grafana credentials and dashboards
 

@@ -40,6 +40,40 @@ export function useSseStream(streamUrl: string, reconnectMs = 5000): SseState {
         }
       };
 
+      source.onmessage = (ev) => {
+        if (cancelled) return;
+        try {
+          const data = JSON.parse((ev as MessageEvent).data) as any;
+          if (data && typeof data.status === 'string') {
+            setState((prev) => ({
+              ...prev,
+              summary: {
+                status: data.status as RunSummary['status'],
+                currentStage: data.status,
+                percentage: data.percentage ?? prev.summary?.percentage ?? 0,
+                attempt: data.attempt ?? prev.summary?.attempt ?? 0,
+                startedAt: prev.summary?.startedAt ?? Date.now(),
+                lastEventSequence: prev.summary?.lastEventSequence ?? 0,
+                terminal: data.status === 'SUCCEEDED' || data.status === 'FAILED' || data.status === 'CANCELLED',
+              },
+              eventTypeCount: {
+                ...prev.eventTypeCount,
+                message: (prev.eventTypeCount.message ?? 0) + 1,
+              },
+              eventId: (ev as MessageEvent).lastEventId || prev.eventId,
+            }));
+          } else if (data) {
+            setState((prev) => ({
+              ...prev,
+              eventTypeCount: {
+                ...prev.eventTypeCount,
+                message: (prev.eventTypeCount.message ?? 0) + 1,
+              },
+            }));
+          }
+        } catch {}
+      };
+
       source.addEventListener('snapshot', (ev) => {
         if (cancelled) return;
         const data = JSON.parse((ev as MessageEvent).data) as RunSummary;
