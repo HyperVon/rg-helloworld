@@ -19,6 +19,8 @@ Kafka, Redis Streams, PostgreSQL, MinIO, Kubernetes (k3d/k3s), and a complete
 local observability stack (OpenTelemetry Collector, Prometheus, Loki, Tempo,
 Grafana).
 
+Works on **macOS** (Intel & Apple Silicon + Colima), **Linux** (Docker CE), and **Windows 10/11** (Docker Desktop + WSL2/Git Bash — `.\rghw.bat` delegates to `bash rghw.sh`). See [docs/runbook.md §2](docs/runbook.md#2-system-requirements--os-support) for RAM/disk/CPU and per-OS setup.
+
 The final phrase is *derived*, not printed from memory:
 
 ```text
@@ -50,6 +52,17 @@ See [docs/implementation-status.md](docs/implementation-status.md) for the
 authoritative status and [docs/architecture.md](docs/architecture.md) for the
 full architecture.
 
+## System requirements
+
+| Resource | Recommended | Minimum (low-memory) |
+| --- | --- | --- |
+| **RAM** | 16 GiB host (8 GiB to Colima/Docker) | 8 GiB host, 4 GiB to Colima (`colima start --memory 4`) — expect slower OCR |
+| **CPU** | 4 vCPU (`--cpu 4`) | 2 vCPU |
+| **Disk free** | **40 GiB** before `make images` | 20 GiB if you `docker system prune` after |
+| **OS** | macOS 13+ (Intel/M1-M3), Linux Ubuntu 22.04+, Windows 10/11 + WSL2/Git Bash | — |
+
+Repo `3.6GB` (`du -sh .`), built images `~21GB` virtual (`docker system df` 2026-08-08: `57` images, Local Volumes `17.66GB`). Full-stack working set `5–8 GiB` per `docs/architecture.md §21.5` (Kafka `512Mi→1Gi`, 12 app `32→384Mi` each). Detail: [runbook §2.1](docs/runbook.md#21-hardware--what-you-need-on-one-laptop) (`kubectl top` idle `~1.8 GiB`).
+
 ## Quick start
 
 ```bash
@@ -68,19 +81,30 @@ make diagnostics     # collect stack diagnostics
 All implemented gates (`format`, `lint`, `unit`, `coverage`, `build`,
 `integration`, `e2e`) must pass before a milestone is considered complete.
 
+Windows (PowerShell):
+
+```powershell
+choco install docker-desktop k3d kubernetes-cli terraform golang  # or winget
+git clone https://github.com/HyperVon/rg-helloworld && cd rg-helloworld
+.\rghw.bat --help          # delegates to bash rghw.sh if Git Bash is found
+bash rghw.sh --help        # preferred in Git Bash / WSL2
+```
+
 > **User Guide (how to use every UI and app):** [docs/user-guide.md](docs/user-guide.md) — plain-English walkthrough of Web Shell, Artifact Inspector, Grafana/Prometheus/Loki/Tempo, MinIO, the CLI, and service `--once` modes.
 >
 > **Runbook (bring-up/operations):** [docs/runbook.md](docs/runbook.md) — `make cluster` / `make images` / `make infra` / `make wait` / `rghw run`, ingress vs port-forward, and every web UI.
 
 ### Running the demo
 
-The simplest way — one script starts everything, runs the pipeline, and prints every URL:
+The simplest way — one script starts everything, runs the pipeline, and prints every URL. Works on Mac, Linux, and Windows (Git Bash/WSL):
 
 ```bash
 ./rghw.sh              # Linux / macOS: full bring-up + HELLO WORLD + URL table
-.\rghw.bat            # Windows: same (delegates to bash if available)
+.\rghw.bat             # Windows: same — delegates to bash rghw.sh when Git Bash/WSL is found
 ./rghw.sh --dry-run    # show what would be done and all web URLs
 ./rghw.sh --skip-images --skip-infra --open  # fast restart + open browser
+./rghw.sh --quiet      # HELLO WORLD only on stdout (stderr suppressed)
+./rghw.sh --fresh --quiet  # clean previous runs (Redis+MinIO, keeps Kafka), then HELLO WORLD
 ```
 
 Or step-by-step:

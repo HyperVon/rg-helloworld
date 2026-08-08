@@ -17,26 +17,70 @@ CLI (Go rghw) -> Orchestrator (Kotlin) -> Glyph Catalog (Java/SOAP)
 
 Every primary artifact increases maturity `0 -> 10 -> ... -> 100`. All large payloads live in MinIO, Kafka carries only references. The stack runs in Kubernetes namespace `rube-goldberg` on a k3d cluster `rube-goldberg` with a local registry at `localhost:5001`.
 
-## 2. Prerequisites
+## 2. System requirements & OS support
 
-Install these before the first run. `make prerequisites` checks each and installs language-level deps.
+### 2.1 Hardware — what you need on one laptop
+
+The stack is 25 pods (19 app + 6 platform) plus a 3-node Kafka KRaft ring — all on one k3d node. Budgets are from `docs/architecture.md §21.5` and live measurements (`kubectl top` on 2026-08-08, idle).
+
+| Resource | Recommended | Minimum (low-memory profile) | Measured idle / build |
+| --- | --- | --- | --- |
+| **RAM** | 16 GiB (8 GiB to `colima`/`k3d`) | 8 GiB host, 4 GiB to `colima` (`--memory 4`) | `~1.8 GiB` pods idle |
+| **CPU** | 4 vCPU (`--cpu 4`) | 2 vCPU — slower, OCR may retry | 25 pods, ~200m idle, ~400m burst |
+| **Disk — free before first `make images`** | **40 GiB** | 20 GiB free if you `docker system prune -a` after | `docker system df` 2026-08-08: Images `21.42GB` (57 images, `9.27GB` reclaimable), Local Volumes `17.66GB`, repo `3.6GB` |
+| **Disk — k3d/Colima volume** | `--disk 40` (macOS) / 40 GiB Docker Desktop (Windows) | `--disk 20` — will hit `DiskPressure` faster | `infra/k3d/cluster.yaml` is 1 server, 0 agents — no HA |
+
+Target full-stack working set: **`5–8 GiB`** per architecture §21.5 (Kafka `512Mi→1Gi`, Postgres `256→512Mi`, Redis `64→192Mi`, MinIO `128→384Mi`, Prometheus `256→512Mi`, Loki `128→384Mi`, Tempo `128→384Mi`, Grafana `128→256Mi`, OTel `64→256Mi`, JVM `128→384Mi` each, Go/Rust `32→64Mi→192Mi`, OCR `256→768Mi`, Python `128→512Mi`, .NET `128→384Mi`). Retention intentionally small, 1 replica each.
+
+For 4 GiB laptops:
+
+```bash
+colima start --cpu 2 --memory 4 --disk 20   # or Docker Desktop → Settings → Resources → 4 GiB
+make demo PROFILE=low-memory
+# or manually
+bash scripts/low-memory-profile.sh  # patches deployments to 256Mi limits, fewer workers
+kubectl rollout restart deployment -n rube-goldberg --all
+make wait
+```
+
+Expect slower OCR and occasional `OOMKilled` — raise that service's limit in `infra/k8s/...` if seen. See §4.3 and `scripts/low-memory-profile.sh`.
+
+### 2.2 OS support — Mac, Linux, Windows
+
+| OS | Primary path (recommended) | Fallback | Notes |
+| --- | --- | --- | --- |
+| **macOS 13+** (Intel & Apple Silicon M1-M3) | `./rghw.sh` + Colima | Docker Desktop for Mac | `colima start --cpu 4 --memory 8 --disk 40` before `make cluster`; Homebrew provides `k3d`, `kubectl`, `helm`, `terraform`, `go`, `librdkafka` (`brew install k3d kubectl helm terraform go librdkafka`) |
+| **Linux** (Ubuntu 22.04+, Fedora 40+) | `./rghw.sh` | — | Docker CE + `k3d` install script; `sudo apt install k3d kubectl helm terraform golang librdkafka-dev` (see `versions.env` pins) |
+| **Windows 10/11** | `.\rghw.bat` → **Git Bash** → `bash rghw.sh` | `.\rghw.bat` native (`cmd.exe` + `make` via `choco install make golang` or WSL2) | **Requires** Docker Desktop + WSL2 backend, `k3d`/`kubectl`/`helm`/`terraform` Windows binaries on `PATH`, Git Bash (comes with Git for Windows) or WSL2 Ubuntu. The bat delegates to `bash rghw.sh %*` when `bash` is found, so `--quiet`, `--fresh`, `--skip-images`, `--timeout`, `--api-url` all work identically on Windows. Without Git Bash, the bat uses `make` directly (`make cluster` etc.) and `start /B kubectl port-forward`. |
+
+Common Windows gotchas:
+
+* **Make not found** — install via `choco install make` or use WSL2 (`wsl make cluster`). Prefer Git Bash where `make` from `choco` is on `PATH`.
+* **`lsof` missing** — optional; `rghw.sh` checks `command -v lsof` before killing stale forwards, so Windows without `lsof` just skips that step.
+* **Line endings** — repo is `LF` (`core.autocrlf=false` recommended: `git config --global core.autocrlf input` on Windows).
+* **Host file for ingress** — `C:\Windows\System32\drivers\etc\hosts` needs `127.0.0.1 rghw.localhost grafana.rghw.localhost minio.rghw.localhost` only if you use ingress; port-forward mode needs no edit.
+* **CRLF scripts** — `scripts/prerequisites.sh` and `rghw.sh` are `LF` with `#!/usr/bin/env bash`; run them from Git Bash/WSL, not double-click in Explorer.
+
+### 2.3 Toolchains — pinned versions
+
+Install these before the first run. `make prerequisites` checks each and installs language-level deps. All versions are pinned in `versions.env` (no floating `latest`).
 
 | Tool | Version | Purpose |
 | --- | --- | --- |
-| Docker runtime | Colima (macOS) or Docker Desktop (Linux/Win) | containers + k3d |
-| k3d | >=5.7 | local k3s cluster (`infra/k3d/cluster.yaml`) |
-| kubectl | >=1.30 | cluster control |
-| helm | >=3.12 | chart rendering (via Terraform) |
-| terraform | >=1.15.8 | infra provisioning (`infra/terraform/environments/local`) |
-| Go | 1.26+ | `cmd/rghw`, `services/vector-normalizer-go` |
-| Rust | 1.97+ (`rust-toolchain.toml`) | `services/phrase-assembler-rust` |
-| Node.js | 20+ / 24 LTS (`.nvmrc`) | `services/ocr-worker-node`, `services/event-gateway-node`, `services/telemetry-element` |
-| Python | 3.11+ | `services/image-pipeline-python` |
-| Ruby | 3.4+ (`.ruby-version`) | `services/adjudicator-ruby`, `services/artifact-inspector-ruby` |
-| Java | 21 | `services/glyph-catalog-java` (Maven/Spring) |
-| .NET | 10 (`global.json`) | `services/rasterizer-dotnet` |
-| Kotlin/JVM | JDK 21 + Gradle wrapper | `services/run-orchestrator-kotlin` |
-| C++ | clang + cmake + librdkafka | `services/geometry-engine-cpp` |
+| Docker runtime | Colima `0.10.3` (macOS) or Docker Desktop `29.7+` (Linux/Win) | containers + k3d |
+| k3d | `5.9.0` | local k3s cluster (`infra/k3d/cluster.yaml`) |
+| kubectl | `1.36.3` | cluster control |
+| helm | `4.2.3` | chart rendering (via Terraform) |
+| terraform | `1.15.8` | infra provisioning (`infra/terraform/environments/local`) |
+| Go | `1.26.5` | `cmd/rghw`, `services/vector-normalizer-go` |
+| Rust | `1.97.1` (`rust-toolchain.toml`) | `services/phrase-assembler-rust` |
+| Node.js | `26.6.0` / `24 LTS` (`.nvmrc`) | `services/ocr-worker-node`, `services/event-gateway-node`, `services/telemetry-element` |
+| Python | `3.14.6` | `services/image-pipeline-python` |
+| Ruby | `4.0.6` (`.ruby-version`) | `services/adjudicator-ruby`, `services/artifact-inspector-ruby` |
+| Java | `25` | `services/glyph-catalog-java` (Maven `3.9.16`/Spring) |
+| .NET | `10.0.302` (`global.json`) | `services/rasterizer-dotnet` |
+| Kotlin/JVM | JDK `21` + Gradle `9.6.1` wrapper | `services/run-orchestrator-kotlin` |
+| C++ | `clang-format 22.1.8` + `cmake 4.4.2` + `librdkafka 2.15.0` / `2.3.0-1build2` Ubuntu | `services/geometry-engine-cpp` |
 
 ```bash
 make prerequisites   # toolchain check + npm ci / bundle install / venv
@@ -44,11 +88,15 @@ make prerequisites   # toolchain check + npm ci / bundle install / venv
 
 Missing toolchains are skipped with a warning; `STRICT=1` makes them hard failures (CI always runs `STRICT=1`). Run `make format` before `make lint`; both must pass per `AGENTS.md`.
 
-Colima sizing (macOS) — the full stack wants 6-8 GiB working set (§21.5). Start with:
+Windows install hints:
 
-```bash
-colima start --cpu 4 --memory 8 --disk 40
-# low-memory profile still needs 4 GiB + 20 GiB disk
+```powershell
+# via Chocolatey (PowerShell Admin)
+choco install docker-desktop k3d kubernetes-cli kubernetes-helm terraform golang nodejs python ruby openjdk dotnet-sdk
+# or via winget
+winget install Docker.DockerDesktop k3d K3d Kubernetes.kubectl Helm.Helm Hashicorp.Terraform Go.Go OpenJS.NodeJS
+# then Git Bash
+git clone https://github.com/HyperVon/rg-helloworld.git && cd rg-helloworld && bash rghw.sh --help
 ```
 
 ## 3. Host names and ingress

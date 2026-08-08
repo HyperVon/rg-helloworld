@@ -48,7 +48,7 @@ Options:
   --dry-run         Print plan and URLs without executing
   --api-url URL     Override orchestrator URL (default: http://localhost:8080)
   --quiet, --silent Only print HELLO WORLD to stdout (suppress progress/URL table)
-  --fresh           Clean existing rube-goldberg state before bring-up (kill forwards + delete namespace)
+  --fresh           Clean previous runs' Redis/MinIO state before bring-up (preserves Kafka/Postgres; full wipe is make destroy)
 
 What it does:
   1. make prerequisites (if needed) / checks colima on macOS
@@ -161,15 +161,54 @@ if [[ $DRY_RUN -eq 1 ]]; then
 fi
 
 if [[ $FRESH -eq 1 ]]; then
-  say "Fresh mode -- cleaning existing rube-goldberg state..."
-  pkill -f "kubectl port-forward -n $NAMESPACE" 2>/dev/null || true
+  say "Fresh mode -- cleaning previous runs (Redis + MinIO, preserving Kafka/Postgres)..."
+  # Kill any stale port-forwards on the 9 app ports so the new pf() calls bind.
+  # Windows/Git Bash may lack pkill/lsof; guard both.
+  if command -v pkill >/dev/null 2>&1; then
+    pkill -f "kubectl port-forward -n $NAMESPACE" 2>/dev/null || true
+  fi
   if command -v lsof >/dev/null 2>&1; then
     lsof -ti tcp:3000,3001,8080,8081,3002,9090,3100,3200,9000 2>/dev/null | xargs kill -9 2>/dev/null || true
+  elif command -v netstat >/dev/null 2>&1; then
+    # Windows fallback (Git Bash): netstat parsing omitted; pkill above already handled kubectl forwards
+    :
   fi
+  # Fresh = lightweight clean: flush Redis and MinIO only. Never delete the
+  # namespace here — that wipes Kafka PVCs / __consumer_offsets and forces a
+  # rebalance that drops glyph events (see run 8792bae1/22a632a6 stall). Full
+  # infra wipe is `make destroy && make infra`.
+  fresh_clean() {
+    local redis_ok=0 minio_ok=0
+    if kubectl get pods -n "$NAMESPACE" -l app.kubernetes.io/name=redis 2>/dev/null | grep -q redis || \
+       kubectl get pods -n "$NAMESPACE" 2>/dev/null | grep -q "redis-master"; then
+      # FLUSHALL is disabled in Bitnami Redis; use DEL via EVAL with password from secret.
+      local redis_pwd
+      redis_pwd="$(kubectl get secret -n "$NAMESPACE" redis-credentials -o jsonpath='{.data.redis-password}' 2>/dev/null | base64 -d 2>/dev/null || echo 'RedisPassw0rd!')"
+      if kubectl exec -n "$NAMESPACE" redis-master-0 -- redis-cli -a "$redis_pwd" EVAL "for i,k in ipairs(redis.call('keys','*')) do redis.call('del',k) end return 'ok'" 0 2>/dev/null | grep -q ok; then
+        redis_ok=1
+      elif kubectl exec -n "$NAMESPACE" deploy/redis-master -- redis-cli -a "$redis_pwd" EVAL "for i,k in ipairs(redis.call('keys','*')) do redis.call('del',k) end return 'ok'" 0 2>/dev/null | grep -q ok; then
+        redis_ok=1
+      fi
+    fi
+    # MinIO: delete bucket contents, keep bucket. Try mc inside minio pod first.
+    if kubectl get pods -n "$NAMESPACE" 2>/dev/null | grep -q minio; then
+      if kubectl exec -n "$NAMESPACE" deploy/minio -- sh -c 'mc alias set local http://127.0.0.1:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null 2>&1 && mc rm --recursive --force local/rube-goldberg-artifacts/ 2>/dev/null; echo ok' 2>/dev/null | grep -q ok; then
+        minio_ok=1
+      else
+        # Fallback: Python minio client via a one-off job image (already in cluster)
+        kubectl run --rm -i --restart=Never -n "$NAMESPACE" rghw-fresh-mc --image=minio/mc:latest -- sh -c 'mc alias set m http://minio.rube-goldberg.svc.cluster.local:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" && mc rm --recursive --force m/rube-goldberg-artifacts/ 2>/dev/null; echo ok' 2>/dev/null | grep -q ok && minio_ok=1 || true
+      fi
+    fi
+    # No restart needed: pending maps are per-runId, so old runIds don't affect new runs.
+    # Restarting image-pipeline/orchestrator forces a Kafka rebalance that drops
+    # events for the next run (see d6e1c09b NORMALIZING stall).
+    if [[ $redis_ok -eq 1 ]]; then say "  fresh: Redis cleaned (EVAL del)"; else warn "fresh: Redis flush skipped (no pod)"; fi
+    if [[ $minio_ok -eq 1 ]]; then say "  fresh: MinIO bucket cleaned"; else warn "fresh: MinIO clean skipped (no mc)"; fi
+  }
   if [[ $QUIET -eq 1 ]]; then
-    kubectl delete namespace "$NAMESPACE" --ignore-not-found --wait --timeout=60s >/tmp/rghw-fresh.log 2>&1 || true
+    fresh_clean >/tmp/rghw-fresh.log 2>&1 || true
   else
-    kubectl delete namespace "$NAMESPACE" --ignore-not-found --wait --timeout=60s 2>&1 | sed 's/^/[fresh] /' >&2 || true
+    fresh_clean 2>&1 | sed 's/^/[fresh] /' >&2 || true
   fi
 fi
 

@@ -8,7 +8,11 @@ REM   rghw.bat              -- full bring-up + run
 REM   rghw.bat --help       -- this help
 REM   rghw.bat --skip-images-- reuse images
 REM   rghw.bat --skip-infra -- skip terraform
+REM   rghw.bat --quiet/--silent -- HELLO WORLD only on stdout
+REM   rghw.bat --fresh      -- clean previous runs (Redis+MinIO) before bring-up
 REM   rghw.bat --dry-run    -- print plan
+REM   rghw.bat --timeout 3m -- rghw run timeout
+REM   rghw.bat --api-url http://localhost:8080 -- override orchestrator URL
 REM
 REM Web UIs (after port-forwards):
 REM   Web Shell:          http://rghw.localhost/          -> http://localhost:3000
@@ -93,10 +97,24 @@ echo ================================================================
 echo.
 
 echo [rghw] Running rghw...
+REM Honor --quiet/--silent and --fresh even in native fallback (Git Bash path already handles it via delegation)
+set RGHW_QUIET=
+set RGHW_FRESH=
+for %%A in (%*) do (
+  if "%%~A"=="--quiet" set RGHW_QUIET=--quiet
+  if "%%~A"=="--silent" set RGHW_QUIET=--quiet
+  if "%%~A"=="--fresh" set RGHW_FRESH=1
+)
+if defined RGHW_FRESH (
+  echo [rghw] Fresh mode -- lightweight clean (Redis + MinIO, preserving Kafka). Full wipe: make destroy
+  kubectl exec -n rube-goldberg redis-master-0 -- redis-cli -a RedisPassw0rd! EVAL "for i,k in ipairs(redis.call('keys','*')) do redis.call('del',k) end return 'ok'" 0 2>nul | findstr ok >nul && echo [rghw] fresh: Redis cleaned || kubectl exec -n rube-goldberg deploy/redis-master -- redis-cli -a RedisPassw0rd! EVAL "for i,k in ipairs(redis.call('keys','*')) do redis.call('del',k) end return 'ok'" 0 2>nul | findstr ok >nul && echo [rghw] fresh: Redis cleaned || echo [warn] fresh: Redis flush skipped
+  kubectl exec -n rube-goldberg deploy/minio -- sh -c "mc alias set local http://127.0.0.1:9000 %MINIO_ROOT_USER% %MINIO_ROOT_PASSWORD% >nul 2>&1 && mc rm --recursive --force local/rube-goldberg-artifacts/ 2>nul && echo ok" 2>nul | findstr ok >nul && echo [rghw] fresh: MinIO cleaned || echo [warn] fresh: MinIO clean skipped
+  REM No restart: per-runId state, restart forces Kafka rebalance and drops next run's events
+)
 if exist cmd\rghw\rghw.exe (
-  cmd\rghw\rghw.exe run --api-url http://localhost:8080 --timeout 3m
+  cmd\rghw\rghw.exe run --api-url http://localhost:8080 --timeout 3m %RGHW_QUIET%
 ) else (
-  go run ./cmd/rghw run --api-url http://localhost:8080 --timeout 3m || make run
+  go run ./cmd/rghw run --api-url http://localhost:8080 --timeout 3m %RGHW_QUIET% || make run
 )
 echo [rghw] Done. Web UIs remain at http://localhost:3000 etc.
 echo [rghw] Stop forwards: taskkill /F /IM kubectl.exe
@@ -106,11 +124,13 @@ goto :eof
 echo [rghw] Dry run -- would execute:
 echo   make prerequisites
 echo   make cluster
-echo   make images
-echo   make infra
+echo   make images   (unless --skip-images)
+echo   make infra    (unless --skip-infra)
 echo   make wait
-echo   kubectl port-forward x9 (see rghw.sh --help for full list)
-echo   rghw run --api-url http://localhost:8080 --timeout 3m
+echo   kubectl port-forward x9 (web-shell 3000:80, event-gateway 8081:80, ...)
+echo   rghw run --api-url http://localhost:8080 --timeout 3m [--quiet if --quiet] [--fresh cleans Redis+MinIO]
+echo.
+echo Note: With Git Bash, dry-run delegates to bash rghw.sh --dry-run [--quiet] [--fresh] for exact output.
 echo.
 echo   Web Shell: http://localhost:3000, Grafana: http://localhost:3002, Prometheus: http://localhost:9090
 goto :eof
@@ -119,7 +139,16 @@ goto :eof
 echo rghw.bat -- one-command demo for Rube Goldberg Hello World (Windows)
 echo.
 echo Usage: rghw.bat [options]
-echo   --help, --dry-run, --skip-images, --skip-infra
-echo   See rghw.sh --help for full docs and URL table
-echo   Prefer Git Bash:  bash rghw.sh
+echo   --help, -h            Show this help
+echo   --skip-images       Skip make images
+echo   --skip-infra        Skip terraform apply
+echo   --quiet, --silent   Only print HELLO WORLD to stdout
+echo   --fresh             Clean previous runs (Redis+MinIO, keeps Kafka)
+echo   --timeout D         rghw run timeout (default 3m)
+echo   --api-url URL       Orchestrator URL (default http://localhost:8080)
+echo   --dry-run           Print plan without executing
+echo   --open              Open browser tabs after run
+echo.
+echo See rghw.sh --help for full docs and URL table
+echo Prefer Git Bash:  bash rghw.sh --quiet
 goto :eof

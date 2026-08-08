@@ -45,6 +45,15 @@ async def run_worker() -> None:
             await _compose_and_publish(run_id, glyphs, minio, producer)
 
     def on_rasterized(run_id: str) -> None:
+        # Flush immediately when we have the full phrase (10 rasterized + 1 GAP = 11).
+        # This makes the pipeline robust to the 2s timer being lost during a
+        # Kafka rebalance (which broke fresh runs after a namespace delete).
+        if len(pending[run_id]) >= 11:
+            if run_id in timers:
+                timers[run_id].cancel()
+                timers.pop(run_id, None)
+            asyncio.create_task(flush_run(run_id))
+            return
         if run_id in timers:
             timers[run_id].cancel()
         timers[run_id] = asyncio.get_running_loop().create_task(

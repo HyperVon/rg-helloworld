@@ -23,12 +23,18 @@ If any stage shows `HE!|OMOBID` or similar in logs, it is a real OCR/adjudicatio
 
 ## 2. Quick start — one command
 
+Works on **macOS** (Intel & Apple Silicon + Colima), **Linux**, and **Windows 10/11** (Docker Desktop + WSL2/Git Bash). All flags work on all OS — `.\rghw.bat` delegates to `bash rghw.sh` when Git Bash is found, so `--quiet`/`--fresh` are identical everywhere. See [runbook §2](runbook.md#2-system-requirements--os-support) for RAM/disk/CPU.
+
 ```bash
 ./rghw.sh              # Linux/macOS: cluster → images → infra → deploy → wait → HELLO WORLD + URL table
-.\rghw.bat             # Windows (delegates to bash if available)
+.\rghw.bat             # Windows: same flags — delegates to bash rghw.sh when available
 ./rghw.sh --dry-run    # preview without executing
 ./rghw.sh --skip-images --skip-infra --open  # fast restart, open browser
+./rghw.sh --quiet      # HELLO WORLD only on stdout
+./rghw.sh --fresh --quiet  # clean previous runs (Redis+MinIO, preserves Kafka), then HELLO WORLD
 ```
+
+Windows notes: use **Git Bash** or **WSL2** (`bash rghw.sh --quiet`) as primary; native `cmd.exe` fallback via `.\rghw.bat` also handles `--quiet`/`--fresh`/`--skip-images`/`--timeout`/`--api-url`. Requires Docker Desktop + WSL2, `k3d`/`kubectl`/`helm`/`terraform` on `PATH`, and `make` (`choco install make`). Port-forward mode needs no `/etc/hosts`; ingress needs `C:\Windows\System32\drivers\etc\hosts` entries only if you use `rghw.localhost`.
 
 On success you see:
 
