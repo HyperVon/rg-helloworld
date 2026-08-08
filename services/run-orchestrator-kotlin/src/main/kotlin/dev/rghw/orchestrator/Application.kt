@@ -343,8 +343,8 @@ fun runServer(
 ): Int {
     System.setOut(stdout)
     System.setErr(stderr)
-    Services.initKafka()
-    Services.initRedis()
+    retryWithBackoff(attempts = 30, delayMs = 2000, name = "kafka") { Services.initKafka() }
+    retryWithBackoff(attempts = 30, delayMs = 2000, name = "redis") { Services.initRedis() }
     Services.initStageMonitor()
     Services.planner = GlyphCatalogClient(Services.glyphCatalogUrl())
 
@@ -352,6 +352,22 @@ fun runServer(
 
     buildServer(Services.port()).start(wait = true)
     return 0
+}
+
+private fun retryWithBackoff(attempts: Int, delayMs: Long, name: String, block: () -> Unit) {
+    var lastError: Exception? = null
+    repeat(attempts) { attempt ->
+        try {
+            block()
+            if (attempt > 0) System.err.println("[$name] connected on attempt ${attempt + 1}")
+            return
+        } catch (e: Exception) {
+            lastError = e
+            System.err.println("[$name] connect attempt ${attempt + 1}/$attempts failed: ${e.message} — retrying in ${delayMs}ms")
+            try { Thread.sleep(delayMs) } catch (_: InterruptedException) { Thread.currentThread().interrupt(); throw e }
+        }
+    }
+    throw lastError ?: IllegalStateException("[$name] failed after $attempts attempts")
 }
 
 fun startStageConsumer() {

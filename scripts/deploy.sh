@@ -81,12 +81,23 @@ wait_for_app_ready() {
 
 echo "=== Deploying Rube Goldberg services ==="
 
-# Milestone 5 base (orchestrator + catalog + geometry + vector)
+# DiskPressure pre-flight: reclaim host docker layers + remove Failed/Evicted pods before scheduling
+if kubectl describe node k3d-rube-goldberg-server-0 2>/dev/null | grep -q "DiskPressure.*True"; then
+    echo "DiskPressure detected — reclaiming host storage and clearing Failed pods..."
+    docker image prune -af --filter "until=24h" 2>&1 | tail -n 5 || true
+    kubectl delete pod -n "$NAMESPACE" --field-selector=status.phase=Failed 2>&1 | tail -n 5 || true
+    # Evicted pods have status.phase=Failed but some stay Pending; delete by reason as well
+    for p in $(kubectl get pods -n "$NAMESPACE" 2>&1 | awk '/Evicted/{print $1}'); do kubectl delete pod -n "$NAMESPACE" "$p" 2>&1 | tail -n 1 || true; done
+    echo "If DiskPressure persists, run: docker restart k3d-rube-goldberg-server-0 && sleep 30 && kubectl wait --for=condition=Ready node k3d-rube-goldberg-server-0 --timeout=60s"
+fi
+
+# Milestone 5 base (catalog + geometry only — orchestrator/vector are milestone6; milestone5 tags are aliased in build-images.sh)
 echo "Applying Milestone 5 manifests"
-retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone5/orchestrator.yaml"
 retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone5/glyph-catalog.yaml"
 retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone5/geometry-engine.yaml"
-retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone5/vector-normalizer.yaml"
+# Keep milestone5 orchestrator/vector as best-effort fallback for old clusters; milestone6 will overlay
+retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone5/orchestrator.yaml" 2>&1 | grep -v "not found" || true
+retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone5/vector-normalizer.yaml" 2>&1 | grep -v "not found" || true
 
 # Milestone 6 overlays (updated orchestrator/vector + rasterizer)
 echo "Applying Milestone 6 manifests"

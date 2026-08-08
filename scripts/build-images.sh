@@ -25,7 +25,12 @@ build_and_push glyph-catalog services/glyph-catalog-java/Dockerfile milestone5
 build_and_push geometry-engine services/geometry-engine-cpp/Dockerfile milestone5
  
 build_and_push run-orchestrator services/run-orchestrator-kotlin/Dockerfile milestone6
+# Alias milestone5 tag for backward-compat: deploy.sh/smoke-test.sh apply milestone5 manifests before overlaying milestone6
+docker tag "${REGISTRY}/run-orchestrator:milestone6" "${REGISTRY}/run-orchestrator:milestone5"
+docker push "${REGISTRY}/run-orchestrator:milestone5"
 build_and_push vector-normalizer services/vector-normalizer-go/Dockerfile milestone6
+docker tag "${REGISTRY}/vector-normalizer:milestone6" "${REGISTRY}/vector-normalizer:milestone5"
+docker push "${REGISTRY}/vector-normalizer:milestone5"
 build_and_push rasterizer services/rasterizer-dotnet/Dockerfile milestone6
 build_and_push image-pipeline services/image-pipeline-python/Dockerfile milestone7 services/image-pipeline-python
 build_and_push ocr-worker services/ocr-worker-node/Dockerfile milestone8 services/ocr-worker-node
