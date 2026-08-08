@@ -32,24 +32,24 @@ module Adjudicator
           agreement = full_candidate && full_candidate['text'] == crop_candidate
           accepted = [full_conf, crop_conf].max.to_f
 
-          if (agreement && (full_conf > MIN_CONFIDENCE || crop_conf > MIN_CONFIDENCE)) ||
-             (crop_conf >= HIGH_CONFIDENCE)
-            results << build_accepted(position, crop_candidate, crop_conf, full_candidate,
+          results << if (agreement && (full_conf > MIN_CONFIDENCE || crop_conf > MIN_CONFIDENCE)) ||
+                        (crop_conf >= HIGH_CONFIDENCE)
+                       build_accepted(position, crop_candidate, crop_conf, full_candidate,
                                       crop_candidate, !agreement.nil?, layout_entry)
-          else
-            results << {
-              position: position,
-              tokenType: 'SYMBOL',
-              utf8: crop_candidate,
-              confidence: accepted,
-              evidence: {
-                fullPhraseCandidate: full_candidate ? full_candidate['text'] : nil,
-                cropCandidate: crop_candidate,
-                agreement: !agreement.nil?
-              },
-              qualityRetry: true
-            }
-          end
+                     else
+                       {
+                         position: position,
+                         tokenType: 'SYMBOL',
+                         utf8: crop_candidate,
+                         confidence: accepted,
+                         evidence: {
+                           fullPhraseCandidate: full_candidate ? full_candidate['text'] : nil,
+                           cropCandidate: crop_candidate,
+                           agreement: !agreement.nil?
+                         },
+                         qualityRetry: true
+                       }
+                     end
         end
         results
       end

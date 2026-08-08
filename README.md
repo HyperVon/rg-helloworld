@@ -65,6 +65,22 @@ make diagnostics     # collect stack diagnostics
 All implemented gates (`format`, `lint`, `unit`, `coverage`, `build`,
 `integration`, `e2e`) must pass before a milestone is considered complete.
 
+> **To start the full stack and view web UIs:** see [docs/runbook.md](docs/runbook.md) — it covers `make cluster` / `make images` / `make infra` / `make wait` / `rghw run`, ingress vs port-forward, and every web UI (Web Shell React Flow, Artifact Inspector HTMX, Event Gateway SSE, Grafana/Prometheus/Loki/Tempo, OTel Collector, MinIO).
+
+### Running the demo
+
+```bash
+make cluster && make images && make infra && make wait && make demo
+# then
+rghw run                          # prints HELLO WORLD to stdout
+rghw run --api-url http://localhost:8080 --timeout 90s  # port-forward mode
+kubectl port-forward -n rube-goldberg svc/web-shell 3000:3000 &      # Web Shell → http://localhost:3000
+kubectl port-forward -n rube-goldberg svc/grafana 3002:3000 &        # Grafana  → http://localhost:3002
+kubectl port-forward -n rube-goldberg svc/event-gateway 8081:8080 &  # SSE      → http://localhost:8081
+```
+
+See [docs/runbook.md §6](docs/runbook.md#6-web-uis-and-observability) for the full UI catalog and [docs/runbook.md §3](docs/runbook.md#3-host-names-and-ingress) for `rghw.localhost` vs port-forward.
+
 ## Language ownership
 
 | Language | Responsibility | Skeleton |
