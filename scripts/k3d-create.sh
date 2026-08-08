@@ -18,7 +18,10 @@ fi
 
 # Verify cluster is ready
 echo "Waiting for cluster to be ready..."
-kubectl wait --for=condition=ready pod --all -A --timeout=180s
+# Wait only for Running pods; Completed jobs (artifact-inspector/minio) are never Ready and would cause a timeout
+kubectl wait --for=condition=Ready pod --all -n kube-system --timeout=180s || true
+kubectl wait --for=condition=Ready pod --all -n rube-goldberg --timeout=300s --field-selector=status.phase!=Succeeded || true
+# don't fail on Completed jobs; the final gate is `make wait` which checks rube-goldberg properly
 
 echo "Kubernetes cluster ready:"
 kubectl cluster-info

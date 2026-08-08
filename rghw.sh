@@ -167,7 +167,12 @@ fi
 # 2. Cluster
 say "Ensuring k3d cluster '$NAMESPACE'..."
 if ! make -C "$PROJECT_ROOT" cluster; then
-  die "make cluster failed -- check docker/colima and k3d"
+  warn "make cluster reported timeout (often due to Completed jobs) — checking if cluster is still usable..."
+  if kubectl get nodes 2>/dev/null | grep -q " Ready " && kubectl get pods -n "$NAMESPACE" 2>/dev/null | grep -q "Running"; then
+    warn "Cluster node is Ready and rube-goldberg pods are Running — continuing despite make cluster timeout"
+  else
+    die "make cluster failed and cluster not ready — check docker/colima and k3d"
+  fi
 fi
 
 # 3. Images
