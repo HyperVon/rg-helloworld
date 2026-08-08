@@ -9,6 +9,8 @@ functional purpose is to derive, recognize, assemble, and print:
 HELLO WORLD
 ```
 
+> **This project is intentionally *EXTRA*.** Eleven services, ten languages, Kafka, Kubernetes, and a full observability stack — all to print one line — and the web UI and docs are *supposed* to look like a real product. First impression: “WOW that looks amazing.” Punchline: “Wait, it just does `HELLO WORLD`? WTF LOL.” See [docs/architecture.md#milestone-12-hardening-and-demonstration](docs/architecture.md#milestone-12-hardening-and-demonstration) and the screenshots below.
+
 The acceptance phrase uses uppercase glyphs only: `HELLO WORLD`.
 
 The project runs entirely on one laptop — no cloud account, no paid service, no
@@ -92,6 +94,20 @@ kubectl port-forward -n rube-goldberg svc/event-gateway 8081:8080 &  # SSE      
 ```
 
 See [docs/runbook.md §6](docs/runbook.md#6-web-uis-and-observability) for the full UI catalog and [docs/runbook.md §3](docs/runbook.md#3-host-names-and-ingress) for `rghw.localhost` vs port-forward. The `rghw.sh`/`rghw.bat` scripts automate the port-forwards and print the same table after every run.
+
+## Web UIs — the ridiculous punchline
+
+> **WOW → WTF pipeline.** Eleven services and the full Grafana stack to print one line. Every UI below is captured via Playwright against a live `SUCCEEDED` run (`69bce0a2…`).
+
+| UI | What you see | Screenshot |
+| --- | --- | --- |
+| **Web Shell** (React Flow) | Auto-discovered runs, live SSE graph, success particles | ![Web Shell](docs/screenshots/web-shell.png) |
+| **Artifact Inspector** | HTMX form at `/` → per-run gallery | ![Inspector](docs/screenshots/artifact-inspector-landing.png) |
+| **Grafana** | Login then 4 provisioned dashboards (Overview, Deep Dive, OCR Lab, Ridiculous Infra) | ![Grafana](docs/screenshots/grafana.png) ![Dashboard](docs/screenshots/grafana-dashboard.png) |
+
+Full catalog with 8 screenshots, port-forwards (`svc:80`), and `Last-Event-ID` replay details: **→ [docs/runbook.md §6.1.1](docs/runbook.md#611-web-shell--auto-select-and-screenshots)**.
+
+> The stack is *intentionally extra* — dark gradients, glass cards, and theatrical success animation — so the first impression is “this looks like a real product” and the reveal is “it just prints `HELLO WORLD`.” See `docs/architecture.md` Milestone 12 EXTRA requirement.
 
 ## Language ownership
 
