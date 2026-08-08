@@ -7,6 +7,7 @@ data:
   dashboard-overview.json: |
     {
       "id": null,
+      "uid": "rg-overview",
       "title": "Rube Goldberg Overview",
       "tags": ["rube-goldberg"],
       "version": 1,
@@ -106,6 +107,7 @@ data:
   dashboard-deep-dive.json: |
     {
       "id": null,
+      "uid": "rg-deep-dive",
       "title": "Run Deep Dive",
       "tags": ["rube-goldberg"],
       "version": 1,
@@ -185,6 +187,7 @@ data:
   dashboard-ocr-lab.json: |
     {
       "id": null,
+      "uid": "rg-ocr-lab",
       "title": "OCR Laboratory",
       "tags": ["rube-goldberg"],
       "version": 1,
@@ -217,6 +220,7 @@ data:
   dashboard-infra.json: |
     {
       "id": null,
+      "uid": "rg-infra",
       "title": "Ridiculous Infrastructure",
       "tags": ["rube-goldberg"],
       "version": 1,

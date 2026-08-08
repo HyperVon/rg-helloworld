@@ -38,7 +38,11 @@ spec:
             - name: grafana-dashboards
               mountPath: /var/lib/grafana/dashboards
             - name: grafana-provisioning
-              mountPath: /etc/grafana/provisioning
+              mountPath: /etc/grafana/provisioning/datasources/datasource.yml
+              subPath: datasource.yml
+            - name: grafana-provisioning
+              mountPath: /etc/grafana/provisioning/dashboards/dashboard.yml
+              subPath: dashboard.yml
           readinessProbe:
             httpGet:
               path: /ready

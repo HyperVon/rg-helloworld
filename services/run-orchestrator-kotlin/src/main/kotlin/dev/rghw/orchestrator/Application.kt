@@ -655,7 +655,7 @@ fun isValidUtf8(value: String): Boolean =
     }
 
 suspend fun handleListRuns(call: ApplicationCall) {
-    val list =
+    val fromMemory =
         runs.values
             .sortedByDescending { it.createdAt }
             .map { state ->
@@ -666,8 +666,62 @@ suspend fun handleListRuns(call: ApplicationCall) {
                     message = state.message,
                     links = buildLinks(state.runId),
                 )
+            }.toMutableList()
+
+    // Also include runs that are only in Redis (survive restart) — scan via direct Redis connection
+    try {
+        val redisUrl = Services.redisUrl()
+        val client = RedisClient.create(redisUrl)
+        val conn = client.connect()
+        try {
+            val sync = conn.sync()
+            val keys = sync.keys("run:*:result") ?: emptyList<String>()
+            for (k in keys) {
+                val runId = k.removePrefix("run:").removeSuffix(":result")
+                if (fromMemory.any { it.runId == runId }) continue
+                val status = sync.get("run:$runId") ?: "SUCCEEDED"
+                val createdAt = sync.get("run:$runId:createdAt") ?: Instant.now().toString()
+                val msg = sync.get("run:$runId:message") ?: expectedTexts[runId] ?: "HELLO WORLD"
+                fromMemory.add(
+                    RunListItemResponse(
+                        runId = runId,
+                        status = status,
+                        createdAt = createdAt,
+                        message = msg,
+                        links = buildLinks(runId),
+                    ),
+                )
             }
-    call.respond(RunListResponse(runs = list))
+            // also include plain run:* without :result (for PREPROCESSING etc.)
+            val plainKeys = sync.keys("run:*") ?: emptyList<String>()
+            for (k in plainKeys) {
+                if (k.endsWith(":result") || k.endsWith(":createdAt") || k.endsWith(":message")) continue
+                val runId = k.removePrefix("run:")
+                if (fromMemory.any { it.runId == runId }) continue
+                if (runId.contains(":")) continue
+                val status = sync.get(k) ?: continue
+                if (status == "SUCCEEDED" || status == "FAILED") continue // already via :result path
+                val createdAt = sync.get("run:$runId:createdAt") ?: Instant.now().toString()
+                val msg = sync.get("run:$runId:message") ?: expectedTexts[runId] ?: "HELLO WORLD"
+                fromMemory.add(
+                    RunListItemResponse(
+                        runId = runId,
+                        status = status,
+                        createdAt = createdAt,
+                        message = msg,
+                        links = buildLinks(runId),
+                    ),
+                )
+            }
+        } finally {
+            conn.close()
+            client.shutdown()
+        }
+    } catch (_: Exception) {
+    }
+
+    val sorted = fromMemory.sortedByDescending { it.createdAt }
+    call.respond(RunListResponse(runs = sorted))
 }
 
 suspend fun handleGetRun(call: ApplicationCall) {

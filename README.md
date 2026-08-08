@@ -97,17 +97,45 @@ See [docs/runbook.md §6](docs/runbook.md#6-web-uis-and-observability) for the f
 
 ## Web UIs — the ridiculous punchline
 
-> **WOW → WTF pipeline.** Eleven services and the full Grafana stack to print one line. Every UI below is captured via Playwright against a live `SUCCEEDED` run (`69bce0a2…`).
+> **WOW → WTF pipeline.** Eleven services, ten languages, Kafka on one laptop, and the full Grafana stack — all to print one line. Every screenshot below is captured via Playwright against a live `SUCCEEDED` run (`793bf62a…`) after `./rghw.sh`.
 
-| UI | What you see | Screenshot |
+**Web Shell (React Flow)**
+
+The flagship UI: dark gradient, glass-morphism header, auto-discovered run dropdown, live SSE stage graph (Run Planning → Terminal), success-particle overlay, and telemetry bar. No runId typing — it lists and auto-selects the latest run.
+
+![Web Shell — SUCCEEDED run with live graph](docs/screenshots/web-shell.png)
+
+**Artifact Inspector (HTMX + Ruby/Sinatra)**
+
+Same EXTRA treatment: floating glass card, radial violet → cyan glow, live artifact table per run (`/inspector/runs/{runId}`) with SHA-256 and MinIO-backed previews.
+
+![Artifact Inspector — landing](docs/screenshots/artifact-inspector-landing.png)
+
+![Artifact Inspector — per-run gallery](docs/screenshots/artifact-inspector-run.png)
+
+**Grafana — four provisioned dashboards**
+
+`rg-overview` (Rube Goldberg Overview), `rg-infra` (Ridiculous Infrastructure), `rg-ocr-lab`, `rg-deep-dive` — provisioned via `infra/k8s/milestone11/grafana-dashboards.yaml` with `uid` and `datasource.yml`/`dashboard.yml` mounted as subPaths. All four appear in `http://localhost:3002/dashboards` without manual import.
+
+![Grafana dashboards list](docs/screenshots/grafana-dashboards.png)
+
+![Grafana — Rube Goldberg Overview](docs/screenshots/grafana-overview.png)
+
+Other dashboards (same EXTRA dark theme) include **Ridiculous Infrastructure**, **OCR Laboratory**, and **Run Deep Dive** — see the same `docs/screenshots/grafana-*.png` captures.
+
+**Prometheus & the rest**
+
+| UI | URL (port-forward) | Screenshot |
 | --- | --- | --- |
-| **Web Shell** (React Flow) | Auto-discovered runs, live SSE graph, success particles | ![Web Shell](docs/screenshots/web-shell.png) |
-| **Artifact Inspector** | HTMX form at `/` → per-run gallery | ![Inspector](docs/screenshots/artifact-inspector-landing.png) |
-| **Grafana** | Login then 4 provisioned dashboards (Overview, Deep Dive, OCR Lab, Ridiculous Infra) | ![Grafana](docs/screenshots/grafana.png) ![Dashboard](docs/screenshots/grafana-dashboard.png) |
+| Prometheus Query | `http://localhost:9090/` | ![Prometheus](docs/screenshots/prometheus.png) |
+| Prometheus Targets | `http://localhost:9090/targets` | ![Targets](docs/screenshots/prometheus-targets.png) |
+| MinIO Console | `http://localhost:9001` | ![MinIO](docs/screenshots/minio-console.png) |
+| Orchestrator API | `http://localhost:8080/api/v1/runs` | `curl` above |
+| Grafana (raw) | `http://localhost:3002` login (`admin`/`admin`) → Skip | ![Grafana login](docs/screenshots/grafana.png) |
 
-Full catalog with 8 screenshots, port-forwards (`svc:80`), and `Last-Event-ID` replay details: **→ [docs/runbook.md §6.1.1](docs/runbook.md#611-web-shell--auto-select-and-screenshots)**.
+Full port-forward table (`svc:80` for web-shell, inspector, grafana, event-gateway; 9090, 3100, 3200, 9000/9001 for observability) and SSE replay (`Last-Event-ID`): **→ [docs/runbook.md §6](docs/runbook.md#6-web-uis-and-observability)** and **§6.1.1**.
 
-> The stack is *intentionally extra* — dark gradients, glass cards, and theatrical success animation — so the first impression is “this looks like a real product” and the reveal is “it just prints `HELLO WORLD`.” See `docs/architecture.md` Milestone 12 EXTRA requirement.
+> **Why EXTRA?** The whole joke is the gap. You open `http://localhost:3000` and it looks like a real production control plane — live graph, metrics, traces, dark glass — then you `go -C cmd/rghw run . run` and it prints `HELLO WORLD` in 8 seconds on one laptop. That’s Milestone 12’s requirement: the docs and UIs must provoke “WOW that looks amazing” followed by “Wait, it just does `HELLO WORLD`? WTF LOL.” See `docs/architecture.md` Milestone 12 EXTRA.
 
 ## Language ownership
 
