@@ -70,6 +70,17 @@ All implemented gates (`format`, `lint`, `unit`, `coverage`, `build`,
 
 ### Running the demo
 
+The simplest way — one script starts everything, runs the pipeline, and prints every URL:
+
+```bash
+./rghw.sh              # Linux / macOS: full bring-up + HELLO WORLD + URL table
+.\rghw.bat            # Windows: same (delegates to bash if available)
+./rghw.sh --dry-run    # show what would be done and all web URLs
+./rghw.sh --skip-images --skip-infra --open  # fast restart + open browser
+```
+
+Or step-by-step:
+
 ```bash
 make cluster && make images && make infra && make wait && make demo
 # then
@@ -80,7 +91,7 @@ kubectl port-forward -n rube-goldberg svc/grafana 3002:3000 &        # Grafana  
 kubectl port-forward -n rube-goldberg svc/event-gateway 8081:8080 &  # SSE      → http://localhost:8081
 ```
 
-See [docs/runbook.md §6](docs/runbook.md#6-web-uis-and-observability) for the full UI catalog and [docs/runbook.md §3](docs/runbook.md#3-host-names-and-ingress) for `rghw.localhost` vs port-forward.
+See [docs/runbook.md §6](docs/runbook.md#6-web-uis-and-observability) for the full UI catalog and [docs/runbook.md §3](docs/runbook.md#3-host-names-and-ingress) for `rghw.localhost` vs port-forward. The `rghw.sh`/`rghw.bat` scripts automate the port-forwards and print the same table after every run.
 
 ## Language ownership
 
