@@ -40,21 +40,46 @@ cleanup_portforward() {
 trap cleanup_portforward EXIT
 PORTFORWARD_PIDS=()
 
+diagnose_app_failure() {
+    local app="$1"
+    local timeout="$2"
+    echo "--- diagnostics for app=$app (timeout ${timeout}s) ---"
+    kubectl get pods -n "$NAMESPACE" -l "app=$app" -o wide 2>&1 || true
+    kubectl describe pod -n "$NAMESPACE" -l "app=$app" 2>&1 | tail -n 80 || true
+    kubectl logs -n "$NAMESPACE" -l "app=$app" --tail=80 2>&1 | head -n 80 || true
+    kubectl logs -n "$NAMESPACE" -l "app=$app" --previous --tail=80 2>&1 | head -n 60 || true
+    kubectl get events -n "$NAMESPACE" --sort-by='.lastTimestamp' 2>&1 | grep -i "$app" | tail -n 20 || true
+}
+
 wait_for_app_ready() {
     local app="$1"
-    local timeout="${2:-180}"
+    local timeout="${2:-300}"
     local elapsed=0
+    local last_phase=""
     while [[ $elapsed -lt $timeout ]]; do
         local ready
         ready=$(kubectl get pod -n "$NAMESPACE" -l "app=$app" -o jsonpath='{.items[0].status.containerStatuses[0].ready}' 2>/dev/null || echo "false")
         if [[ "$ready" == "true" ]]; then
-            echo "pod/app=$app condition met"
+            echo "pod/app=$app condition met (${elapsed}s)"
             return 0
         fi
-        sleep 2
-        ((elapsed += 2))
+        if (( elapsed > 0 && elapsed % 30 == 0 )); then
+            local phase
+            phase=$(kubectl get pod -n "$NAMESPACE" -l "app=$app" -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "Unknown")
+            local waiting
+            waiting=$(kubectl get pod -n "$NAMESPACE" -l "app=$app" -o jsonpath='{.items[0].status.containerStatuses[0].state.waiting.reason}' 2>/dev/null || echo "")
+            if [[ -n "$waiting" ]]; then
+                echo "  pod/app=$app phase=$phase waiting=$waiting elapsed=${elapsed}s..."
+            elif [[ "$phase" != "$last_phase" ]]; then
+                echo "  pod/app=$app phase=$phase elapsed=${elapsed}s..."
+            fi
+            last_phase="$phase"
+        fi
+        sleep 5
+        ((elapsed += 5))
     done
     echo "ERROR: pod/app=$app not ready after ${timeout}s"
+    diagnose_app_failure "$app" "$timeout"
     return 1
 }
 
@@ -167,12 +192,13 @@ if command -v docker >/dev/null 2>&1; then
     retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone6/run-orchestrator.yaml"
     retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone6/vector-normalizer.yaml"
     retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone6/rasterizer.yaml"
-    wait_for_app_ready run-orchestrator 180
-    wait_for_app_ready glyph-catalog 180
+    wait_for_app_ready run-orchestrator 360
+    wait_for_app_ready glyph-catalog 360
     wait_for_app_ready geometry-engine 180
     wait_for_app_ready vector-normalizer 180
     wait_for_app_ready rasterizer 180
-    retry kubectl rollout status deployment/run-orchestrator -n $NAMESPACE --timeout=180s
+    retry kubectl rollout status deployment/run-orchestrator -n $NAMESPACE --timeout=300s
+    retry kubectl rollout status deployment/glyph-catalog -n $NAMESPACE --timeout=300s
     retry kubectl rollout status deployment/vector-normalizer -n $NAMESPACE --timeout=180s
     retry kubectl rollout status deployment/rasterizer -n $NAMESPACE --timeout=180s
 

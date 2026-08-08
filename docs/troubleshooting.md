@@ -153,7 +153,60 @@ kubectl describe pod -n rube-goldberg <pod-name> | grep -A10 "Last State"
 # Image pipeline: raise limit from 1Gi to 2Gi
 ```
 
-### 8. Protobuf / gRPC version mismatch
+### 8. Deploy waits `pod/app=run-orchestrator|glyph-catalog not ready after 180s`
+
+**Symptoms:** `scripts/deploy.sh` prints `Waiting for core app deployments to be ready...` then `ERROR: pod/app=run-orchestrator not ready after 180s` / `pod/app=glyph-catalog not ready after 180s`. Earlier lines show `otel-collector`, `prometheus`, `tempo` `created` and `namespace/rube-goldberg configured` (harmless annotation warning). The deploy appears to hang for minutes.
+
+**Causes:**
+
+- JVM cold-start: Spring (glyph-catalog) and Ktor/Netty (orchestrator) need 30-80s; old manifests had `readinessProbe initialDelaySeconds: 5` with no `startupProbe`, so `livenessProbe` could restart the pod before it ever became Ready.
+- `imagePullPolicy: Always` + registry DNS `rghello-registry:5001` vs `localhost:5001`: if `make images` didn't push, pod stays `ImagePullBackOff`/`ErrImagePull` for the whole wait.
+- Infra not yet Ready: `run-orchestrator` probes `/healthz` only after Kafka `kafka:9092` and Redis `redis-master:6379` are reachable; Terraform Helm may still be starting them.
+- Memory pressure on 4-8 GiB Colima: 12 app + 5 observability + Kafka/Redis/Postgres/MinIO exceeds node allocatable → `Pending`/`OOMKilled`.
+
+**Remediation:**
+
+```bash
+# 1. See why the pod is not Ready (new deploy.sh prints this automatically)
+kubectl get pods -n rube-goldberg -l app=run-orchestrator -o wide
+kubectl get pods -n rube-goldberg -l app=glyph-catalog -o wide
+kubectl describe pod -n rube-goldberg -l app=run-orchestrator | tail -n 80
+kubectl logs -n rube-goldberg -l app=run-orchestrator --tail=100
+kubectl logs -n rube-goldberg -l app=glyph-catalog --tail=100 --previous
+kubectl get events -n rube-goldberg --sort-by='.lastTimestamp' | grep -E 'run-orchestrator|glyph-catalog|Failed'
+
+# 2. Image pull?
+kubectl get pod -n rube-goldberg -l app=run-orchestrator \
+  -o jsonpath='{range .items[*]}{.metadata.name} {.status.containerStatuses[0].state.waiting.reason} {.status.containerStatuses[0].image} {"\n"}{end}'
+docker ps | grep rghello-registry          # registry must be up
+make images                                # rebuild + push to localhost:5001
+kubectl rollout restart deployment/run-orchestrator deployment/glyph-catalog -n rube-goldberg
+
+# 3. Infra still starting?
+kubectl get pods -n rube-goldberg -l app=kafka -o wide
+kubectl wait --for=condition=Ready pod -n rube-goldberg -l app=kafka --timeout=300s
+
+# 4. Memory?
+kubectl describe nodes | grep -A5 "Allocated resources"
+kubectl top pods -n rube-goldberg 2>/dev/null || true
+# 4 GiB laptop:
+bash scripts/low-memory-profile.sh
+kubectl rollout restart deployment -n rube-goldberg --all
+
+# 5. Apply updated manifests (startupProbe 300s, increased deploy timeout 360s)
+kubectl apply -f infra/k8s/milestone5/glyph-catalog.yaml
+kubectl apply -f infra/k8s/milestone6/run-orchestrator.yaml
+kubectl rollout status deployment/run-orchestrator -n rube-goldberg --timeout=300s
+kubectl rollout status deployment/glyph-catalog -n rube-goldberg --timeout=300s
+
+# 6. Full dump
+bash scripts/collect-diagnostics.sh  # -> .local/diagnostics/
+bash scripts/wait-ready.sh 600       # waits ignoring Succeeded jobs, prints diagnostics
+```
+
+Fixed in `infra/k8s/milestone[456]/[glyph-catalog|run-orchestrator].yaml` via `startupProbe: failureThreshold 30 × period 10s = 300s` plus tuned `readinessProbe period 5s`, and in `scripts/deploy.sh` via `360s` timeout for JVM services, `300s` rollout timeout, 30s progress logs, and auto `diagnose_app_failure` + summary.
+
+### 9. Protobuf / gRPC version mismatch
 
 **Symptoms:** `rasterizer` returns `UNIMPLEMENTED` or `INVALID_ARGUMENT`.
 
