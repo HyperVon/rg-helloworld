@@ -62,19 +62,54 @@ export const PROCESS_EDGES: GraphEdge[] = [
   { source: 'validate', target: 'terminal' },
 ];
 
-export const PROCESS_NODE_POSITIONS: Record<string, { x: number; y: number }> = {
-  plan: { x: 0, y: 0 },
-  geometry: { x: 220, y: 75 },
-  vector: { x: -220, y: 150 },
-  raster: { x: 220, y: 225 },
-  compose: { x: -220, y: 300 },
-  preprocess: { x: 220, y: 375 },
-  ocr: { x: -220, y: 450 },
-  adjudicate: { x: 220, y: 525 },
-  assemble: { x: -220, y: 600 },
-  validate: { x: 220, y: 675 },
-  terminal: { x: 0, y: 750 },
-};
+/**
+ * Feeder (boustrophedon / theater-row) layout.
+ *
+ * Instead of one node per row zig-zag (wasted 60%+ whitespace), fill rows
+ * left-to-right, then right-to-left, like a theater queue feeder line.
+ * COLS nodes per row, then serpentine to the next row.
+ *
+ *  Row 0 L→R:  plan | geometry | vector | raster
+ *  Row 1 R→L:  adjudicate | ocr | preprocess | compose   (visually reversed,
+ *              logical order preserved via edges)
+ *  Row 2 L→R:  assemble | validate | terminal
+ *
+ * Coordinates are centered around x=0 so React Flow fitView stays centered.
+ * DX/DY chosen to keep node minWidth 120px + 16px padding with no overlap.
+ */
+const FEEDER_COLS = 4;
+const FEEDER_DX = 180;
+const FEEDER_DY = 110;
+const FEEDER_X0 = -((FEEDER_COLS - 1) * FEEDER_DX) / 2; // -270
+
+function feederPos(index: number): { x: number; y: number } {
+  const row = Math.floor(index / FEEDER_COLS);
+  const colInRow = index % FEEDER_COLS;
+  const reversed = row % 2 === 1;
+  const col = reversed ? FEEDER_COLS - 1 - colInRow : colInRow;
+  return { x: FEEDER_X0 + col * FEEDER_DX, y: row * FEEDER_DY };
+}
+
+// Order must match PROCESS_NODES logical order.
+const _ORDERED_IDS = [
+  'plan',
+  'geometry',
+  'vector',
+  'raster',
+  'compose',
+  'preprocess',
+  'ocr',
+  'adjudicate',
+  'assemble',
+  'validate',
+  'terminal',
+] as const;
+
+export const PROCESS_NODE_POSITIONS: Record<string, { x: number; y: number }> =
+  Object.fromEntries(_ORDERED_IDS.map((id, i) => [id, feederPos(i)])) as Record<
+    string,
+    { x: number; y: number }
+  >;
 
 export function nodeStatusForStage(
   targetStage: string,

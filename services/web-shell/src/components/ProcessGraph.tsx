@@ -43,21 +43,23 @@ export function ProcessGraph({ currentStage, terminal, runStatus, glyphCount }: 
     source: e.source,
     target: e.target,
     animated: true,
-    style: { stroke: '#999', strokeWidth: 1 },
+    type: 'smoothstep',
+    style: { stroke: '#94a3b8', strokeWidth: 1.25 },
+    pathOptions: { borderRadius: 14, offset: 12 },
   }));
 
   const nodeTypes = {}; // placeholder for future custom nodes
 
   return (
-    <div style={{ width: '100%', height: '520px' }}>
+    <div style={{ width: '100%', height: '360px' }}>
       <ReactFlow
         nodes={nodeComponents}
         edges={edgeComponents}
         fitView
-        fitViewOptions={{ padding: 0.2, includeHiddenNodes: false }}
+        fitViewOptions={{ padding: 0.14, includeHiddenNodes: false }}
         attributionPosition="bottom-left"
-        defaultViewport={{ x: 0, y: 0, zoom: 0.85 }}
-        minZoom={0.4}
+        defaultViewport={{ x: 0, y: 0, zoom: 0.95 }}
+        minZoom={0.5}
         maxZoom={1.5}
       >
         <Background gap={18} size={1} />

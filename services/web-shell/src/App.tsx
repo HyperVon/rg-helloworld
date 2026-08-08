@@ -1,15 +1,10 @@
 import { useEffect, useState } from 'react';
-import { SuccessAnimation } from './components/SuccessAnimation';
 import { ArtifactModal } from './components/ArtifactModal';
 import { ProcessGraph } from './components/ProcessGraph';
 import { RunSelector } from './components/RunSelector';
 import { useSseStream } from './hooks/useSseStream';
 import type { RunSummary, ArtifactNode } from './types';
 import { parseSseFrame } from './hooks/useSseStream';
-
-function prefersReducedMotion(): boolean {
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
 
 function apiBase(): string {
   if (
@@ -102,11 +97,6 @@ export function App() {
       .catch(() => {});
   }, [runId]);
 
-  const [reducedMotion, setReducedMotion] = useState(false);
-  useEffect(() => {
-    setReducedMotion(prefersReducedMotion());
-  }, []);
-
   const handleSelectRun = (id: string) => {
     setRunId(id);
     try {
@@ -150,11 +140,6 @@ export function App() {
                   <button onClick={() => setShowArtifacts(true)}>View Artifacts</button>
                 )}
               </div>
-              {runStatus === 'SUCCEEDED' && (
-                <div className="success-inline">
-                  <SuccessAnimation status="SUCCEEDED" prefersReducedMotion={reducedMotion} />
-                </div>
-              )}
             </section>
 
             <section className="graph-section">
@@ -244,9 +229,6 @@ export function App() {
           border-radius: 14px;
           padding: 0.9rem 1rem;
           box-shadow: 0 8px 24px rgba(2,6,23,0.4);
-        }
-        .success-inline {
-          margin-top: 0.75rem;
         }
         .graph-section, .telemetry-section, .success-section {
           margin: 1rem 0;

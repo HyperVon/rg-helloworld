@@ -354,7 +354,12 @@ fun runServer(
     return 0
 }
 
-private fun retryWithBackoff(attempts: Int, delayMs: Long, name: String, block: () -> Unit) {
+private fun retryWithBackoff(
+    attempts: Int,
+    delayMs: Long,
+    name: String,
+    block: () -> Unit,
+) {
     var lastError: Exception? = null
     repeat(attempts) { attempt ->
         try {
@@ -364,7 +369,12 @@ private fun retryWithBackoff(attempts: Int, delayMs: Long, name: String, block: 
         } catch (e: Exception) {
             lastError = e
             System.err.println("[$name] connect attempt ${attempt + 1}/$attempts failed: ${e.message} — retrying in ${delayMs}ms")
-            try { Thread.sleep(delayMs) } catch (_: InterruptedException) { Thread.currentThread().interrupt(); throw e }
+            try {
+                Thread.sleep(delayMs)
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+                throw e
+            }
         }
     }
     throw lastError ?: IllegalStateException("[$name] failed after $attempts attempts")

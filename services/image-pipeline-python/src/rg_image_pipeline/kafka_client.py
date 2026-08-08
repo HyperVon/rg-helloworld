@@ -32,7 +32,10 @@ async def create_consumer(topics: list[str], group_id: str = GROUP_ID) -> AIOKaf
             return consumer
         except Exception as e:  # noqa: BLE001
             last_err = e
-            print(f"[kafka-consumer] attempt {attempt + 1}/30 failed: {e} — retrying in 2s", flush=True)
+            print(
+                f"[kafka-consumer] attempt {attempt + 1}/30 failed: {e} — retrying in 2s",
+                flush=True,
+            )
             with contextlib.suppress(Exception):
                 await consumer.stop()
             await asyncio.sleep(2)
@@ -53,7 +56,10 @@ async def create_producer() -> AIOKafkaProducer:
             return producer
         except Exception as e:  # noqa: BLE001
             last_err = e
-            print(f"[kafka-producer] attempt {attempt + 1}/30 failed: {e} — retrying in 2s", flush=True)
+            print(
+                f"[kafka-producer] attempt {attempt + 1}/30 failed: {e} — retrying in 2s",
+                flush=True,
+            )
             with contextlib.suppress(Exception):
                 await producer.stop()
             await asyncio.sleep(2)
