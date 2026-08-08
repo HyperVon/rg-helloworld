@@ -232,6 +232,19 @@ if [[ -x "$PROJECT_ROOT/scripts/prerequisites.sh" ]]; then
   fi
 fi
 
+# 1b. Disk guard (only in --fresh): prevent the k3d node from hitting
+# ephemeral-storage disk-pressure, which evicts every pod and taints the node
+# NoSchedule so `make wait` hangs forever. Prunes dangling host images and
+# clears any disk-pressure taint before `make images` piles on more layers.
+if [[ $FRESH -eq 1 ]]; then
+  if [[ $QUIET -eq 1 ]]; then
+    make -C "$PROJECT_ROOT" disk-guard >/tmp/rghw-disk-guard.log 2>&1 || true
+  else
+    say "Disk guard: pruning dangling images / clearing disk-pressure taint..."
+    make -C "$PROJECT_ROOT" disk-guard 2>&1 | sed 's/^/[disk-guard] /' >&2 || true
+  fi
+fi
+
 # 2. Cluster
 if [[ $QUIET -eq 1 ]]; then
   if ! make -C "$PROJECT_ROOT" cluster >/tmp/rghw-make-cluster.log 2>&1; then

@@ -443,6 +443,9 @@ clean:
 integration:
 	@bash tests/integration/run_integration.sh
 
+disk-guard:
+	@bash scripts/disk-guard.sh
+
 images:
 	@bash scripts/build-images.sh
 
