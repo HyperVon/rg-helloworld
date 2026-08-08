@@ -1226,6 +1226,7 @@ M7 stability update (2026-08-07): Uppercase acceptance required redrawing all gl
 | 2026-08-08 | Glyph OCR hardening + adjudicator gap fix (O 3 ellipses, W 3 paths, D bold, R top-loop, GAP 1.0, adjudicator MIN 0.30 HIGH 0.40 GAP 0.1 + pixelGap>100, gap publish) | PASS (thresholds allow L confidence 0.43, gap publish fixes missing position 5, stroke 80→140, pixels 128→192, border 10→16) |
 | 2026-08-08 | CI green restoration (markdownlint MD032/MD036, C++ clang-18/22 drift `= {}`, Kotlin 91.6% via `collectRedisRuns` + `listRuns`/`collectRedisRuns` tests) | PASS (`npx markdownlint-cli2` 0 issues, `clang-format-18` + `22` both `= {}` 0 diff, `make lint`/`unit`/`coverage`/`build`/`integration` all 0 failures, `go -C cmd/rghw run . run --api-url http://localhost:8080` prints `HELLO WORLD`) |
 | 2026-08-08 | Screenshots retaken at SUCCEEDED `6dd077ad` (256K web-shell, 259K inspector) + CI 31241984968 green (15/15 jobs) | PASS (Playwright 1280×800 capture, `web-shell.png` shows `SUCCEEDED` 11 stages green, `artifact-inspector` glass, `grafana.png` 568K, `prometheus` healthy, `rghw run` `6dd077ad→SUCCEEDED`) |
+| 2026-08-08 | Run picker (both UIs) + User Guide | PASS (Web Shell `GET /api/v1/runs` desc sort auto-select localStorage, Inspector `GET /api/v1/runs` dropdown sorted `createdAt` desc manual via `<details>`, `docs/user-guide.md` 8 sections pipeline/CLI/every UI/--once, `README`+`runbook` link, MD038 fix, `pre_commit_check.sh` green, `rghw run` `4b0883e3→SUCCEEDED`) |
 
 ## Acknowledgments
 

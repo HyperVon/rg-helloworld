@@ -1,6 +1,6 @@
 # Runbook
 
-Operational guide for bringing up, running, and observing the Rube Goldberg Hello World stack on one laptop. The authoritative design is [docs/architecture.md](architecture.md) and the milestone status is [docs/implementation-status.md](implementation-status.md).
+Operational guide for bringing up, running, and observing the Rube Goldberg Hello World stack on one laptop. The authoritative design is [docs/architecture.md](architecture.md) and the milestone status is [docs/implementation-status.md](implementation-status.md). For how to **use** the Web UIs and apps once they are up, see [User Guide](user-guide.md).
 
 > **Quickest start:** `./rghw.sh` on Linux/macOS or `.\rghw.bat` on Windows — one command brings up k3d, builds images, applies infra, waits for pods, starts port-forwards for every web UI, runs `rghw run` (`HELLO WORLD`), and prints a URL table (see `./rghw.sh --help` / `./rghw.sh --dry-run`). This runbook documents the manual steps the scripts automate.
 

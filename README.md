@@ -68,7 +68,9 @@ make diagnostics     # collect stack diagnostics
 All implemented gates (`format`, `lint`, `unit`, `coverage`, `build`,
 `integration`, `e2e`) must pass before a milestone is considered complete.
 
-> **To start the full stack and view web UIs:** see [docs/runbook.md](docs/runbook.md) — it covers `make cluster` / `make images` / `make infra` / `make wait` / `rghw run`, ingress vs port-forward, and every web UI (Web Shell React Flow, Artifact Inspector HTMX, Event Gateway SSE, Grafana/Prometheus/Loki/Tempo, OTel Collector, MinIO).
+> **User Guide (how to use every UI and app):** [docs/user-guide.md](docs/user-guide.md) — plain-English walkthrough of Web Shell, Artifact Inspector, Grafana/Prometheus/Loki/Tempo, MinIO, the CLI, and service `--once` modes.
+>
+> **Runbook (bring-up/operations):** [docs/runbook.md](docs/runbook.md) — `make cluster` / `make images` / `make infra` / `make wait` / `rghw run`, ingress vs port-forward, and every web UI.
 
 ### Running the demo
 
@@ -93,7 +95,7 @@ kubectl port-forward -n rube-goldberg svc/grafana 3002:3000 &        # Grafana  
 kubectl port-forward -n rube-goldberg svc/event-gateway 8081:8080 &  # SSE      → http://localhost:8081
 ```
 
-See [docs/runbook.md §6](docs/runbook.md#6-web-uis-and-observability) for the full UI catalog and [docs/runbook.md §3](docs/runbook.md#3-host-names-and-ingress) for `rghw.localhost` vs port-forward. The `rghw.sh`/`rghw.bat` scripts automate the port-forwards and print the same table after every run.
+See [docs/user-guide.md](docs/user-guide.md) for how to use each UI, and [docs/runbook.md §6](docs/runbook.md#6-web-uis-and-observability) / [§3](docs/runbook.md#3-host-names-and-ingress) for the full catalog and port-forward details. The `rghw.sh` scripts automate the port-forwards and print the same table after every run.
 
 ## Web UIs — the ridiculous punchline
 
@@ -133,7 +135,7 @@ Other dashboards (same EXTRA dark theme) include **Ridiculous Infrastructure**, 
 | Orchestrator API | `http://localhost:8080/api/v1/runs` | `curl` above |
 | Grafana (raw) | `http://localhost:3002` login (`admin`/`admin`) → Skip | ![Grafana login](docs/screenshots/grafana.png) |
 
-Full port-forward table (`svc:80` for web-shell, inspector, grafana, event-gateway; 9090, 3100, 3200, 9000/9001 for observability) and SSE replay (`Last-Event-ID`): **→ [docs/runbook.md §6](docs/runbook.md#6-web-uis-and-observability)** and **§6.1.1**.
+Full port-forward table (`svc:80` for web-shell, inspector, grafana, event-gateway; 9090, 3100, 3200, 9000/9001 for observability) and SSE replay (`Last-Event-ID`): **→ [docs/user-guide.md](docs/user-guide.md)** (usage) and **[docs/runbook.md §6](docs/runbook.md#6-web-uis-and-observability) §6.1.1** (ops).
 
 > **Why EXTRA?** The whole joke is the gap. You open `http://localhost:3000` and it looks like a real production control plane — live graph, metrics, traces, dark glass — then you `go -C cmd/rghw run . run` and it prints `HELLO WORLD` in 8 seconds on one laptop. That’s Milestone 12’s requirement: the docs and UIs must provoke “WOW that looks amazing” followed by “Wait, it just does `HELLO WORLD`? WTF LOL.” See `docs/architecture.md` Milestone 12 EXTRA.
 
