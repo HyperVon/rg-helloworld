@@ -71,19 +71,21 @@ class AdjudicatorLogicTest < Minitest::Test
     }
     result = Adjudicator::AdjudicatorImpl.adjudicate(observations, SAMPLE_LAYOUT,
                                                      run_id: 'run-1', step_id: 'step-1', attempt: 1)
-    assert_equal(1, result[:gaps].length)
-    gap = result[:gaps].first
-    assert_equal('GAP', gap[:tokenType])
-    assert_equal(9, gap[:position])
+    assert_equal(3, result[:gaps].length)
+    gaps = result[:gaps].sort_by { |g| g[:position] }
+    assert_equal('GAP', gaps.first[:tokenType])
+    assert_equal(0, gaps[0][:position])
+    assert_equal(6, gaps[1][:position])
+    assert_equal(9, gaps[2][:position])
   end
 
   def test_adjudicate_triggers_retry_on_ambiguous
     observations = {
       'fullPhrase' => { 'rawText' => 'H W', 'confidence' => 95.2,
-                        'symbols' => [{ 'text' => 'H', 'confidence' => 0.40, 'x' => 10, 'y' => 0,
+                        'symbols' => [{ 'text' => 'H', 'confidence' => 0.20, 'x' => 10, 'y' => 0,
                                         'width' => 100, 'height' => 100 }] },
       'positionObservations' => [
-        { 'position' => 0, 'candidate' => 'H', 'confidence' => 0.35, 'alternatives' => %w[B N] }
+        { 'position' => 0, 'candidate' => 'H', 'confidence' => 0.20, 'alternatives' => %w[B N] }
       ],
       'spacingObservations' => []
     }
@@ -202,8 +204,8 @@ class AdjudicatorLogicTest < Minitest::Test
   end
 
   def test_adjudicate_respects_minimum_confidence
-    assert_equal(0.6, Adjudicator::MIN_CONFIDENCE)
-    assert_equal(0.85, Adjudicator::HIGH_CONFIDENCE)
+    assert_equal(0.30, Adjudicator::MIN_CONFIDENCE)
+    assert_equal(0.40, Adjudicator::HIGH_CONFIDENCE)
   end
 
   private
