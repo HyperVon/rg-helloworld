@@ -99,13 +99,13 @@ See [docs/runbook.md §6](docs/runbook.md#6-web-uis-and-observability) for the f
 
 > **WOW → WTF pipeline.** Eleven services, ten languages, Kafka on one laptop, and the full Grafana stack — all to print one line. Every screenshot below is captured via Playwright against a live `SUCCEEDED` run (`793bf62a…`) after `./rghw.sh`.
 
-**Web Shell (React Flow)**
+### Web Shell (React Flow)
 
 The flagship UI: dark gradient, glass-morphism header, auto-discovered run dropdown, live SSE stage graph (Run Planning → Terminal), success-particle overlay, and telemetry bar. No runId typing — it lists and auto-selects the latest run.
 
 ![Web Shell — SUCCEEDED run with live graph](docs/screenshots/web-shell.png)
 
-**Artifact Inspector (HTMX + Ruby/Sinatra)**
+### Artifact Inspector (HTMX + Ruby/Sinatra)
 
 Same EXTRA treatment: floating glass card, radial violet → cyan glow, live artifact table per run (`/inspector/runs/{runId}`) with SHA-256 and MinIO-backed previews.
 
@@ -113,7 +113,7 @@ Same EXTRA treatment: floating glass card, radial violet → cyan glow, live art
 
 ![Artifact Inspector — per-run gallery](docs/screenshots/artifact-inspector-run.png)
 
-**Grafana — four provisioned dashboards**
+### Grafana — four provisioned dashboards
 
 `rg-overview` (Rube Goldberg Overview), `rg-infra` (Ridiculous Infrastructure), `rg-ocr-lab`, `rg-deep-dive` — provisioned via `infra/k8s/milestone11/grafana-dashboards.yaml` with `uid` and `datasource.yml`/`dashboard.yml` mounted as subPaths. All four appear in `http://localhost:3002/dashboards` without manual import.
 
@@ -123,7 +123,7 @@ Same EXTRA treatment: floating glass card, radial violet → cyan glow, live art
 
 Other dashboards (same EXTRA dark theme) include **Ridiculous Infrastructure**, **OCR Laboratory**, and **Run Deep Dive** — see the same `docs/screenshots/grafana-*.png` captures.
 
-**Prometheus & the rest**
+### Prometheus & the rest
 
 | UI | URL (port-forward) | Screenshot |
 | --- | --- | --- |

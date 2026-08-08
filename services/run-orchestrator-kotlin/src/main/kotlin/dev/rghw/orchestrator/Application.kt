@@ -654,6 +654,55 @@ fun isValidUtf8(value: String): Boolean =
         false
     }
 
+interface RedisScan {
+    fun keys(pattern: String): List<String>
+
+    fun get(key: String): String?
+}
+
+fun collectRedisRuns(
+    sync: RedisScan,
+    fromMemory: MutableList<RunListItemResponse>,
+) {
+    val keys = sync.keys("run:*:result") ?: emptyList<String>()
+    for (k in keys) {
+        val runId = k.removePrefix("run:").removeSuffix(":result")
+        if (fromMemory.any { it.runId == runId }) continue
+        val status = sync.get("run:$runId") ?: "SUCCEEDED"
+        val createdAt = sync.get("run:$runId:createdAt") ?: Instant.now().toString()
+        val msg = sync.get("run:$runId:message") ?: expectedTexts[runId] ?: "HELLO WORLD"
+        fromMemory.add(
+            RunListItemResponse(
+                runId = runId,
+                status = status,
+                createdAt = createdAt,
+                message = msg,
+                links = buildLinks(runId),
+            ),
+        )
+    }
+    val plainKeys = sync.keys("run:*") ?: emptyList<String>()
+    for (k in plainKeys) {
+        if (k.endsWith(":result") || k.endsWith(":createdAt") || k.endsWith(":message")) continue
+        val runId = k.removePrefix("run:")
+        if (fromMemory.any { it.runId == runId }) continue
+        if (runId.contains(":")) continue
+        val status = sync.get(k) ?: continue
+        if (status == "SUCCEEDED" || status == "FAILED") continue
+        val createdAt = sync.get("run:$runId:createdAt") ?: Instant.now().toString()
+        val msg = sync.get("run:$runId:message") ?: expectedTexts[runId] ?: "HELLO WORLD"
+        fromMemory.add(
+            RunListItemResponse(
+                runId = runId,
+                status = status,
+                createdAt = createdAt,
+                message = msg,
+                links = buildLinks(runId),
+            ),
+        )
+    }
+}
+
 suspend fun handleListRuns(call: ApplicationCall) {
     val fromMemory =
         runs.values
@@ -668,51 +717,20 @@ suspend fun handleListRuns(call: ApplicationCall) {
                 )
             }.toMutableList()
 
-    // Also include runs that are only in Redis (survive restart) — scan via direct Redis connection
     try {
         val redisUrl = Services.redisUrl()
         val client = RedisClient.create(redisUrl)
         val conn = client.connect()
         try {
             val sync = conn.sync()
-            val keys = sync.keys("run:*:result") ?: emptyList<String>()
-            for (k in keys) {
-                val runId = k.removePrefix("run:").removeSuffix(":result")
-                if (fromMemory.any { it.runId == runId }) continue
-                val status = sync.get("run:$runId") ?: "SUCCEEDED"
-                val createdAt = sync.get("run:$runId:createdAt") ?: Instant.now().toString()
-                val msg = sync.get("run:$runId:message") ?: expectedTexts[runId] ?: "HELLO WORLD"
-                fromMemory.add(
-                    RunListItemResponse(
-                        runId = runId,
-                        status = status,
-                        createdAt = createdAt,
-                        message = msg,
-                        links = buildLinks(runId),
-                    ),
-                )
-            }
-            // also include plain run:* without :result (for PREPROCESSING etc.)
-            val plainKeys = sync.keys("run:*") ?: emptyList<String>()
-            for (k in plainKeys) {
-                if (k.endsWith(":result") || k.endsWith(":createdAt") || k.endsWith(":message")) continue
-                val runId = k.removePrefix("run:")
-                if (fromMemory.any { it.runId == runId }) continue
-                if (runId.contains(":")) continue
-                val status = sync.get(k) ?: continue
-                if (status == "SUCCEEDED" || status == "FAILED") continue // already via :result path
-                val createdAt = sync.get("run:$runId:createdAt") ?: Instant.now().toString()
-                val msg = sync.get("run:$runId:message") ?: expectedTexts[runId] ?: "HELLO WORLD"
-                fromMemory.add(
-                    RunListItemResponse(
-                        runId = runId,
-                        status = status,
-                        createdAt = createdAt,
-                        message = msg,
-                        links = buildLinks(runId),
-                    ),
-                )
-            }
+            collectRedisRuns(
+                object : RedisScan {
+                    override fun keys(pattern: String): List<String> = sync.keys(pattern) ?: emptyList()
+
+                    override fun get(key: String): String? = sync.get(key)
+                },
+                fromMemory,
+            )
         } finally {
             conn.close()
             client.shutdown()

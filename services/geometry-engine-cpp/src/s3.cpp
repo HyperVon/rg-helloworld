@@ -98,7 +98,7 @@ bool S3Client::putObject(const std::string& bucket, const std::string& key, cons
                          std::string* etagOut) {
   char dateBuffer[32];
   time_t now = time(nullptr);
-  struct tm tmUtc{};
+  struct tm tmUtc = {};
   gmtime_r(&now, &tmUtc);
   strftime(dateBuffer, sizeof(dateBuffer), "%Y%m%dT%H%M%SZ", &tmUtc);
   std::string amzDate(dateBuffer);
@@ -122,7 +122,7 @@ bool S3Client::putObject(const std::string& bucket, const std::string& key, cons
   if (sock < 0) {
     return false;
   }
-  struct addrinfo hints{};
+  struct addrinfo hints = {};
   hints.ai_family = AF_INET;
   hints.ai_socktype = SOCK_STREAM;
   struct addrinfo* addresses = nullptr;
@@ -130,7 +130,7 @@ bool S3Client::putObject(const std::string& bucket, const std::string& key, cons
     close(sock);
     return false;
   }
-  struct sockaddr_in server{};
+  struct sockaddr_in server = {};
   server.sin_family = AF_INET;
   server.sin_port = htons(static_cast<uint16_t>(port_));
   server.sin_addr = reinterpret_cast<struct sockaddr_in*>(addresses->ai_addr)->sin_addr;
@@ -139,7 +139,7 @@ bool S3Client::putObject(const std::string& bucket, const std::string& key, cons
     close(sock);
     return false;
   }
-  struct timeval timeout{};
+  struct timeval timeout = {};
   timeout.tv_sec = timeoutMs_ / 1000;
   timeout.tv_usec = (timeoutMs_ % 1000) * 1000;
   setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));

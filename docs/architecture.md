@@ -2854,6 +2854,7 @@ Deliver:
 - **EXTRA Web UI & Docs requirement (ridiculousness principle):** The web UI and docs must be *extra* — visibly over-engineered and polished to the point that a first-time viewer says “WOW that looks amazing” and then, when told it exists only to print `HELLO WORLD`, says “WTF LOL”. This is a deliberate design constraint for this Rube Goldberg system, not an optional nice-to-have.
 
 **EXTRA acceptance criteria:**
+
 - Web Shell: animated, gradient, glass-morphism or equivalent “wow” styling; smooth React Flow transitions; success animation is theatrical; telemetry is dense and delightful, not just functional.
 - Artifact Inspector: HTMX interactions feel instant and tactile; image previews are gallery-quality with zoom/lightbox.
 - Grafana: dashboards are dark-themed, annotated, and tell a story (not default).
