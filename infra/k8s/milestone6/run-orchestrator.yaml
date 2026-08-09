@@ -31,6 +31,20 @@ spec:
               value: "8080"
             - name: GLYPH_CATALOG_URL
               value: http://glyph-catalog.rube-goldberg.svc.cluster.local:8080/ws/glyph-catalog
+            - name: MINIO_ENDPOINT
+              value: http://minio.rube-goldberg.svc.cluster.local:9000
+            - name: MINIO_BUCKET
+              value: rube-goldberg-artifacts
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: root-user
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: root-password
           startupProbe:
             httpGet:
               path: /healthz

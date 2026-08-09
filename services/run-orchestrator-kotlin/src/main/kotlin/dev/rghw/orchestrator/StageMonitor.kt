@@ -164,6 +164,7 @@ class StageProgressTracker {
 class StageMonitor(
     private val tracker: StageProgressTracker,
     private val validator: StageEventValidator,
+    private val artifactRecorder: (String, String, kotlinx.serialization.json.JsonObject) -> Unit = { _, _, _ -> },
 ) {
     fun registerRun(
         runId: String,
@@ -217,6 +218,7 @@ class StageMonitor(
 
             ValidationResult.Valid -> {
                 val data = parsed["data"]?.jsonObject ?: return
+                artifactRecorder(runId, topic, data)
                 when (topic) {
                     Services.GEOMETRY_TOPIC -> {
                         val glyphInstanceId = data["glyphInstanceId"]?.jsonPrimitive?.contentOrNull ?: return

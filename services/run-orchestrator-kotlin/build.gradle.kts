@@ -17,6 +17,7 @@ val ktorVersion = "3.5.2"
 val kafkaVersion = "4.3.1"
 val lettuceVersion = "7.6.0.RELEASE"
 val jaxwsVersion = "4.0.5"
+val minioVersion = "8.5.17"
 
 val wsimportTools by configurations.creating
 
@@ -42,6 +43,7 @@ dependencies {
     implementation("io.opentelemetry:opentelemetry-sdk-trace:1.54.0")
     implementation("io.opentelemetry:opentelemetry-sdk-logs:1.54.0")
     implementation("io.opentelemetry:opentelemetry-exporter-otlp:1.54.0")
+    implementation("io.minio:minio:$minioVersion")
 
     wsimportTools("com.sun.xml.ws:jaxws-tools:$jaxwsVersion")
 
