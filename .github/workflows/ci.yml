@@ -205,9 +205,14 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Work around a GitHub ubuntu-24.04 runner flake (pre-installed
+      # clippy-preview/rustfmt-preview conflict with cargo-clippy).
+      - name: Remove conflicting rust preview components
+        run: rustup component remove clippy-preview rustfmt-preview 2>/dev/null || true
       - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
         with:
           toolchain: 1.97.1
+          components: clippy, rustfmt
       - name: Format check
         run: cargo fmt --check
         working-directory: services/phrase-assembler-rust
@@ -278,6 +283,12 @@ jobs:
       - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
         with:
           toolchain: 1.97.1
+      # Work around a GitHub ubuntu-24.04 runner flake: the image ships a
+      # pre-installed `clippy-preview`/`rustfmt-preview` rustup component that
+      # conflicts with the `cargo-clippy` binary when rustup tries to add clippy.
+      # Removing the preview components first lets the toolchain install cleanly.
+      - name: Remove conflicting rust preview components
+        run: rustup component remove clippy-preview rustfmt-preview 2>/dev/null || true
       - name: Install C++ tools
         run: sudo apt-get update && sudo apt-get install -y cmake g++ librdkafka-dev=2.3.0-1build2
       - name: Prepare dependencies
