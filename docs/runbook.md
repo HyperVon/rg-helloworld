@@ -374,9 +374,8 @@ All services in-cluster. This is what `make demo` and the `DoD VERIFIED` traject
 Run one service outside Kubernetes while dependencies stay in-cluster:
 
 ```bash
-make port-forward   # forwards kafka, postgres, redis, minio locally
-make dev-service SERVICE=geometry-engine
-make dev-service SERVICE=ocr-worker
+Use `kubectl port-forward` for local UI access (examples in the table below),
+or run the convenience script `./rghw.sh` which manages port-forwards for you.
 ```
 
 Override endpoints via env vars (e.g., `KAFKA_BOOTSTRAP_SERVERS=localhost:9092`, `REDIS_URL=localhost:6379`).
@@ -530,4 +529,4 @@ make clean       # removes .local/build, gradle build, mvn clean, cargo clean, e
 * Infra: [infra/README.md](../infra/README.md), [infra/k3d/cluster.yaml](../infra/k3d/cluster.yaml), [infra/terraform/environments/local](../infra/terraform/environments/local)
 * Web: [web/README.md](../web/README.md)
 * CLI: [cmd/rghw/README.md](../cmd/rghw/README.md)
-* ADRs: [docs/adr/](../adr/)
+* ADRs: [docs/adr/](adr/)

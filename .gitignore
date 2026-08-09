@@ -56,3 +56,6 @@ target/release/
 
 # Ruby bundler vendor path (gems installed locally; never commit)
 services/adjudicator-ruby/vendor/
+
+# Removed service residual directory (no longer part of the build)
+services/temp-worker-node/

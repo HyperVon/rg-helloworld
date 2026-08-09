@@ -1,5 +1,5 @@
 ---
-name: rghello-milestone
+name: rghw-milestone
 description: Milestone workflow for the Rube Goldberg Hello World repository. Use when implementing a milestone, verifying acceptance gates, or resuming work after context compression.
 ---
 

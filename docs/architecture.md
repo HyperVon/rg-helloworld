@@ -2388,9 +2388,10 @@ A developer may run one service outside Kubernetes while its dependencies remain
 Examples:
 
 ```bash
-make port-forward
-make dev-service SERVICE=geometry-engine
-make dev-service SERVICE=ocr-worker
+kubectl port-forward -n rube-goldberg svc/kafka 9092:9092 &
+kubectl port-forward -n rube-goldberg svc/postgresql 5432:5432 &
+kubectl port-forward -n rube-goldberg svc/redis-master 6379:6379 &
+kubectl port-forward -n rube-goldberg svc/minio 9000:9000 &
 ```
 
 The system must use environment variables for endpoint overrides.

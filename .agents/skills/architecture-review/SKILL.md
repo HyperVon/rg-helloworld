@@ -23,7 +23,7 @@ rules (section 7) are constraints, not review targets.
 | **architecture-review** (this) | Redesign / refactor-vs-keep decision for the product architecture |
 | [documentation-review](../documentation-review/SKILL.md) | Make docs match code (factual sync) |
 | [ai-slop-detector](../ai-slop-detector/SKILL.md) | Artifact-level quality audit |
-| [rghello-milestone](../../../.kilo/skills/rghello-milestone/SKILL.md) | Implement the current milestone in order |
+| [rghw-milestone](../../../.kilo/skills/rghw-milestone/SKILL.md) | Implement the current milestone in order |
 
 ## Workflow
 
