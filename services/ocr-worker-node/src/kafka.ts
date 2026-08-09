@@ -7,21 +7,22 @@ const RequestQueue = require('kafkajs/src/network/requestQueue');
 const CHECK_PENDING_REQUESTS_INTERVAL = 10;
 
 const originalScheduleCheckPendingRequests = RequestQueue.prototype.scheduleCheckPendingRequests;
-RequestQueue.prototype.scheduleCheckPendingRequests = function patchedScheduleCheckPendingRequests() {
-  let scheduleAt = this.throttledUntil - Date.now();
-  if (scheduleAt < 0) {
-    scheduleAt = this.pending.length > 0 ? CHECK_PENDING_REQUESTS_INTERVAL : 0;
-  }
-  if (!this.throttleCheckTimeoutId) {
-    if (this.pending.length > 0) {
-      scheduleAt = scheduleAt > 0 ? scheduleAt : CHECK_PENDING_REQUESTS_INTERVAL;
+RequestQueue.prototype.scheduleCheckPendingRequests =
+  function patchedScheduleCheckPendingRequests() {
+    let scheduleAt = this.throttledUntil - Date.now();
+    if (scheduleAt < 0) {
+      scheduleAt = this.pending.length > 0 ? CHECK_PENDING_REQUESTS_INTERVAL : 0;
     }
-    this.throttleCheckTimeoutId = setTimeout(() => {
-      this.throttleCheckTimeoutId = null;
-      this.checkPendingRequests();
-    }, scheduleAt);
-  }
-};
+    if (!this.throttleCheckTimeoutId) {
+      if (this.pending.length > 0) {
+        scheduleAt = scheduleAt > 0 ? scheduleAt : CHECK_PENDING_REQUESTS_INTERVAL;
+      }
+      this.throttleCheckTimeoutId = setTimeout(() => {
+        this.throttleCheckTimeoutId = null;
+        this.checkPendingRequests();
+      }, scheduleAt);
+    }
+  };
 
 export interface WorkerConfig {
   bootstrap: string;

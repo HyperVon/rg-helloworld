@@ -110,7 +110,9 @@ export async function runConsumer(): Promise<void> {
           const positionCrops = (data.positionCrops as Array<Record<string, unknown>>) ?? [];
 
           if (!ocrImage?.objectKey || !positionCrops.length) {
-            console.warn(`Skipping event ${event.id ?? 'unknown'}: missing ocrImage or positionCrops`);
+            console.warn(
+              `Skipping event ${event.id ?? 'unknown'}: missing ocrImage or positionCrops`,
+            );
             return;
           }
 
@@ -128,7 +130,11 @@ export async function runConsumer(): Promise<void> {
 
             for (const crop of positionCrops) {
               const cropPath = join(cropsDir, `crop-position-${crop.position}.png`);
-              const tmpPath = await downloadToTemp(minio, minioConfig.bucket, crop.objectKey as string);
+              const tmpPath = await downloadToTemp(
+                minio,
+                minioConfig.bucket,
+                crop.objectKey as string,
+              );
               renameSync(tmpPath, cropPath);
               tmpFiles.push(cropPath);
             }
@@ -186,7 +192,11 @@ export async function runConsumer(): Promise<void> {
 
       if (interrupted) break;
     } catch (error) {
-      console.error('Consumer error, restarting in %dms:', RESTART_DELAY_MS, (error as Error).message);
+      console.error(
+        'Consumer error, restarting in %dms:',
+        RESTART_DELAY_MS,
+        (error as Error).message,
+      );
       await new Promise((resolve) => setTimeout(resolve, RESTART_DELAY_MS));
     } finally {
       await consumer.disconnect().catch(() => undefined);
