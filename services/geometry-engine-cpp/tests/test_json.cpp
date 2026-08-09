@@ -1,4 +1,5 @@
 #include <iostream>
+#include <limits>
 #include <string>
 
 #include "geometry_engine/json.hpp"
@@ -109,6 +110,76 @@ int main() {
   // Pretty output.
   std::string pretty = doc.pretty();
   expect(pretty.find('\n') != std::string::npos, "pretty output is multiline");
+
+  // Parsing the boolean literal `false` exercises the false branch.
+  expect(rghw::Json::parse("false").asBool() == false, "false literal");
+
+  // Type-mismatch accessors throw on the null sentinel returned by at().
+  const rghw::Json& absent = doc.at("absent");
+  try {
+    absent.asBool();
+    std::cerr << "FAIL: expected type error reading null as bool\n";
+    ++failures;
+  } catch (const rghw::JsonError&) {
+  }
+  try {
+    absent.asNumber();
+    std::cerr << "FAIL: expected type error reading null as number\n";
+    ++failures;
+  } catch (const rghw::JsonError&) {
+  }
+  try {
+    absent.asString();
+    std::cerr << "FAIL: expected type error reading null as string\n";
+    ++failures;
+  } catch (const rghw::JsonError&) {
+  }
+  try {
+    absent.asInt64();
+    std::cerr << "FAIL: expected type error reading null as int64\n";
+    ++failures;
+  } catch (const rghw::JsonError&) {
+  }
+
+  // Empty input.
+  expectThrows("");
+
+  // Object/array structural errors.
+  expectThrows("{1");
+  expectThrows("{\"a\":1 \"b\":2}");
+  expectThrows("{\"a\":1");
+  expectThrows("[1");
+  expectThrows("[1 2]");
+  expectThrows("z");
+  expectThrows("+");
+  expectThrows("\"\\");
+  expectThrows("\"\\u123");
+  expectThrows("\"\\u00GG");
+
+  // Escaped control characters and solidus round trip through parse.
+  expectEq(rghw::Json::parse("\"\\b\\f\\r\\/\"").asString(), "\b\f\r/",
+           "escape parse of \\b \\f \\r \\/");
+
+  // Upper-case hex digits and multi-byte UTF-8 in unicode escapes.
+  expectEq(rghw::Json::parse("\"\\u00FF\"").asString(), "\u00FF", "uppercase hex");
+  expectEq(rghw::Json::parse("\"\\u0800\"").asString(), "\u0800", "three-byte utf8");
+
+  // Pretty printing of empty containers.
+  expectEq(rghw::Json::parse("[]").pretty(), "[]", "pretty empty array");
+  expectEq(rghw::Json::parse("{}").pretty(), "{}", "pretty empty object");
+
+  // Serializing control characters escapes them.
+  expectEq(rghw::Json::str("\b\f\r").serialize(), "\"\\b\\f\\r\"", "serialize escapes");
+
+  // Infinity must not serialize.
+  rghw::Json inf = rghw::Json::object();
+  inf.objectItems()["x"] = rghw::Json::number(std::numeric_limits<double>::infinity());
+  try {
+    inf.serialize();
+    std::cerr << "FAIL: expected infinity serialization error\n";
+    ++failures;
+  } catch (const rghw::JsonError&) {
+  }
 
   // Type accessor errors.
   try {

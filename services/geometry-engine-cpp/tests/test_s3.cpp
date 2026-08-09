@@ -208,6 +208,156 @@ int main() {
                                "minioadmin", 3000);
   expect(!failingClient.putObject("bucket", "key", "{}"), "non-2xx response fails the PUT");
 
+  // URI-encoding of reserved characters in object keys.
+  {
+    TestServer encServer;
+    rghw::S3Client encClient("http://127.0.0.1:" + std::to_string(encServer.port()), "minioadmin",
+                             "minioadmin", 3000);
+    std::string key = "runs/with space/key!.json";
+    expect(encClient.putObject("bucket", key, "{}", nullptr),
+           "PUT with reserved chars in key succeeds");
+    expectContains(encServer.request().raw, "runs/with%20space/key%21.json", "key URI-encoded");
+  }
+
+  // Endpoint without an explicit port defaults to 80 and fails to connect.
+  {
+    rghw::S3Client noPort("http://127.0.0.1", "a", "b", 1000);
+    expect(!noPort.putObject("bucket", "key", "{}"), "no-port endpoint connect fails");
+  }
+
+  // Unresolvable host name fails the PUT via getaddrinfo error.
+  {
+    rghw::S3Client badHost("http://no-such-host.invalid", "a", "b", 1000);
+    expect(!badHost.putObject("bucket", "key", "{}"), "unresolvable host fails");
+  }
+
+  // Closed port fails the PUT via connect error.
+  {
+    rghw::S3Client closed("http://127.0.0.1:1", "a", "b", 1000);
+    expect(!closed.putObject("bucket", "key", "{}"), "closed port fails");
+  }
+
+  // Non-HTTP response body fails the PUT.
+  {
+    class GarbageServer {
+     public:
+      GarbageServer() {
+        socket_ = ::socket(AF_INET, SOCK_STREAM, 0);
+        sockaddr_in address{};
+        address.sin_family = AF_INET;
+        address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+        address.sin_port = 0;
+        ::bind(socket_, reinterpret_cast<sockaddr*>(&address), sizeof(address));
+        socklen_t length = sizeof(address);
+        ::getsockname(socket_, reinterpret_cast<sockaddr*>(&address), &length);
+        port_ = ntohs(address.sin_port);
+        ::listen(socket_, 1);
+        thread_ = std::thread([this] {
+          int client = ::accept(socket_, nullptr, nullptr);
+          if (client < 0) return;
+          const char* response = "garbage\r\n\r\n";
+          ::send(client, response, std::strlen(response), 0);
+          ::close(client);
+        });
+      }
+      ~GarbageServer() {
+        ::close(socket_);
+        thread_.join();
+      }
+      int port() const { return port_; }
+
+     private:
+      int socket_ = -1;
+      int port_ = 0;
+      std::thread thread_;
+    };
+    GarbageServer garbage;
+    rghw::S3Client client("http://127.0.0.1:" + std::to_string(garbage.port()), "a", "b", 1000);
+    expect(!client.putObject("bucket", "key", "{}"), "non-HTTP response fails");
+  }
+
+  // ETag parsing tolerates surrounding whitespace and absence.
+  {
+    class WhitespaceEtgServer {
+     public:
+      WhitespaceEtgServer() {
+        socket_ = ::socket(AF_INET, SOCK_STREAM, 0);
+        sockaddr_in address{};
+        address.sin_family = AF_INET;
+        address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+        address.sin_port = 0;
+        ::bind(socket_, reinterpret_cast<sockaddr*>(&address), sizeof(address));
+        socklen_t length = sizeof(address);
+        ::getsockname(socket_, reinterpret_cast<sockaddr*>(&address), &length);
+        port_ = ntohs(address.sin_port);
+        ::listen(socket_, 1);
+        thread_ = std::thread([this] {
+          int client = ::accept(socket_, nullptr, nullptr);
+          if (client < 0) return;
+          const char* response =
+              "HTTP/1.1 200 OK\r\nETag:   \"spaced-etag\"\r\nContent-Length: 0\r\n"
+              "Connection: close\r\n\r\n";
+          ::send(client, response, std::strlen(response), 0);
+          ::close(client);
+        });
+      }
+      ~WhitespaceEtgServer() {
+        ::close(socket_);
+        thread_.join();
+      }
+      int port() const { return port_; }
+
+     private:
+      int socket_ = -1;
+      int port_ = 0;
+      std::thread thread_;
+    };
+    WhitespaceEtgServer ws;
+    rghw::S3Client client("http://127.0.0.1:" + std::to_string(ws.port()), "a", "b", 3000);
+    std::string etag;
+    expect(client.putObject("bucket", "key", "{}", &etag), "PUT with spaced ETag succeeds");
+    expect(etag == "\"spaced-etag\"", "spaced ETag captured");
+
+    class NoEtgServer {
+     public:
+      NoEtgServer() {
+        socket_ = ::socket(AF_INET, SOCK_STREAM, 0);
+        sockaddr_in address{};
+        address.sin_family = AF_INET;
+        address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+        address.sin_port = 0;
+        ::bind(socket_, reinterpret_cast<sockaddr*>(&address), sizeof(address));
+        socklen_t length = sizeof(address);
+        ::getsockname(socket_, reinterpret_cast<sockaddr*>(&address), &length);
+        port_ = ntohs(address.sin_port);
+        ::listen(socket_, 1);
+        thread_ = std::thread([this] {
+          int client = ::accept(socket_, nullptr, nullptr);
+          if (client < 0) return;
+          const char* response =
+              "HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+          ::send(client, response, std::strlen(response), 0);
+          ::close(client);
+        });
+      }
+      ~NoEtgServer() {
+        ::close(socket_);
+        thread_.join();
+      }
+      int port() const { return port_; }
+
+     private:
+      int socket_ = -1;
+      int port_ = 0;
+      std::thread thread_;
+    };
+    NoEtgServer ns;
+    rghw::S3Client noEtgClient("http://127.0.0.1:" + std::to_string(ns.port()), "a", "b", 3000);
+    std::string missing = "untouched";
+    expect(noEtgClient.putObject("bucket", "key", "{}", &missing), "PUT without ETag succeeds");
+    expect(missing == "untouched", "missing ETag leaves output unchanged");
+  }
+
   if (failures == 0) {
     std::cout << "s3 tests passed\n";
     return 0;

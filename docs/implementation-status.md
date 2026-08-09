@@ -1239,6 +1239,7 @@ M7 stability update (2026-08-07): Uppercase acceptance required redrawing all gl
 | 2026-08-08 | Entry points: `rghw.sh --quiet/--fresh` (lightweight: Redis FLUSHALL + MinIO rm + rollout restart, preserves Kafka) | PASS (`rghw.sh --quiet` stdout `HELLO WORLD` only stderr empty via `RGHW_QUIET_FLAG`, `--dry-run --quiet` 12 bytes, `--fresh` kills forwards + flushes Redis/MinIO + restarts image-pipeline/orchestrator (no namespace delete), `bash -n` + `pre_commit_check.sh` green, `say/ok/warn` → `&2` + quiet-gated, `rghw.bat` native fallback lightweight, pkill/lsof guarded for Windows) |
 | 2026-08-08 | Deployment readiness hardening: terminal pod filtering, immutable-tag rollout restarts, POSIX disk guard, and runtime image smoke builds | PASS (`bash -n` deploy/readiness scripts; event gateway, telemetry element, and artifact inspector Docker images built successfully) |
 | 2026-08-09 | OCR worker KafkaJS rebalance storm fix | PASS (patched RequestQueue.scheduleCheckPendingRequests negative setTimeout; removed restartOnFailure:false; added sessionTimeout/heartbeatInterval; 42/42 tests pass; `rghw run` produces HELLO WORLD with stable consumer) |
+| 2026-08-09 | C++ coverage margin hardening (shore up json.cpp/s3.cpp) | PASS (added json.cpp parser-error/escape/type/infinity/pretty-edge tests -> 99%; added s3.cpp uriEncode/reserved-key/no-port/unresolvable-host/closed-port/non-HTTP/ETag-whitespace tests -> 86% local, constructor counted on CI; overall TOTAL 90%->95%; clang-format + 8/8 ctest green) |
 
 ## Acknowledgments
 
