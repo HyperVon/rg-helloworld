@@ -77,7 +77,6 @@ public class GlyphCatalogApplication {
               .build();
       OpenTelemetrySdk sdk =
           OpenTelemetrySdk.builder()
-              .setResource(resource)
               .setTracerProvider(tracerProvider)
               .setLoggerProvider(loggerProvider)
               .setPropagators(ContextPropagators.create(W3CTraceContextPropagator.getInstance()))

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OpenTelemetry;
+using OpenTelemetry.Exporter;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -68,11 +69,10 @@ static async Task<int> ServeAsync()
             .WithLogging(logging => logging
                 .SetResourceBuilder(resourceBuilder)
                 .AddOtlpExporter(o =>
-                {
-                    o.Endpoint = new Uri(otlpEndpoint);
-                    o.Protocol = OtlpExportProtocol.Grpc;
-                }),
-                configureBuilder: null);
+                 {
+                     o.Endpoint = new Uri(otlpEndpoint);
+                     o.Protocol = OtlpExportProtocol.Grpc;
+                 }));
     }
     catch (Exception ex)
     {

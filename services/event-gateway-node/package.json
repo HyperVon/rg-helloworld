@@ -22,8 +22,7 @@
     "start": "node out/index.js",
     "version": "echo event-gateway 0.5.0-milestone10"
   },
-  "devDependencies": {
-    "@types/node": "26.1.2",
+  "dependencies": {
     "@opentelemetry/api": "1.9.1",
     "@opentelemetry/api-logs": "0.221.0",
     "@opentelemetry/auto-instrumentations-node": "0.79.0",
@@ -31,9 +30,12 @@
     "@opentelemetry/exporter-trace-otlp-grpc": "0.221.0",
     "@opentelemetry/sdk-logs": "0.221.0",
     "@opentelemetry/sdk-node": "0.221.0",
+    "redis": "4.7.1"
+  },
+  "devDependencies": {
+    "@types/node": "26.1.2",
     "c8": "12.0.0",
     "prettier": "3.9.6",
-    "redis": "4.7.1",
     "typescript": "7.0.2"
   }
 }

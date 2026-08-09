@@ -1171,6 +1171,7 @@ M7 stability update (2026-08-07): Uppercase acceptance required redrawing all gl
 | 2026-08-06 | Milestone 11 scope/tasks/acceptance recorded | PASS |
 | 2026-08-07 | make lint/unit/coverage/build pass (OTel stubs verified) | PASS |
 | 2026-08-07 | Observability manifests present (otel-collector, prometheus, loki, tempo, grafana) | PASS (infra/observability pre-scaffold; dashboard scaffolding deferred to demo) |
+| 2026-08-08 | Runtime exporter dependencies classified for pruned Node images; Ruby, Java, and .NET telemetry packaging validated | PASS (event gateway and telemetry element images built with production dependency trees; Ruby image built with locked rackup/puma; Java/.NET tests pass) |
 
 ---
 
@@ -1236,6 +1237,7 @@ M7 stability update (2026-08-07): Uppercase acceptance required redrawing all gl
 | 2026-08-08 | Screenshots retaken at SUCCEEDED `6dd077ad` (256K web-shell, 259K inspector) + CI 31241984968 green (15/15 jobs) | PASS (Playwright 1280×800 capture, `web-shell.png` shows `SUCCEEDED` 11 stages green, `artifact-inspector` glass, `grafana.png` 568K, `prometheus` healthy, `rghw run` `6dd077ad→SUCCEEDED`) |
 | 2026-08-08 | Run picker (both UIs) + User Guide | PASS (Web Shell `GET /api/v1/runs` desc sort auto-select localStorage, Inspector `GET /api/v1/runs` dropdown sorted `createdAt` desc manual via `<details>`, `docs/user-guide.md` 8 sections pipeline/CLI/every UI/--once, `README`+`runbook` link, MD038 fix, `pre_commit_check.sh` green, `rghw run` `4b0883e3→SUCCEEDED`) |
 | 2026-08-08 | Entry points: `rghw.sh --quiet/--fresh` (lightweight: Redis FLUSHALL + MinIO rm + rollout restart, preserves Kafka) | PASS (`rghw.sh --quiet` stdout `HELLO WORLD` only stderr empty via `RGHW_QUIET_FLAG`, `--dry-run --quiet` 12 bytes, `--fresh` kills forwards + flushes Redis/MinIO + restarts image-pipeline/orchestrator (no namespace delete), `bash -n` + `pre_commit_check.sh` green, `say/ok/warn` → `&2` + quiet-gated, `rghw.bat` native fallback lightweight, pkill/lsof guarded for Windows) |
+| 2026-08-08 | Deployment readiness hardening: terminal pod filtering, immutable-tag rollout restarts, POSIX disk guard, and runtime image smoke builds | PASS (`bash -n` deploy/readiness scripts; event gateway, telemetry element, and artifact inspector Docker images built successfully) |
 
 ## Acknowledgments
 
