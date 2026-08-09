@@ -1,6 +1,6 @@
 # Rube Goldberg Hello World
 
-[![CI](https://github.com/rube-goldberg-hello-world/rube-goldberg-hello-world/actions/workflows/ci.yml/badge.svg)](https://github.com/rube-goldberg-hello-world/rube-goldberg-hello-world/actions/workflows/ci.yml)
+[![CI](https://github.com/HyperVon/rg-helloworld/actions/workflows/ci.yml/badge.svg)](https://github.com/HyperVon/rg-helloworld/actions/workflows/ci.yml)
 
 A deliberately excessive, fully local, event-driven distributed system whose sole
 functional purpose is to derive, recognize, assemble, and print:
