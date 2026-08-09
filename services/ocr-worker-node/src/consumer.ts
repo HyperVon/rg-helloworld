@@ -1,13 +1,12 @@
-import { Kafka, logLevel, Producer } from 'kafkajs';
-import { readFileSync, existsSync, mkdirSync, unlinkSync, renameSync } from 'node:fs';
+import { Producer } from 'kafkajs';
+import { existsSync, mkdirSync, renameSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, basename } from 'node:path';
+import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 import { createKafka, WorkerConfig } from './kafka.js';
 import { createMinioClient, downloadToTemp, cleanupTemp, MinioConfig } from './minio.js';
 import {
-  ALLOWED_ALPHABET,
   OcrObservations,
   PreprocessReport,
   performOcr,
@@ -34,6 +33,8 @@ const minioConfig: MinioConfig = {
   bucket: process.env.MINIO_BUCKET ?? 'rube-goldberg-artifacts',
 };
 
+const RESTART_DELAY_MS = 5000;
+
 function validateMaturity(event: Record<string, unknown>): void {
   const inputMaturity = (event.inputMaturity as number) ?? 0;
   const outputMaturity = (event.outputMaturity as number) ?? 0;
@@ -53,107 +54,150 @@ export async function runConsumer(): Promise<void> {
   console.log(banner());
 
   const kafka = createKafka(kafkaConfig);
-  const consumer = kafka.consumer({ groupId: kafkaConfig.groupId });
+  const consumer = kafka.consumer({
+    groupId: kafkaConfig.groupId,
+    sessionTimeout: 15000,
+    heartbeatInterval: 3000,
+    maxWaitTimeInMs: 1000,
+  });
   const producer = kafka.producer();
   const minio = createMinioClient(minioConfig);
 
-  await consumer.connect();
-  await producer.connect();
-  await consumer.subscribe({ topic: kafkaConfig.inputTopic, fromBeginning: false });
+  let interrupted = false;
+  let crashPromise: Promise<void> | null = null;
+  let crashResolve: (() => void) | null = null;
 
-  console.log(`Consuming ${kafkaConfig.inputTopic} -> ${kafkaConfig.outputTopic}`);
+  const shutdown = async (): Promise<void> => {
+    interrupted = true;
+    await consumer.disconnect().catch(() => undefined);
+    await producer.disconnect().catch(() => undefined);
+    if (crashResolve) {
+      crashResolve();
+      crashResolve = null;
+      crashPromise = null;
+    }
+  };
 
-  await consumer.run({
-    eachMessage: async ({ message }) => {
-      if (!message.value) return;
-      const event = JSON.parse(message.value.toString()) as Record<string, unknown>;
-      const data = (event.data ?? event) as Record<string, unknown>;
+  process.once('SIGTERM', shutdown);
+  process.once('SIGINT', shutdown);
 
-      validateNoProhibited(event);
-      validateMaturity(data);
+  while (!interrupted) {
+    try {
+      await consumer.connect();
+      await producer.connect();
+      await consumer.subscribe({ topic: kafkaConfig.inputTopic, fromBeginning: false });
 
-      const runId = data.runId as string;
-      const stepId = data.stepId as string;
-      const attempt = (data.attempt as number) ?? 1;
+      console.log(`Consuming ${kafkaConfig.inputTopic} -> ${kafkaConfig.outputTopic}`);
 
-      const ocrImage = data.ocrImage as Record<string, unknown> | undefined;
-      const positionCrops = (data.positionCrops as Array<Record<string, unknown>>) ?? [];
+      crashPromise = new Promise<void>((resolve) => {
+        crashResolve = resolve;
+      });
 
-      if (!ocrImage?.objectKey || !positionCrops.length) {
-        console.warn(`Skipping event ${event.id ?? 'unknown'}: missing ocrImage or positionCrops`);
-        return;
-      }
+      await consumer.run({
+        eachMessage: async ({ message }) => {
+          if (!message.value) return;
+          const event = JSON.parse(message.value.toString()) as Record<string, unknown>;
+          const data = (event.data ?? event) as Record<string, unknown>;
 
-      const cropsDir = join(tmpdir(), `ocr-crops-${runId}`);
-      mkdirSync(cropsDir, { recursive: true });
+          validateNoProhibited(event);
+          validateMaturity(data);
 
-      const tmpFiles: string[] = [];
-      try {
-        const phraseImagePath = await downloadToTemp(
-          minio,
-          minioConfig.bucket,
-          ocrImage.objectKey as string,
-        );
-        tmpFiles.push(phraseImagePath);
+          const runId = data.runId as string;
+          const stepId = data.stepId as string;
+          const attempt = (data.attempt as number) ?? 1;
 
-        for (const crop of positionCrops) {
-          const cropPath = join(cropsDir, `crop-position-${crop.position}.png`);
-          const tmpPath = await downloadToTemp(minio, minioConfig.bucket, crop.objectKey as string);
-          renameSync(tmpPath, cropPath);
-          tmpFiles.push(cropPath);
+          const ocrImage = data.ocrImage as Record<string, unknown> | undefined;
+          const positionCrops = (data.positionCrops as Array<Record<string, unknown>>) ?? [];
+
+          if (!ocrImage?.objectKey || !positionCrops.length) {
+            console.warn(`Skipping event ${event.id ?? 'unknown'}: missing ocrImage or positionCrops`);
+            return;
+          }
+
+          const cropsDir = join(tmpdir(), `ocr-crops-${runId}`);
+          mkdirSync(cropsDir, { recursive: true });
+
+          const tmpFiles: string[] = [];
+          try {
+            const phraseImagePath = await downloadToTemp(
+              minio,
+              minioConfig.bucket,
+              ocrImage.objectKey as string,
+            );
+            tmpFiles.push(phraseImagePath);
+
+            for (const crop of positionCrops) {
+              const cropPath = join(cropsDir, `crop-position-${crop.position}.png`);
+              const tmpPath = await downloadToTemp(minio, minioConfig.bucket, crop.objectKey as string);
+              renameSync(tmpPath, cropPath);
+              tmpFiles.push(cropPath);
+            }
+
+            const manifest: PreprocessReport = {
+              layout: positionCrops.map((c) => ({
+                position: c.position as number,
+                x: (c.x as number) ?? 0,
+                y: (c.y as number) ?? 0,
+                width: (c.width as number) ?? 0,
+                height: (c.height as number) ?? 0,
+                advanceWidth: 1.0,
+                baseline: 0.0,
+              })),
+              totalWidth: (ocrImage.width as number) ?? 0,
+              totalHeight: (ocrImage.height as number) ?? 0,
+            };
+
+            const observations = performOcr(phraseImagePath, manifest, cropsDir);
+
+            const inputHash = cryptoHash(JSON.stringify(data));
+            const outputEvent = buildOcrEvent(
+              runId,
+              stepId,
+              attempt,
+              inputHash,
+              observations,
+              (data.inputArtifacts as string[]) ?? [],
+              (data.outputArtifacts as string[]) ?? [],
+            );
+
+            validateNoProhibited(outputEvent);
+
+            await producer.send({
+              topic: kafkaConfig.outputTopic,
+              messages: [{ value: JSON.stringify(outputEvent) }],
+            });
+          } finally {
+            for (const f of tmpFiles) {
+              cleanupTemp(f);
+            }
+          }
+        },
+      });
+
+      consumer.on(consumer.events.CRASH, () => {
+        if (crashResolve) {
+          crashResolve();
+          crashResolve = null;
+          crashPromise = null;
         }
+      });
 
-        const manifest: PreprocessReport = {
-          layout: positionCrops.map((c) => ({
-            position: c.position as number,
-            x: (c.x as number) ?? 0,
-            y: (c.y as number) ?? 0,
-            width: (c.width as number) ?? 0,
-            height: (c.height as number) ?? 0,
-            advanceWidth: 1.0,
-            baseline: 0.0,
-          })),
-          totalWidth: (ocrImage.width as number) ?? 0,
-          totalHeight: (ocrImage.height as number) ?? 0,
-        };
+      await crashPromise;
 
-        const observations = performOcr(phraseImagePath, manifest, cropsDir);
-
-        const inputHash = cryptoHash(JSON.stringify(data));
-        const outputEvent = buildOcrEvent(
-          runId,
-          stepId,
-          attempt,
-          inputHash,
-          observations,
-          (data.inputArtifacts as string[]) ?? [],
-          (data.outputArtifacts as string[]) ?? [],
-        );
-
-        validateNoProhibited(outputEvent);
-
-        await producer.send({
-          topic: kafkaConfig.outputTopic,
-          messages: [{ value: JSON.stringify(outputEvent) }],
-        });
-      } finally {
-        for (const f of tmpFiles) {
-          cleanupTemp(f);
-        }
-      }
-    },
-  });
+      if (interrupted) break;
+    } catch (error) {
+      console.error('Consumer error, restarting in %dms:', RESTART_DELAY_MS, (error as Error).message);
+      await new Promise((resolve) => setTimeout(resolve, RESTART_DELAY_MS));
+    } finally {
+      await consumer.disconnect().catch(() => undefined);
+      await producer.disconnect().catch(() => undefined);
+    }
+  }
 }
 
 if (process.argv[1] && process.argv[1].endsWith('consumer.js')) {
-  (async () => {
-    while (true) {
-      try {
-        await runConsumer();
-      } catch (err) {
-        console.error('ocr-worker consumer error:', err);
-        await new Promise((r) => setTimeout(r, 5000));
-      }
-    }
-  })();
+  runConsumer().catch((err) => {
+    console.error('ocr-worker consumer error:', err);
+    process.exitCode = 1;
+  });
 }
