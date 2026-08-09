@@ -94,6 +94,12 @@ foreach(test_name json sha256 geometry s3 service version)
 endforeach()
 add_test(NAME banner COMMAND geometry_engine version)
 
+# Telemetry has no other consumers in the test suite; link it directly so its
+# best-effort startup/shutdown path and JSON helpers are exercised for coverage.
+add_executable(geometry_engine_telemetry_test tests/test_telemetry.cpp)
+target_link_libraries(geometry_engine_telemetry_test PRIVATE geometry_engine_telemetry)
+add_test(NAME telemetry COMMAND geometry_engine_telemetry_test)
+
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
   target_compile_options(geometry_lib PRIVATE -Wall -Wextra -Wpedantic -Werror)
   target_compile_options(geometry_engine PRIVATE -Wall -Wextra -Wpedantic -Werror)

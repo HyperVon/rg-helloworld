@@ -179,6 +179,7 @@ void shutdownOpenTelemetry() noexcept {
   return out;
 }
 
+#if defined(RGHW_WITH_CURL_OTLP)
 [[maybe_unused]] std::string otlpLogsJson(const std::string& serviceName) {
   return std::string(
       "{"
@@ -193,6 +194,7 @@ void shutdownOpenTelemetry() noexcept {
       "\"}}]}"
       "}]}");
 }
+#endif  // RGHW_WITH_CURL_OTLP
 
 }  // namespace
 
@@ -273,7 +275,7 @@ void initialize(const std::string& serviceName, const std::string& otlpEndpoint)
   std::cerr << "[otel] no OTLP exporter available (OTel SDK disabled and libcurl "
                "not found); structured startup log emitted to stderr, collector "
                "export skipped; endpoint="
-            << endpoint << "\n";
+            << stripScheme(endpoint) << "\n";
 #endif
 }
 
