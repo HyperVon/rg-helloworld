@@ -153,7 +153,7 @@ make cluster       # k3d cluster + registry localhost:5001 (idempotent, reuses e
 make images        # build + push all images to localhost:5001 (milestone5..11 tags)
 make infra         # terraform init + apply (namespace, secrets, helm releases, PVCs)
 make deploy        # kubectl apply infra/k8s/milestone*/ (if not already via terraform)
-make wait          # kubectl wait --for=condition=Ready pod --all -n rube-goldberg --timeout=300s
+make wait          # wait-ready.sh ignores terminal Succeeded/Failed pods and prints diagnostics
 make demo          # wait + scripts/smoke-test.sh (Kafka + MinIO + rghw run)
 ```
 
@@ -168,10 +168,10 @@ make demo          # wait + scripts/smoke-test.sh (Kafka + MinIO + rghw run)
 | 3 | `make images` | `scripts/build-images.sh` builds 12 images (`glyph-catalog:milestone5`, `geometry-engine:milestone5`, `run-orchestrator:milestone6`, `vector-normalizer:milestone6`, `rasterizer:milestone6`, `image-pipeline:milestone7`, `ocr-worker:milestone8`, `adjudicator:milestone8`, `phrase-assembler:milestone9`, `event-gateway:milestone11`, `telemetry-element:milestone11`, `artifact-inspector:milestone11`, `web-shell:milestone11`) and pushes to `localhost:5001` | `docker images` (filter `5001`) |
 | 4 | `make infra` | `cd infra/terraform/environments/local && terraform init && terraform apply -auto-approve` provisions namespace `rube-goldberg`, secrets (`postgres-credentials`, `redis-credentials`, `minio-credentials`, `grafana-credentials`), Helm releases (PostgreSQL 18.8.6, Kafka KRaft, Redis, MinIO, Prometheus, Loki, Tempo), PVCs | `terraform show`, `helm list -n rube-goldberg` |
 | 5 | `make deploy` | Applies hand-written manifests under `infra/k8s/` (deployments, services, jobs, cronjobs, network policies, Grafana dashboards) | `kubectl get deployments -n rube-goldberg` |
-| 6 | `make wait` | `scripts/wait-ready.sh`: `kubectl wait --for=condition=Ready pod --all -n rube-goldberg --timeout=300s` | All 25 pods `1/1 Running` (2 Completed jobs are normal) |
+| 6 | `make wait` | `scripts/wait-ready.sh`: waits for non-terminal pods and excludes `Succeeded`/`Failed` jobs, with diagnostics on timeout | All live pods `1/1 Running`; completed or failed terminal jobs do not block readiness |
 | 7 | `make run` or `rghw run` | Starts a run (see §5) | `HELLO WORLD` on stdout, 0 exit |
 
-If you already have a cluster, `make cluster` is idempotent ("already exists; reusing it"). Rebuild only what changed — `scripts/build-images.sh` can be run per-image during iteration.
+If you already have a cluster, `make cluster` is idempotent ("already exists; reusing it"). Rebuild only what changed — `scripts/build-images.sh` can be run per-image during iteration. `make deploy` restarts the application deployments after applying manifests so rebuilt immutable local image tags are pulled, then waits for rollout and readiness.
 
 ### 4.3 Low-memory mode (4 GiB laptop)
 

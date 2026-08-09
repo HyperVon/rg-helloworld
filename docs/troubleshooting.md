@@ -201,10 +201,10 @@ kubectl rollout status deployment/glyph-catalog -n rube-goldberg --timeout=300s
 
 # 6. Full dump
 bash scripts/collect-diagnostics.sh  # -> .local/diagnostics/
-bash scripts/wait-ready.sh 600       # waits ignoring Succeeded jobs, prints diagnostics
+bash scripts/wait-ready.sh 600       # waits ignoring terminal Succeeded/Failed jobs, prints diagnostics
 ```
 
-Fixed in `infra/k8s/milestone[456]/[glyph-catalog|run-orchestrator].yaml` via `startupProbe: failureThreshold 30 × period 10s = 300s` plus tuned `readinessProbe period 5s`, and in `scripts/deploy.sh` via `360s` timeout for JVM services, `300s` rollout timeout, 30s progress logs, and auto `diagnose_app_failure` + summary.
+Fixed in `infra/k8s/milestone[456]/[glyph-catalog|run-orchestrator].yaml` via `startupProbe: failureThreshold 30 × period 10s = 300s` plus tuned `readinessProbe period 5s`, and in `scripts/deploy.sh` via `360s` timeout for JVM services, `300s` rollout timeout, 30s progress logs, automatic `diagnose_app_failure` + summary, and explicit application rollout restarts to pull rebuilt immutable image tags. `scripts/wait-ready.sh` excludes terminal `Succeeded` and `Failed` pods from readiness waits.
 
 ### 9. Protobuf / gRPC version mismatch
 

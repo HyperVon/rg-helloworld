@@ -5,8 +5,9 @@ NAMESPACE="rube-goldberg"
 TIMEOUT="${1:-600}"
 
 echo "Waiting for all pods to be ready in namespace '$NAMESPACE' (timeout ${TIMEOUT}s)..."
-# Ignore Succeeded jobs (artifact-cleanup CronJob) - they are never Ready
-if kubectl wait --for=condition=Ready pod --all -n "$NAMESPACE" --timeout="${TIMEOUT}s" --field-selector=status.phase!=Succeeded 2>&1; then
+# Ignore terminal pods left by completed jobs or replaced failed replicas.
+if kubectl wait --for=condition=Ready pod --all -n "$NAMESPACE" --timeout="${TIMEOUT}s" \
+    --field-selector=status.phase!=Succeeded,status.phase!=Failed 2>&1; then
     echo "All pods are ready."
     exit 0
 fi
@@ -17,7 +18,9 @@ kubectl get pods -n "$NAMESPACE" -o wide || true
 echo "--- events ---"
 kubectl get events -n "$NAMESPACE" --sort-by='.lastTimestamp' | tail -n 30 || true
 echo "--- not-ready pods detail ---"
-for pod in $(kubectl get pods -n "$NAMESPACE" --field-selector=status.phase!=Succeeded -o jsonpath='{.items[?(@.status.containerStatuses[0].ready==false)].metadata.name}' 2>/dev/null); do
+for pod in $(kubectl get pods -n "$NAMESPACE" \
+    --field-selector=status.phase!=Succeeded,status.phase!=Failed \
+    -o jsonpath='{.items[?(@.status.containerStatuses[0].ready==false)].metadata.name}' 2>/dev/null); do
     echo ">> $pod"
     kubectl describe pod -n "$NAMESPACE" "$pod" 2>&1 | tail -n 40 || true
     kubectl logs -n "$NAMESPACE" "$pod" --tail=30 2>&1 | head -n 40 || true

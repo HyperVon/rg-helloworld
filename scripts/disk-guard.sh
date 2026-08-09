@@ -16,11 +16,11 @@ say()  { echo -e "\033[0;36m[disk-guard]\033[0m $*" >&2; }
 # --- 1. Critically-low-disk preflight (portable: works on macOS + Linux) ---
 # df -P prints POSIX output; size/used/avail are 512B blocks on macOS, 1K on Linux.
 # We only need the ratio, so the block size cancels out.
-read -r _ _ avail_used _ avail_avail _ < <(df -P / 2>/dev/null | tail -n 1)
-if [[ -n "${avail_avail:-}" && -n "${avail_used:-}" ]]; then
-  total=$(( avail_used + avail_avail ))
+read -r total_blocks _ available_blocks < <(df -P / 2>/dev/null | awk 'NR == 2 { print $2, $3, $4 }')
+if [[ -n "${total_blocks:-}" && -n "${available_blocks:-}" ]]; then
+  total=$(( total_blocks ))
   if [[ $total -gt 0 ]]; then
-    free_pct=$(( (avail_avail * 100) / total ))
+    free_pct=$(( (available_blocks * 100) / total ))
     if [[ $free_pct -lt 15 ]]; then
       warn "Host disk only ${free_pct}% free — kubelet will evict pods at ~5%."
       warn "Free space before building more images (e.g. 'docker system prune -a', grow colima --disk, or run './rghw.sh --fresh')."

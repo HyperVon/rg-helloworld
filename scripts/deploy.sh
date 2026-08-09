@@ -53,17 +53,26 @@ wait_for_app_ready() {
     local elapsed=0
     local last_phase=""
     while [[ $elapsed -lt $timeout ]]; do
-        local ready
-        ready=$(kubectl get pod -n "$NAMESPACE" -l "app=$app" -o jsonpath='{.items[0].status.containerStatuses[0].ready}' 2>/dev/null || echo "false")
+        local ready="false"
+        if kubectl get pod -n "$NAMESPACE" -l "app=$app" \
+            --field-selector=status.phase=Running \
+            -o jsonpath='{range .items[*]}{.status.containerStatuses[0].ready}{"\n"}{end}' \
+            2>/dev/null | grep -q '^true$'; then
+            ready="true"
+        fi
         if [[ "$ready" == "true" ]]; then
             echo "pod/app=$app condition met (${elapsed}s)"
             return 0
         fi
         if (( elapsed > 0 && elapsed % 30 == 0 )); then
             local phase
-            phase=$(kubectl get pod -n "$NAMESPACE" -l "app=$app" -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "Unknown")
+            phase=$(kubectl get pod -n "$NAMESPACE" -l "app=$app" \
+                --field-selector=status.phase=Running \
+                -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "Unknown")
             local waiting
-            waiting=$(kubectl get pod -n "$NAMESPACE" -l "app=$app" -o jsonpath='{.items[0].status.containerStatuses[0].state.waiting.reason}' 2>/dev/null || echo "")
+            waiting=$(kubectl get pod -n "$NAMESPACE" -l "app=$app" \
+                --field-selector=status.phase=Running \
+                -o jsonpath='{.items[0].status.containerStatuses[0].state.waiting.reason}' 2>/dev/null || echo "")
             if [[ -n "$waiting" ]]; then
                 echo "  pod/app=$app phase=$phase waiting=$waiting elapsed=${elapsed}s..."
             elif [[ "$phase" != "$last_phase" ]]; then
@@ -77,6 +86,39 @@ wait_for_app_ready() {
     echo "ERROR: pod/app=$app not ready after ${timeout}s"
     diagnose_app_failure "$app" "$timeout"
     return 1
+}
+
+restart_application_deployments() {
+    local app
+    local timeout
+    local applications=(
+        glyph-catalog
+        geometry-engine
+        run-orchestrator
+        vector-normalizer
+        rasterizer
+        image-pipeline
+        ocr-worker
+        adjudicator
+        phrase-assembler
+        event-gateway
+        telemetry-element
+        artifact-inspector
+        web-shell
+    )
+
+    echo "Restarting application deployments to pull rebuilt image tags..."
+    for app in "${applications[@]}"; do
+        if ! kubectl get deployment "$app" -n "$NAMESPACE" >/dev/null 2>&1; then
+            continue
+        fi
+        retry kubectl rollout restart "deployment/$app" -n "$NAMESPACE"
+        timeout=180
+        if [[ "$app" == "run-orchestrator" || "$app" == "glyph-catalog" ]]; then
+            timeout=360
+        fi
+        retry kubectl rollout status "deployment/$app" -n "$NAMESPACE" --timeout="${timeout}s"
+    done
 }
 
 echo "=== Deploying Rube Goldberg services ==="
@@ -153,6 +195,8 @@ for infra in kafka-controller postgres-postgresql redis-master minio; do
         kubectl wait --for=condition=Ready pod -n "$NAMESPACE" -l "app.kubernetes.io/name=$infra" --timeout=60s 2>&1 || true
     fi
 done
+
+restart_application_deployments
 
 echo "Waiting for core app deployments to be ready..."
 # JVM services need longer budget (startupProbe up to 300s), others stay at 180s

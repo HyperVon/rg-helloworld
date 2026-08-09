@@ -31,6 +31,9 @@ bin/
 obj/
 coverage/
 
+# Locally built CLI binary
+cmd/rghw/rghw
+
 # Python coverage data files
 .coverage
 
