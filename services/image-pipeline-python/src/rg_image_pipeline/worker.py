@@ -9,7 +9,12 @@ from typing import Any
 
 from . import init_telemetry
 from .composition import compose_phrase
-from .events import CloudEvent, build_operation_id, validate_no_prohibited_fields
+from .events import (
+    CloudEvent,
+    build_operation_id,
+    deterministic_event_id,
+    validate_no_prohibited_fields,
+)
 from .kafka_client import create_consumer, create_producer, publish
 from .minio_store import create_client, get_bytes, object_key_for, put_bytes
 from .preprocessing_impl import preprocess_phrase_image
@@ -331,16 +336,6 @@ def _build_ocr_prepared_event(
         data=data,
     )
     return event.to_dict()
-
-
-def deterministic_event_id(run_id: str, step: str, attempt: int, data_hash: str) -> str:
-    import hashlib
-
-    payload = json.dumps(
-        {"runId": run_id, "step": step, "attempt": attempt, "dataHash": data_hash},
-        sort_keys=True,
-    )
-    return "01H8" + hashlib.sha256(payload.encode()).hexdigest()[:20]
 
 
 GROUP_ID = os.environ.get("KAFKA_CONSUMER_GROUP", "image-pipeline-v1")
