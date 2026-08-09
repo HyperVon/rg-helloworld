@@ -13,7 +13,7 @@ Naming/VariableNumber:
 
 Layout/LineLength:
   Max: 120
-  IgnoreCopDirectives: true
+  AllowCopDirectives: true
 
 Style/Documentation:
   Enabled: false

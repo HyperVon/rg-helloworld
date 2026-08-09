@@ -117,6 +117,10 @@ optional focused-development aid.
   requested plaintext, credentials, image bytes, or huge payloads.
 - Propagate OpenTelemetry trace context through HTTP, SOAP, gRPC, and Kafka.
 - Keep large payloads in MinIO, not in Kafka, logs, Redis, or command output.
+- Treat every deprecation warning as actionable: resolve it before completion;
+  if resolution is not possible, document the exact warning, the blocking
+  constraint, the mitigation, and the follow-up owner or trigger. Never leave
+  deprecations silently unresolved.
 - No unapproved architecture changes; record changes as ADRs under
   `docs/adr/`.
 

@@ -118,6 +118,10 @@ confident inside them.
   --tail`. Summarize instead of dumping thousands of lines.
 - Redact credentials, tokens, hostnames, and personal paths from output.
 - Never log the requested plaintext, image bytes, or huge payloads.
+- Resolve deprecation warnings before declaring a change complete. When an
+  upstream or toolchain constraint makes resolution impossible, record the
+  exact warning, why it cannot be fixed, the mitigation, and the condition
+  for revisiting it; do not suppress or ignore it without that record.
 
 ## 8. Model selection and routed delegation
 

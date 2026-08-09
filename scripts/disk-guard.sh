@@ -8,8 +8,6 @@
 #   3. clears a node.kubernetes.io/disk-pressure taint so pods can reschedule.
 set -euo pipefail
 
-NAMESPACE="rube-goldberg"
-
 warn() { echo -e "\033[1;33m[disk-guard]\033[0m $*" >&2; }
 say()  { echo -e "\033[0;36m[disk-guard]\033[0m $*" >&2; }
 

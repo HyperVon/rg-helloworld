@@ -159,8 +159,31 @@ resource "helm_release" "kafka" {
       name  = "image.repository"
       value = "bitnamilegacy/kafka"
     },
+    # Keep the local KRaft deployment to one broker/controller; the chart
+    # defaults to three controllers, which exceeds the laptop memory budget.
     {
-      name  = "replica.replicaCount"
+      name  = "controller.replicaCount"
+      value = "1"
+    },
+    # Internal Kafka topics must also fit the single-broker local cluster.
+    {
+      name  = "overrideConfiguration.offsets\\.topic\\.replication\\.factor"
+      value = "1"
+    },
+    {
+      name  = "overrideConfiguration.transaction\\.state\\.log\\.replication\\.factor"
+      value = "1"
+    },
+    {
+      name  = "overrideConfiguration.transaction\\.state\\.log\\.min\\.isr"
+      value = "1"
+    },
+    {
+      name  = "overrideConfiguration.share\\.coordinator\\.state\\.topic\\.replication\\.factor"
+      value = "1"
+    },
+    {
+      name  = "overrideConfiguration.share\\.coordinator\\.state\\.topic\\.min\\.isr"
       value = "1"
     },
     {

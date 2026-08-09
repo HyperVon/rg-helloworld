@@ -5,13 +5,41 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 NAMESPACE="rube-goldberg"
 export PATH="/opt/homebrew/opt/libpq/bin:$PATH"
 
-POSTGRES_USER="postgres"
-POSTGRES_PASSWORD="PostgresPassw0rd!"
-POSTGRES_DB="postgres"
-REDIS_PASSWORD="RedisPassw0rd!"
-MINIO_ROOT_USER="minioadmin"
-MINIO_ROOT_PASSWORD="minioadmin"
 MINIO_BUCKET="rube-goldberg-artifacts"
+
+decode_secret() {
+    if base64 --help 2>&1 | grep -q -- "--decode"; then
+        base64 --decode
+    else
+        base64 -D
+    fi
+}
+
+secret_value() {
+    local secret="$1"
+    local key="$2"
+    local jsonpath
+    local value
+
+    if [[ "$key" == *-* ]]; then
+        jsonpath="{.data['$key']}"
+    else
+        jsonpath="{.data.$key}"
+    fi
+    value="$(kubectl get secret "$secret" -n "$NAMESPACE" -o "jsonpath=$jsonpath" | decode_secret)"
+    if [[ -z "$value" ]]; then
+        echo "ERROR: secret $secret is missing key $key" >&2
+        return 1
+    fi
+    printf '%s' "$value"
+}
+
+POSTGRES_USER="$(secret_value postgres-credentials username)"
+POSTGRES_PASSWORD="$(secret_value postgres-credentials password)"
+POSTGRES_DB="$(secret_value postgres-credentials database)"
+REDIS_PASSWORD="$(secret_value redis-credentials redis-password)"
+MINIO_ROOT_USER="$(secret_value minio-credentials root-user)"
+MINIO_ROOT_PASSWORD="$(secret_value minio-credentials root-password)"
 
 retry() {
     local n=1
@@ -83,10 +111,43 @@ wait_for_app_ready() {
     return 1
 }
 
+restart_application_deployments() {
+    local app
+    local timeout
+    local applications=(
+        glyph-catalog
+        geometry-engine
+        run-orchestrator
+        vector-normalizer
+        rasterizer
+        image-pipeline
+        ocr-worker
+        adjudicator
+        phrase-assembler
+        event-gateway
+        telemetry-element
+        artifact-inspector
+        web-shell
+    )
+
+    echo "Restarting application deployments to pull rebuilt image tags..."
+    for app in "${applications[@]}"; do
+        if ! kubectl get deployment "$app" -n "$NAMESPACE" >/dev/null 2>&1; then
+            continue
+        fi
+        retry kubectl rollout restart "deployment/$app" -n "$NAMESPACE"
+        timeout=180
+        if [[ "$app" == "run-orchestrator" || "$app" == "glyph-catalog" ]]; then
+            timeout=360
+        fi
+        retry kubectl rollout status "deployment/$app" -n "$NAMESPACE" --timeout="${timeout}s"
+    done
+}
+
 echo "=== Platform Smoke Tests ==="
 
-# Wait for pods to be ready
-retry kubectl wait --for=condition=Ready pod --all -n $NAMESPACE --timeout=300s
+# Wait for non-terminal pods to be ready and show diagnostics on timeout.
+retry bash "$PROJECT_ROOT/scripts/wait-ready.sh" 300
 
 echo ""
 echo "--- Test 1: Kafka produce + consume ---"
@@ -108,7 +169,8 @@ retry kubectl exec -n $NAMESPACE kafka-controller-0 -c kafka -- \
 # Consume the message
 echo "Consuming message..."
 CONSUMED=$(retry kubectl exec -n $NAMESPACE kafka-controller-0 -c kafka -- \
-    timeout 15 kafka-console-consumer.sh --topic $TOPIC --bootstrap-server $KAFKA_BROKER --from-beginning --max-messages 1 2>/dev/null | tail -1)
+    kafka-console-consumer.sh --topic $TOPIC --bootstrap-server $KAFKA_BROKER \
+    --partition 0 --offset 0 --max-messages 1 --timeout-ms 15000 2>/dev/null | tail -1)
 
 if [[ "$CONSUMED" == "$TEST_MESSAGE" ]]; then
     echo "PASS: Kafka message round-tripped correctly"
@@ -128,7 +190,7 @@ kubectl port-forward -n $NAMESPACE svc/minio 9000:9000 &>/dev/null &
 PORTFORWARD_PIDS+=($!)
 sleep 3
 
-mc alias set local http://localhost:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD --quiet
+mc alias set local http://localhost:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" --quiet
 mc mb local/$MINIO_BUCKET --ignore-existing --quiet 2>&1 || true
 mc cp "$TEST_FILE" local/$MINIO_BUCKET/test-artifact.txt --quiet
 DOWNLOAD_FILE="/tmp/rghw-test-artifact-downloaded.txt"
@@ -154,7 +216,7 @@ PORTFORWARD_PIDS+=($!)
 sleep 3
 
 export PGPASSWORD="$POSTGRES_PASSWORD"
-retry psql -h localhost -p 5432 -U $POSTGRES_USER -d $POSTGRES_DB -c "SELECT 'PostgreSQL connection OK' as result;"
+retry psql -h localhost -p 5432 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT 'PostgreSQL connection OK' as result;"
 
 echo "PASS: PostgreSQL is accepting connections"
 kill "${PORTFORWARD_PIDS[0]}" 2>/dev/null || true
@@ -222,6 +284,7 @@ if command -v docker >/dev/null 2>&1; then
     retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone10/event-gateway.yaml"
     retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone10/telemetry-element.yaml"
     retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone10/artifact-inspector.yaml"
+    restart_application_deployments
     wait_for_app_ready event-gateway 180
     wait_for_app_ready telemetry-element 180
     wait_for_app_ready artifact-inspector 180
@@ -248,8 +311,8 @@ if command -v docker >/dev/null 2>&1; then
 
     echo "Verifying glyph blueprints on rg.glyph-blueprints.v1"
     BLUEPRINTS=$(kubectl exec -n $NAMESPACE kafka-controller-0 -c kafka -- \
-        timeout 20 kafka-console-consumer.sh --topic rg.glyph-blueprints.v1 \
-        --bootstrap-server $KAFKA_BROKER --from-beginning --max-messages 50 --timeout-ms 5000 2>/dev/null \
+        kafka-console-consumer.sh --topic rg.glyph-blueprints.v1 \
+        --bootstrap-server $KAFKA_BROKER --partition 0 --offset 0 --max-messages 50 --timeout-ms 5000 2>/dev/null \
         | grep '"glyphInstanceId"' | tail -11 || true)
     BLUEPRINT_COUNT=$(printf '%s\n' "$BLUEPRINTS" | grep -c '"glyphInstanceId"')
     if [[ "$BLUEPRINT_COUNT" -eq 11 ]]; then
@@ -294,8 +357,8 @@ echo "--- Test 6: Milestone 5 geometry + vector artifacts ---"
 if command -v docker >/dev/null 2>&1; then
     echo "Verifying geometry records on rg.geometry-expanded.v1"
     GEOMETRY=$(kubectl exec -n $NAMESPACE kafka-controller-0 -c kafka -- \
-        timeout 20 kafka-console-consumer.sh --topic rg.geometry-expanded.v1 \
-        --bootstrap-server $KAFKA_BROKER --from-beginning --max-messages 50 --timeout-ms 5000 2>/dev/null \
+        kafka-console-consumer.sh --topic rg.geometry-expanded.v1 \
+        --bootstrap-server $KAFKA_BROKER --partition 0 --offset 0 --max-messages 50 --timeout-ms 5000 2>/dev/null \
         | grep '"glyphInstanceId"' | tail -11 || true)
     GEOMETRY_COUNT=$(printf '%s\n' "$GEOMETRY" | grep -c '"glyphInstanceId"')
     if [[ "$GEOMETRY_COUNT" -eq 11 ]]; then
@@ -331,8 +394,8 @@ if command -v docker >/dev/null 2>&1; then
 
     echo "Verifying normalized records on rg.glyph-normalized.v1"
     NORMALIZED=$(kubectl exec -n $NAMESPACE kafka-controller-0 -c kafka -- \
-        timeout 20 kafka-console-consumer.sh --topic rg.glyph-normalized.v1 \
-        --bootstrap-server $KAFKA_BROKER --from-beginning --max-messages 50 --timeout-ms 5000 2>/dev/null \
+        kafka-console-consumer.sh --topic rg.glyph-normalized.v1 \
+        --bootstrap-server $KAFKA_BROKER --partition 0 --offset 0 --max-messages 50 --timeout-ms 5000 2>/dev/null \
         | grep '"glyphInstanceId"' | tail -11 || true)
     NORMALIZED_COUNT=$(printf '%s\n' "$NORMALIZED" | grep -c '"glyphInstanceId"')
     if [[ "$NORMALIZED_COUNT" -eq 11 ]]; then
@@ -364,7 +427,7 @@ if command -v docker >/dev/null 2>&1; then
     kubectl port-forward -n $NAMESPACE svc/minio 9000:9000 &>/dev/null &
     PORTFORWARD_PIDS+=($!)
     sleep 3
-    mc alias set local http://localhost:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD --quiet
+    mc alias set local http://localhost:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" --quiet
 
     GEOMETRY_FILES=$(mc find local/$MINIO_BUCKET --name 'geometry-attempt-*.json' 2>/dev/null | wc -l | tr -d ' ')
     NORMALIZED_FILES=$(mc find local/$MINIO_BUCKET --name 'normalized-attempt-*.json' 2>/dev/null | wc -l | tr -d ' ')
@@ -455,8 +518,8 @@ echo "--- Test 7: Milestone 6 gRPC rasterization ---"
 if command -v docker >/dev/null 2>&1; then
     echo "Verifying rasterized records on rg.glyph-rasterized.v1"
     RASTERIZED=$(kubectl exec -n $NAMESPACE kafka-controller-0 -c kafka -- \
-        timeout 20 kafka-console-consumer.sh --topic rg.glyph-rasterized.v1 \
-        --bootstrap-server $KAFKA_BROKER --from-beginning --max-messages 200 --timeout-ms 5000 2>/dev/null \
+        kafka-console-consumer.sh --topic rg.glyph-rasterized.v1 \
+        --bootstrap-server $KAFKA_BROKER --partition 0 --offset 0 --max-messages 200 --timeout-ms 5000 2>/dev/null \
         | grep '"glyphInstanceId"' || true)
     RASTER_RUNID=$(printf '%s\n' "$RASTERIZED" | tail -1 | grep -o '"runId":"[^"]*"' | cut -d'"' -f4)
     RASTERIZED=$(printf '%s\n' "$RASTERIZED" | grep "\"runId\":\"$RASTER_RUNID\"" || true)
@@ -494,7 +557,7 @@ if command -v docker >/dev/null 2>&1; then
     kubectl port-forward -n $NAMESPACE svc/minio 9000:9000 &>/dev/null &
     PORTFORWARD_PIDS+=($!)
     sleep 3
-    mc alias set local http://localhost:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD --quiet
+    mc alias set local http://localhost:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" --quiet
 
     RASTER_FILES=$(mc find local/$MINIO_BUCKET --name 'raster-attempt-*.png' 2>/dev/null | wc -l | tr -d ' ')
     if [[ "$RASTER_FILES" -ge 10 ]]; then
@@ -595,13 +658,12 @@ if command -v docker >/dev/null 2>&1; then
     echo "Deploying Milestone 8 services (OCR worker + adjudicator)"
     retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone8/ocr-worker.yaml"
     retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone8/adjudicator.yaml"
-    retry kubectl wait --for=condition=Ready pod -n $NAMESPACE -l app=ocr-worker --timeout=180s
-    retry kubectl wait --for=condition=Ready pod -n $NAMESPACE -l app=adjudicator --timeout=180s
+    retry bash "$PROJECT_ROOT/scripts/wait-ready.sh" 180
 
     echo "Verifying OCR observations on rg.ocr-observations.v1"
     OBSERVATIONS=$(kubectl exec -n $NAMESPACE kafka-controller-0 -c kafka -- \
-        timeout 20 kafka-console-consumer.sh --topic rg.ocr-observations.v1 \
-        --bootstrap-server $KAFKA_BROKER --from-beginning --max-messages 5 --timeout-ms 10000 2>/dev/null || true)
+        kafka-console-consumer.sh --topic rg.ocr-observations.v1 \
+        --bootstrap-server $KAFKA_BROKER --partition 0 --offset 0 --max-messages 5 --timeout-ms 10000 2>/dev/null || true)
     if printf '%s\n' "$OBSERVATIONS" | grep -q '"inputMaturity":60.*"outputMaturity":70'; then
         echo "PASS: OCR observations mature 60 -> 70"
     else
@@ -635,8 +697,8 @@ if command -v docker >/dev/null 2>&1; then
 
     echo "Verifying adjudicated symbols on rg.symbols-adjudicated.v1"
     ADJUDICATED=$(kubectl exec -n $NAMESPACE kafka-controller-0 -c kafka -- \
-        timeout 20 kafka-console-consumer.sh --topic rg.symbols-adjudicated.v1 \
-        --bootstrap-server $KAFKA_BROKER --from-beginning --max-messages 5 --timeout-ms 10000 2>/dev/null || true)
+        kafka-console-consumer.sh --topic rg.symbols-adjudicated.v1 \
+        --bootstrap-server $KAFKA_BROKER --partition 0 --offset 0 --max-messages 5 --timeout-ms 10000 2>/dev/null || true)
     if printf '%s\n' "$ADJUDICATED" | grep -q '"inputMaturity":70.*"outputMaturity":80'; then
         echo "PASS: adjudicated symbols mature 70 -> 80"
     else

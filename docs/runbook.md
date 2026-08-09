@@ -157,7 +157,7 @@ make wait          # wait-ready.sh ignores terminal Succeeded/Failed pods and pr
 make demo          # wait + scripts/smoke-test.sh (Kafka + MinIO + rghw run)
 ```
 
-`make demo` is defined as `wait` + `scripts/smoke-test.sh` (*Makefile:461, architecture §25*). The full first-time sequence from `architecture §4.1` is `prerequisites -> contracts -> build -> images -> cluster -> infra -> wait -> e2e`.
+`make demo` is defined as `wait` + `scripts/smoke-test.sh` (*Makefile:461, architecture §25*). The smoke test reads PostgreSQL, Redis, and MinIO credentials from the namespace secrets without printing them. The full first-time sequence from `architecture §4.1` is `prerequisites -> contracts -> build -> images -> cluster -> infra -> wait -> e2e`.
 
 ### 4.2 Step-by-step explanation
 

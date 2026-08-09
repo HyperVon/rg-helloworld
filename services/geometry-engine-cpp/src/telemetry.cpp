@@ -9,30 +9,30 @@
 #include <thread>
 
 #if defined(RGHW_WITH_OPENTELEMETRY)
-#  include <memory>
+#include <opentelemetry/exporters/otlp/otlp_grpc_exporter_factory.h>
+#include <opentelemetry/exporters/otlp/otlp_grpc_exporter_options.h>
+#include <opentelemetry/exporters/otlp/otlp_grpc_log_record_exporter_factory.h>
+#include <opentelemetry/exporters/otlp/otlp_grpc_log_record_exporter_options.h>
+#include <opentelemetry/logs/provider.h>
+#include <opentelemetry/nostd/shared_ptr.h>
+#include <opentelemetry/sdk/logs/batch_log_record_processor_factory.h>
+#include <opentelemetry/sdk/logs/batch_log_record_processor_options.h>
+#include <opentelemetry/sdk/logs/logger_provider.h>
+#include <opentelemetry/sdk/logs/logger_provider_factory.h>
+#include <opentelemetry/sdk/logs/processor.h>
+#include <opentelemetry/sdk/resource/resource.h>
+#include <opentelemetry/sdk/trace/batch_span_processor_factory.h>
+#include <opentelemetry/sdk/trace/batch_span_processor_options.h>
+#include <opentelemetry/sdk/trace/processor.h>
+#include <opentelemetry/sdk/trace/tracer_provider.h>
+#include <opentelemetry/sdk/trace/tracer_provider_factory.h>
+#include <opentelemetry/trace/provider.h>
 
-#  include <opentelemetry/exporters/otlp/otlp_grpc_exporter_factory.h>
-#  include <opentelemetry/exporters/otlp/otlp_grpc_exporter_options.h>
-#  include <opentelemetry/exporters/otlp/otlp_grpc_log_record_exporter_factory.h>
-#  include <opentelemetry/exporters/otlp/otlp_grpc_log_record_exporter_options.h>
-#  include <opentelemetry/logs/provider.h>
-#  include <opentelemetry/nostd/shared_ptr.h>
-#  include <opentelemetry/sdk/logs/batch_log_record_processor_factory.h>
-#  include <opentelemetry/sdk/logs/batch_log_record_processor_options.h>
-#  include <opentelemetry/sdk/logs/logger_provider.h>
-#  include <opentelemetry/sdk/logs/logger_provider_factory.h>
-#  include <opentelemetry/sdk/logs/processor.h>
-#  include <opentelemetry/sdk/resource/resource.h>
-#  include <opentelemetry/sdk/trace/batch_span_processor_factory.h>
-#  include <opentelemetry/sdk/trace/batch_span_processor_options.h>
-#  include <opentelemetry/sdk/trace/processor.h>
-#  include <opentelemetry/sdk/trace/tracer_provider.h>
-#  include <opentelemetry/sdk/trace/tracer_provider_factory.h>
-#  include <opentelemetry/trace/provider.h>
+#include <memory>
 
-#  include "geometry_engine/version.hpp"
+#include "geometry_engine/version.hpp"
 #elif defined(RGHW_WITH_CURL_OTLP)
-#  include <curl/curl.h>
+#include <curl/curl.h>
 #endif
 
 namespace rghw {
@@ -71,8 +71,7 @@ void initOpenTelemetry(const std::string& serviceName, const std::string& target
   bsp_opts.schedule_delay_millis = std::chrono::milliseconds(1000);
   auto trace_processor =
       trace_sdk::BatchSpanProcessorFactory::Create(std::move(trace_exporter), bsp_opts);
-  g_tracer_provider =
-      trace_sdk::TracerProviderFactory::Create(std::move(trace_processor), res);
+  g_tracer_provider = trace_sdk::TracerProviderFactory::Create(std::move(trace_processor), res);
   trace::Provider::SetTracerProvider(
       std::shared_ptr<opentelemetry::trace::TracerProvider>(g_tracer_provider));
 
@@ -84,8 +83,7 @@ void initOpenTelemetry(const std::string& serviceName, const std::string& target
   blp_opts.schedule_delay_millis = std::chrono::milliseconds(1000);
   auto log_processor =
       logs_sdk::BatchLogRecordProcessorFactory::Create(std::move(log_exporter), blp_opts);
-  g_logger_provider =
-      logs_sdk::LoggerProviderFactory::Create(std::move(log_processor), res);
+  g_logger_provider = logs_sdk::LoggerProviderFactory::Create(std::move(log_processor), res);
   opentelemetry::logs::Provider::SetLoggerProvider(
       std::shared_ptr<opentelemetry::logs::LoggerProvider>(g_logger_provider));
 
@@ -146,13 +144,27 @@ void shutdownOpenTelemetry() noexcept {
   out.reserve(value.size() + 2);
   for (char c : value) {
     switch (c) {
-      case '"': out += "\\\""; break;
-      case '\\': out += "\\\\"; break;
-      case '\b': out += "\\b"; break;
-      case '\f': out += "\\f"; break;
-      case '\n': out += "\\n"; break;
-      case '\r': out += "\\r"; break;
-      case '\t': out += "\\t"; break;
+      case '"':
+        out += "\\\"";
+        break;
+      case '\\':
+        out += "\\\\";
+        break;
+      case '\b':
+        out += "\\b";
+        break;
+      case '\f':
+        out += "\\f";
+        break;
+      case '\n':
+        out += "\\n";
+        break;
+      case '\r':
+        out += "\\r";
+        break;
+      case '\t':
+        out += "\\t";
+        break;
       default:
         if (static_cast<unsigned char>(c) < 0x20) {
           char buf[8];
@@ -168,15 +180,18 @@ void shutdownOpenTelemetry() noexcept {
 }
 
 [[maybe_unused]] std::string otlpLogsJson(const std::string& serviceName) {
-  return std::string("{"
-                     "\"resourceLogs\":[{"
-                     "\"resource\":{\"attributes\":[{\"key\":\"service.name\","
-                     "\"value\":{\"stringValue\":\"" + jsonEscape(serviceName) + "\"}}]},"
-                     "\"scopeLogs\":[{\"logRecords\":[{\"severityNumber\":" +
-                     std::to_string(kSeverityInfo) +
-                     ",\"severityText\":\"Info\",\"body\":{\"stringValue\":\"" +
-                     jsonEscape(kStartupMessage) + "\"}}]}"
-                     "}]}");
+  return std::string(
+      "{"
+      "\"resourceLogs\":[{"
+      "\"resource\":{\"attributes\":[{\"key\":\"service.name\","
+      "\"value\":{\"stringValue\":\"" +
+      jsonEscape(serviceName) +
+      "\"}}]},"
+      "\"scopeLogs\":[{\"logRecords\":[{\"severityNumber\":" +
+      std::to_string(kSeverityInfo) + ",\"severityText\":\"Info\",\"body\":{\"stringValue\":\"" +
+      jsonEscape(kStartupMessage) +
+      "\"}}]}"
+      "}]}");
 }
 
 }  // namespace
@@ -257,7 +272,8 @@ void initialize(const std::string& serviceName, const std::string& otlpEndpoint)
   std::cerr.flush();
   std::cerr << "[otel] no OTLP exporter available (OTel SDK disabled and libcurl "
                "not found); structured startup log emitted to stderr, collector "
-               "export skipped; endpoint=" << endpoint << "\n";
+               "export skipped; endpoint="
+            << endpoint << "\n";
 #endif
 }
 
