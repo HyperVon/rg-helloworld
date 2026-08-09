@@ -24,5 +24,5 @@ Requires `@mermaid-js/mermaid-cli` (`mmdc`).
 1. Add the Mermaid source block to `docs/architecture.md`.
 2. Extract it to a `.mmd` file in this directory (strip the ```mermaid fences).
 3. Render the PNG with `mmdc`.
-4. Reference the PNG from the markdown with a relative path like `![...](diagrams/name.png)`.
+4. Reference the PNG from the markdown with a relative path like `![...](high-level-architecture.png)`.
 5. Add a regeneration note next to the markdown diagram block.
