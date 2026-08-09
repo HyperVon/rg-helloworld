@@ -44,24 +44,25 @@ section 30 and should be considered only after the primary pipeline is
 working, unless a later milestone gives it a concrete integrity-preserving
 role.
 
-### Artifact viewer renders JSON instead of intermediate artifacts
+### Artifact viewer renders JSON instead of intermediate artifacts (resolved)
 
-After an `rghw run`, the Web Shell artifact viewer (port 3000) shows JSON for
-each artifact rather than the rendered intermediate artifact itself
-(vector glyphs -> geometry -> SVG -> raster -> phrase image -> OCR ->
-assembly). Clicking "View Artifact" navigates to
-`/api/v1/runs/<runId>/artifacts/<runId>:<stage>` and renders an essentially
-empty default view of the port-3000 app, not the generated image/binary.
+The Web Shell previously showed JSON for each artifact rather than the rendered
+intermediate artifact itself (vector glyphs -> geometry -> SVG -> raster ->
+phrase image -> OCR -> assembly). Its old stage-based links could not identify
+the generated image or binary.
 
-Expected (per AGENTS.md / architecture section 30): a dark-glass, live view
-that lets an operator inspect every intermediate artifact produced during a
-run, sourced from MinIO via the artifact-inspector service, with zero cloud.
+The orchestrator now records only accepted event-derived MinIO object keys that
+are scoped to the run. The artifact listing returns stable opaque `id` and
+`artifactId` descriptors, and the descriptor proxy streams the corresponding
+bytes with the recorded content type. PNG and SVG objects therefore render
+inline, while JSON remains available for inspection. No cloud service or direct
+Ruby-to-MinIO resolution is required.
 
-Investigation areas:
-- `services/web-shell` routing for `/api/v1/runs/:runId/artifacts/:id` —
-  confirm it streams the artifact bytes (or a rendered preview) rather than
-  returning the descriptor JSON.
-- Artifact-inspector endpoint that resolves `runId:stage` to a MinIO object —
-  confirm it returns the object bytes / content-type, not just metadata.
-- Content-type handling so images render inline (PNG/SVG) instead of
-  downloading / showing empty.
+Implementation:
+
+- `GET /api/v1/runs/{runId}/artifacts` returns descriptors without credentials,
+  object keys, or terminal assembled plaintext.
+- `GET /api/v1/runs/{runId}/artifacts/{artifactId}` resolves only the internal
+  run-scoped descriptor mapping and streams the MinIO object bytes.
+- Content-type handling keeps PNG/SVG previews inline and rejects unknown or
+  out-of-scope descriptor IDs.

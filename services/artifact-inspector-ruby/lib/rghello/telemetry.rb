@@ -20,19 +20,7 @@ module Rghello
         return if @configured
 
         @configured = true
-
-        trace_exporter = OpenTelemetry::Exporter::OTLP::Exporter.new(endpoint: OTEL_ENDPOINT)
-        span_processor = OpenTelemetry::SDK::Trace::Export::BatchSpanProcessor.new(trace_exporter)
-
-        log_exporter = OpenTelemetry::Exporter::OTLP::Logs::LogsExporter.new(endpoint: OTEL_ENDPOINT)
-        log_processor = OpenTelemetry::SDK::Logs::Export::BatchLogRecordProcessor.new(log_exporter)
-
-        OpenTelemetry::SDK.configure do |c|
-          c.service_name = SERVICE_NAME
-          c.add_span_processor(span_processor)
-          c.add_log_record_processor(log_processor)
-          c.use_all
-        end
+        configure_sdk
 
         at_exit { shutdown }
 
@@ -53,6 +41,27 @@ module Rghello
         rescue StandardError => e
           warn "Logger provider shutdown error: #{e.message}"
         end
+      end
+
+      private
+
+      def configure_sdk
+        OpenTelemetry::SDK.configure do |config|
+          config.service_name = SERVICE_NAME
+          config.add_span_processor(build_span_processor)
+          config.add_log_record_processor(build_log_processor)
+          config.use_all
+        end
+      end
+
+      def build_span_processor
+        exporter = OpenTelemetry::Exporter::OTLP::Exporter.new(endpoint: OTEL_ENDPOINT)
+        OpenTelemetry::SDK::Trace::Export::BatchSpanProcessor.new(exporter)
+      end
+
+      def build_log_processor
+        exporter = OpenTelemetry::Exporter::OTLP::Logs::LogsExporter.new(endpoint: OTEL_ENDPOINT)
+        OpenTelemetry::SDK::Logs::Export::BatchLogRecordProcessor.new(exporter)
       end
     end
   end

@@ -1,5 +1,6 @@
 package dev.rghw.catalog;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.ByteArrayOutputStream;
@@ -22,5 +23,10 @@ class GlyphCatalogApplicationTest {
     assertEquals(
         "glyph-catalog 0.1.0-milestone4" + System.lineSeparator(),
         out.toString(StandardCharsets.UTF_8));
+  }
+
+  @Test
+  void telemetryInitializationAcceptsConfiguredEndpoint() {
+    assertDoesNotThrow(() -> GlyphCatalogApplication.initTelemetry("http://localhost:4317"));
   }
 }

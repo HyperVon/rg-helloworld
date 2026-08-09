@@ -41,10 +41,13 @@ class HttpApiTest {
         expectedTexts.clear()
         sseClients.clear()
         lastRunEvents.clear()
+        runArtifacts.clear()
+        artifactObjectKeys.clear()
         Services.eventProducer = null
         Services.runStateStore = null
         Services.planner = FakeGlyphPlanner()
         Services.stageMonitor = StageMonitor(StageProgressTracker(), StageEventValidator())
+        Services.artifactStore = null
     }
 
     @AfterEach
@@ -53,6 +56,7 @@ class HttpApiTest {
         Services.runStateStore = null
         Services.planner = null
         Services.stageMonitor = null
+        Services.artifactStore = null
     }
 
     // Drives the stage fan-in for a "Hello World" run (11 positions, 10
@@ -380,12 +384,16 @@ class HttpApiTest {
                 routing {
                     get("/noid/get") { handleGetRun(call) }
                     get("/noid/stream") { handleSseStream(call) }
+                    get("/noid/artifacts") { handleListArtifacts(call) }
+                    get("/noid/artifact") { handleGetArtifact(call) }
                     post("/noid/cancel") { handleCancelRun(call) }
                 }
             }
             val client = createClient {}
             assertEquals(HttpStatusCode.BadRequest, client.get("/noid/get").status)
             assertEquals(HttpStatusCode.BadRequest, client.get("/noid/stream").status)
+            assertEquals(HttpStatusCode.BadRequest, client.get("/noid/artifacts").status)
+            assertEquals(HttpStatusCode.BadRequest, client.get("/noid/artifact").status)
             assertEquals(HttpStatusCode.BadRequest, client.post("/noid/cancel").status)
         }
 

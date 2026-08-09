@@ -135,15 +135,16 @@ All UIs are in namespace `rube-goldberg`. Two access modes: **ingress** (`rghw.l
 
 *Image:* `artifact-inspector:milestone11` (`services/artifact-inspector-ruby`)
 
-**What it is:** A gallery of every intermediate artifact for a run, with SHA-256 lineage and MinIO proxy links. Use it when the Web Shell says `FAILED` and you want to see which image or OCR step produced the bad input.
+**What it is:** A gallery of every available intermediate artifact for a run, with SHA-256 lineage and run-scoped MinIO proxy links. Use it when the Web Shell says `FAILED` and you want to see which image or OCR step produced the bad input.
 
 **How to use:**
 
 1. Open `http://localhost:3001/` — dark card, `RG` logo, `Loading runs…` dropdown. It fetches `GET /api/v1/runs` (same sort as Web Shell) via `GET /api/v1/runs` proxied to the orchestrator (`ENV ORCHESTRATOR_URL`). Picks are `id… — status — date`, newest at top.
 2. Select a run → `Open →` → `/inspector/runs/{runId}`. Equivalent to `http://localhost:3001/inspector`.
-3. The run page shows a table `ID | Stage | SHA-256 (16) | View →`. Click `View →` for `contentType`, full `sha256`, and **proxy URL** (MinIO-backed, no credentials in the HTML).
-4. Manual path still exists: `/` has `<details>Or enter run ID manually</details>` with an `Enter runId` form — useful when copying from `rghw run` stderr.
-5. APIs you can call directly: `GET /api/v1/runs` (JSON list), `GET /inspector/runs/{id}/artifacts` (JSON), `GET /health` → `{"status":"ok"}`.
+3. The run page shows a table `ID | Stage | SHA-256 (16) | View →`. Click `View →` for `contentType`, full `sha256`, and an opaque **proxy URL** (the orchestrator streams MinIO bytes without credentials in the HTML).
+4. PNG and SVG artifacts render inline through the proxy; JSON artifacts remain available for inspection by content type.
+5. Manual path still exists: `/` has `<details>Or enter run ID manually</details>` with an `Enter runId` form — useful when copying from `rghw run` stderr.
+6. APIs you can call directly: `GET /api/v1/runs` (JSON list), `GET /inspector/runs/{id}/artifacts` (JSON), `GET /api/v1/runs/{id}/artifacts/{artifactId}` (artifact bytes), `GET /health` → `{"status":"ok"}`.
 
 *If “No artifacts yet”* the run is still in `PREPROCESSING`/`OCR_RUNNING` — wait a few seconds and refresh, or watch the Web Shell graph.
 

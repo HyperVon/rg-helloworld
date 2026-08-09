@@ -3,6 +3,7 @@ package dev.rghw.orchestrator
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
 import io.ktor.server.testing.testApplication
 import io.ktor.utils.io.ByteChannel
 import io.ktor.utils.io.readUTF8Line
@@ -11,14 +12,19 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.yield
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.io.PrintStream
 import java.nio.charset.StandardCharsets
 import java.util.UUID
@@ -37,9 +43,12 @@ class ApplicationTest {
         expectedTexts.clear()
         sseClients.clear()
         lastRunEvents.clear()
+        runArtifacts.clear()
+        artifactObjectKeys.clear()
         Services.eventProducer = null
         Services.runStateStore = null
         Services.planner = null
+        Services.artifactStore = null
     }
 
     @AfterEach
@@ -47,6 +56,7 @@ class ApplicationTest {
         Services.eventProducer = null
         Services.runStateStore = null
         Services.planner = null
+        Services.artifactStore = null
     }
 
     private fun streams(): Pair<ByteArrayOutputStream, ByteArrayOutputStream> = outBuf to errBuf
@@ -527,6 +537,12 @@ class FakeRunStateStore : RunStateStore {
     override fun getRunStatus(runId: String): String? = status
 }
 
+class FakeArtifactObjectStore(
+    private val objects: Map<String, ByteArray>,
+) : ArtifactObjectStore {
+    override fun open(objectKey: String): InputStream = objects[objectKey]?.let(::ByteArrayInputStream) ?: throw ArtifactNotFoundException()
+}
+
 class FakeGlyphPlanner : GlyphPlanner {
     override fun plan(
         message: String,
@@ -566,6 +582,8 @@ class ArtifactCoverageTest {
         sseClients.clear()
         lastRunEvents.clear()
         runArtifacts.clear()
+        artifactObjectKeys.clear()
+        Services.artifactStore = null
     }
 
     @Test
@@ -615,15 +633,141 @@ class ArtifactCoverageTest {
     }
 
     @Test
-    fun recordStageArtifactIsIdempotent() {
-        val runId = UUID.randomUUID().toString()
-        recordStageArtifact(runId, RunStatus.PLANNING)
-        assertEquals(1, runArtifacts[runId]?.size)
-        recordStageArtifact(runId, RunStatus.PLANNING)
-        assertEquals(1, runArtifacts[runId]?.size, "duplicate stage must not add")
-        recordStageArtifact(runId, RunStatus.SUCCEEDED, assembledText = "HELLO")
-        assertEquals(2, runArtifacts[runId]?.size)
-        assertTrue(runArtifacts[runId]!!.any { it["stage"] == "SUCCEEDED" && it["assembledText"] == "HELLO" })
+    fun validateArtifactObjectKeyRejectsUnsafeKeys() {
+        validateArtifactObjectKey("runs/run-1/glyphs/0/image.png")
+        listOf(
+            "",
+            "/runs/run-1/image.png",
+            "artifacts/run-1/image.png",
+            "runs/run-1/../secret.png",
+            "runs/run-1\\secret.png",
+            "runs/run-1/\u0000.png",
+        ).forEach { key ->
+            assertThrows(IllegalArgumentException::class.java) { validateArtifactObjectKey(key) }
+        }
+    }
+
+    @Test
+    fun recordEventArtifactsCatalogsRealOutputsAndIsIdempotent() {
+        val runId = "run-artifacts"
+        val geometryKey = "runs/$runId/glyphs/0/geometry.json"
+        val normalizedKey = "runs/$runId/glyphs/0/normalized.json"
+        val svgKey = "runs/$runId/glyphs/0/normalized.svg"
+        Services.artifactStore = FakeArtifactObjectStore(mapOf(normalizedKey to "normalized".toByteArray()))
+
+        val geometry =
+            Json
+                .parseToJsonElement(
+                    """
+                {"position":0,"geometry":{"geometrySha256":"geometry-hash"},"outputArtifacts":["$geometryKey","opaque-id"]}
+                """,
+                ).jsonObject
+        val normalized =
+            Json
+                .parseToJsonElement(
+                    """
+                {"position":0,"svgSha256":"svg-hash","outputArtifacts":["$normalizedKey","$svgKey","opaque-id"]}
+                """,
+                ).jsonObject
+
+        recordEventArtifacts(runId, Services.GEOMETRY_TOPIC, geometry)
+        recordEventArtifacts(runId, Services.NORMALIZED_TOPIC, normalized)
+        recordEventArtifacts(runId, Services.GEOMETRY_TOPIC, geometry)
+
+        val artifacts = runArtifacts[runId]!!
+        assertEquals(3, artifacts.size)
+        assertEquals("geometry-hash", artifacts.first { it["stage"] == "GEOMETRY_EXPANDING" }["sha256"])
+        assertEquals(
+            sha256Hex("normalized"),
+            artifacts.first { it["contentType"] == "application/json" && it["stage"] == "NORMALIZING" }["sha256"],
+        )
+        assertEquals("svg-hash", artifacts.first { it["contentType"] == "image/svg+xml" }["sha256"])
+        assertTrue(artifacts.all { it["id"] == it["artifactId"] })
+        assertTrue(artifacts.none { it.containsKey("assembledText") })
+        assertEquals(setOf(geometryKey, normalizedKey, svgKey), artifactObjectKeys[runId]!!.values.toSet())
+
+        recordEventArtifacts(
+            runId,
+            Services.PHRASE_ASSEMBLED_TOPIC,
+            Json.parseToJsonElement("""{"assembledText":"HELLO"}""").jsonObject,
+        )
+        assertEquals(3, runArtifacts[runId]!!.size)
+    }
+
+    @Test
+    fun recordEventArtifactsCatalogsRasterAndOcrOutputs() {
+        val runId = "run-raster-ocr"
+        val rasterKey = "runs/$runId/raster.png"
+        val ocrKey = "runs/$runId/ocr.png"
+        val cropKey = "runs/$runId/crops/2.png"
+        Services.artifactStore =
+            FakeArtifactObjectStore(
+                mapOf(
+                    ocrKey to "ocr".toByteArray(),
+                    cropKey to "crop".toByteArray(),
+                ),
+            )
+
+        recordEventArtifacts(
+            runId,
+            Services.RASTERIZED_TOPIC,
+            Json
+                .parseToJsonElement(
+                    """{"position":2,"raster":{"objectKey":"$rasterKey","sha256":"raster-hash","contentType":"image/png"}}""",
+                ).jsonObject,
+        )
+        recordEventArtifacts(
+            runId,
+            Services.OCR_IMAGES_TOPIC,
+            Json
+                .parseToJsonElement(
+                    """{"ocrImage":{"objectKey":"$ocrKey","sha256":"ocr-hash"},"positionCrops":[{"position":2,"objectKey":"$cropKey"}]}""",
+                ).jsonObject,
+        )
+
+        val artifacts = runArtifacts[runId]!!
+        assertEquals(3, artifacts.size)
+        assertEquals("RASTERIZING", artifacts.first { it["contentType"] == "image/png" && it["sha256"] == "raster-hash" }["stage"])
+        assertEquals("PREPROCESSING", artifacts.first { it["sha256"] == "ocr-hash" }["stage"])
+        val cropDescriptor = artifacts.single { it["stage"] == "PREPROCESSING" && it["glyphPosition"] == "2" }
+        assertEquals(sha256Hex("crop"), cropDescriptor["sha256"])
+        assertEquals(setOf(rasterKey, ocrKey, cropKey), artifactObjectKeys[runId]!!.values.toSet())
+    }
+
+    @Test
+    fun recordEventArtifactsLeavesHashEmptyWhenObjectReadFails() {
+        val runId = "run-artifact-read-failure"
+        val objectKey = "runs/$runId/normalized.json"
+        Services.artifactStore =
+            object : ArtifactObjectStore {
+                override fun open(objectKey: String): InputStream = throw java.io.IOException("read failed")
+            }
+
+        recordEventArtifacts(
+            runId,
+            Services.NORMALIZED_TOPIC,
+            Json.parseToJsonElement("""{"outputArtifacts":["$objectKey"]}""").jsonObject,
+        )
+
+        assertEquals("", runArtifacts[runId]!!.single()["sha256"])
+    }
+
+    @Test
+    fun recordEventArtifactsLeavesHashEmptyWhenObjectIsMissing() {
+        val runId = "run-artifact-missing"
+        val objectKey = "runs/$runId/normalized.json"
+        Services.artifactStore =
+            object : ArtifactObjectStore {
+                override fun open(objectKey: String): InputStream = throw ArtifactNotFoundException()
+            }
+
+        recordEventArtifacts(
+            runId,
+            Services.NORMALIZED_TOPIC,
+            Json.parseToJsonElement("""{"outputArtifacts":["$objectKey"]}""").jsonObject,
+        )
+
+        assertEquals("", runArtifacts[runId]!!.single()["sha256"])
     }
 
     @Test
@@ -644,7 +788,7 @@ class ArtifactCoverageTest {
     }
 
     @Test
-    fun handleListArtifactsSyntheticPath() =
+    fun handleListArtifactsDoesNotSynthesizeEntries() =
         kotlinx.coroutines.runBlocking {
             val runId = UUID.randomUUID().toString()
             runs[runId] =
@@ -662,7 +806,108 @@ class ArtifactCoverageTest {
                 assertEquals(io.ktor.http.HttpStatusCode.OK, resp.status)
                 val body = resp.bodyAsText()
                 assertTrue(body.contains("\"artifacts\""))
-                assertTrue(body.contains("GEOMETRY_EXPANDING") || body.contains("PLANNING"))
+                assertTrue(body.contains("\"artifacts\":[]"), "body: $body")
+                assertTrue(!body.contains("GEOMETRY_EXPANDING"), "body: $body")
+            }
+        }
+
+    @Test
+    fun handleGetArtifactStreamsTheRecordedObject() =
+        kotlinx.coroutines.runBlocking {
+            val runId = "run-stream"
+            val objectKey = "runs/$runId/phrase/image.png"
+            Services.artifactStore = FakeArtifactObjectStore(mapOf(objectKey to "png-bytes".toByteArray()))
+            recordEventArtifacts(
+                runId,
+                Services.PHRASE_COMPOSED_TOPIC,
+                Json
+                    .parseToJsonElement(
+                        """{"phraseImage":{"objectKey":"$objectKey","sha256":"image-hash","contentType":"image/png"}}""",
+                    ).jsonObject,
+            )
+            val artifactId = runArtifacts[runId]!!.single().getValue("id")
+
+            io.ktor.server.testing.testApplication {
+                application { module() }
+                val response = client.get("/api/v1/runs/$runId/artifacts/$artifactId")
+                assertEquals(io.ktor.http.HttpStatusCode.OK, response.status)
+                assertEquals("image/png", response.contentType()?.toString())
+                assertEquals("png-bytes", response.bodyAsText())
+            }
+        }
+
+    @Test
+    fun handleGetArtifactReturnsUnavailableWithoutStore() =
+        kotlinx.coroutines.runBlocking {
+            val runId = "run-no-store"
+            val objectKey = "runs/$runId/phrase/image.png"
+            Services.artifactStore = FakeArtifactObjectStore(mapOf(objectKey to "png-bytes".toByteArray()))
+            recordEventArtifacts(
+                runId,
+                Services.PHRASE_COMPOSED_TOPIC,
+                Json.parseToJsonElement("""{"phraseImage":{"objectKey":"$objectKey"}}""").jsonObject,
+            )
+            val artifactId = runArtifacts[runId]!!.single().getValue("id")
+            Services.artifactStore = null
+
+            io.ktor.server.testing.testApplication {
+                application { module() }
+                val response = client.get("/api/v1/runs/$runId/artifacts/$artifactId")
+                assertEquals(io.ktor.http.HttpStatusCode.ServiceUnavailable, response.status)
+            }
+        }
+
+    @Test
+    fun handleGetArtifactReturnsNotFoundWhenObjectIsMissing() =
+        kotlinx.coroutines.runBlocking {
+            val runId = "run-missing-object"
+            val objectKey = "runs/$runId/phrase/image.png"
+            Services.artifactStore = FakeArtifactObjectStore(emptyMap())
+            recordEventArtifacts(
+                runId,
+                Services.PHRASE_COMPOSED_TOPIC,
+                Json.parseToJsonElement("""{"phraseImage":{"objectKey":"$objectKey"}}""").jsonObject,
+            )
+            val artifactId = runArtifacts[runId]!!.single().getValue("id")
+
+            io.ktor.server.testing.testApplication {
+                application { module() }
+                val response = client.get("/api/v1/runs/$runId/artifacts/$artifactId")
+                assertEquals(io.ktor.http.HttpStatusCode.NotFound, response.status)
+            }
+        }
+
+    @Test
+    fun handleGetArtifactReturnsNotFoundForUnknownDescriptor() =
+        kotlinx.coroutines.runBlocking {
+            io.ktor.server.testing.testApplication {
+                application { module() }
+                val response = client.get("/api/v1/runs/run-unknown/artifacts/not-recorded")
+                assertEquals(io.ktor.http.HttpStatusCode.NotFound, response.status)
+            }
+        }
+
+    @Test
+    fun handleGetArtifactFallsBackForInvalidContentType() =
+        kotlinx.coroutines.runBlocking {
+            val runId = "run-invalid-content-type"
+            val objectKey = "runs/$runId/phrase/image.png"
+            Services.artifactStore = FakeArtifactObjectStore(mapOf(objectKey to "png-bytes".toByteArray()))
+            recordEventArtifacts(
+                runId,
+                Services.PHRASE_COMPOSED_TOPIC,
+                Json
+                    .parseToJsonElement(
+                        """{"phraseImage":{"objectKey":"$objectKey","contentType":"not a content type"}}""",
+                    ).jsonObject,
+            )
+            val artifactId = runArtifacts[runId]!!.single().getValue("id")
+
+            io.ktor.server.testing.testApplication {
+                application { module() }
+                val response = client.get("/api/v1/runs/$runId/artifacts/$artifactId")
+                assertEquals(io.ktor.http.HttpStatusCode.OK, response.status)
+                assertEquals("application/octet-stream", response.contentType()?.toString())
             }
         }
 }

@@ -1052,6 +1052,9 @@ M7 stability update (2026-08-07): Uppercase acceptance required redrawing all gl
   - Close shortly after a terminal event.
   - Serve artifact listing endpoint `GET /api/v1/runs/{runId}/artifacts`
     (metadata + safe proxy URLs, no credentials).
+- Extend the Kotlin orchestrator artifact catalog:
+  - Record only validated, run-scoped MinIO object keys from accepted events.
+  - Serve stable artifact descriptors and a content-type-preserving byte proxy.
 - Create `web-shell` (React + Vite + React Flow):
   - Process graph visualization (deterministic layout).
   - Run selector, artifact modal, success animation.
@@ -1069,6 +1072,7 @@ M7 stability update (2026-08-07): Uppercase acceptance required redrawing all gl
 
 - [x] Event gateway: Redis Streams → SSE converter with snapshot, replay, heartbeat
 - [x] Event gateway: artifact listing endpoint
+- [x] Orchestrator: validated event-derived artifact catalog and MinIO byte proxy
 - [x] React web-shell: process graph with React Flow
 - [x] React web-shell: run selector + artifact modal
 - [x] React web-shell: success animation
@@ -1083,7 +1087,10 @@ M7 stability update (2026-08-07): Uppercase acceptance required redrawing all gl
 - Event gateway serves SSE with `event:heartbeat`, `event:snapshot`, `event:step-status-changed`,
   `event:run-succeeded` / `event:run-failed`
 - SSE event format matches architecture §10.3 (data: prefix, blank-line delimiter)
-- Artifact listing returns metadata + safe proxy URLs (no credentials)
+- Artifact listing returns only validated event-derived metadata + safe proxy URLs
+  (no credentials or terminal plaintext)
+- Orchestrator artifact proxy streams the recorded MinIO object with its content
+  type and rejects unknown or out-of-scope descriptor IDs
 - React web-shell renders process graph, reconnects on mid-run reload
 - Angular telemetry panel renders as `<rg-telemetry-panel>` custom element
 - Ruby HTMX inspector browses artifacts without full page reload
@@ -1107,6 +1114,7 @@ M7 stability update (2026-08-07): Uppercase acceptance required redrawing all gl
 | 2026-08-06 | Integration test version checks updated | PASS |
 | 2026-08-07 | make format/lint/unit/coverage/build all green (post-architecture sweep) | PASS |
 | 2026-08-07 | make integration M5-M9 all PASS (11 banners, HELLO WORLD gap at 5, 80→90) | PASS |
+| 2026-08-08 | Kotlin artifact catalog/proxy focused tests: key validation, idempotent recording, safe listing, and byte streaming | PASS |
 
 ---
 

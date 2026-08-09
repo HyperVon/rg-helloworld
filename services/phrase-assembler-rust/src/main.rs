@@ -27,7 +27,9 @@ fn init_tracing() {
             env::set_var("RUST_LOG", "info");
         }
     }
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt()
+        .with_writer(std::io::stderr)
+        .init();
 }
 
 struct Telemetry {

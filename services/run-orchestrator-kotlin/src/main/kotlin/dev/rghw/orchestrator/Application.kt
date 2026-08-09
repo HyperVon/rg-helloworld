@@ -19,6 +19,7 @@ import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondBytesWriter
+import io.ktor.server.response.respondOutputStream
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
@@ -33,8 +34,13 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
@@ -91,6 +97,12 @@ data class RunListItemResponse(
 @Serializable
 data class RunListResponse(
     val runs: List<RunListItemResponse>,
+)
+
+@Serializable
+data class ArtifactListResponse(
+    val runId: String,
+    val artifacts: List<Map<String, String>>,
 )
 
 @Serializable
@@ -285,6 +297,7 @@ object Services {
     var runStateStore: RunStateStore? = null
     var planner: GlyphPlanner? = null
     var stageMonitor: StageMonitor? = null
+    var artifactStore: ArtifactObjectStore? = null
 
     fun initKafka(
         producerFactory: (String) -> EventProducer = { bootstrap ->
@@ -303,7 +316,11 @@ object Services {
         runStateStore = storeFactory(redisUrl())
     }
 
-    fun initStageMonitor(monitorFactory: () -> StageMonitor = { StageMonitor(StageProgressTracker(), StageEventValidator()) }) {
+    fun initStageMonitor(
+        monitorFactory: () -> StageMonitor = {
+            StageMonitor(StageProgressTracker(), StageEventValidator(), ::recordEventArtifacts)
+        },
+    ) {
         stageMonitor = monitorFactory()
     }
 }
@@ -314,6 +331,7 @@ val expectedTexts: ConcurrentHashMap<String, String> = ConcurrentHashMap()
 val sseClients: ConcurrentHashMap<String, CopyOnWriteArrayList<SseClient>> = ConcurrentHashMap()
 val lastRunEvents: ConcurrentHashMap<String, String> = ConcurrentHashMap()
 val runArtifacts: ConcurrentHashMap<String, MutableList<Map<String, String>>> = ConcurrentHashMap()
+val artifactObjectKeys: ConcurrentHashMap<String, ConcurrentHashMap<String, String>> = ConcurrentHashMap()
 
 data class SseClient(
     val channel: Channel<String>,
@@ -346,6 +364,7 @@ fun runServer(
     Telemetry.init()
     retryWithBackoff(attempts = 30, delayMs = 2000, name = "kafka") { Services.initKafka() }
     retryWithBackoff(attempts = 30, delayMs = 2000, name = "redis") { Services.initRedis() }
+    Services.artifactStore = MinioArtifactStore.fromEnvironment()
     Services.initStageMonitor()
     Services.planner = GlyphCatalogClient(Services.glyphCatalogUrl())
 
@@ -443,6 +462,7 @@ fun Application.module() {
                     }
                     route("artifacts") {
                         get { handleListArtifacts(call) }
+                        get("{artifactId}") { handleGetArtifact(call) }
                     }
                     post("cancel") { handleCancelRun(call) }
                 }
@@ -566,7 +586,6 @@ fun transitionRun(
     }
     runs[runId] = state.copy(status = next)
     Services.runStateStore?.setRunStatus(runId, next)
-    recordStageArtifact(runId, next)
     broadcastEvent(runId, eventMap(next.name, "Run moved to ${next.name}"))
 }
 
@@ -582,7 +601,6 @@ fun completeRun(
     runs[runId] = succeeded
     Services.runStateStore?.setRunResult(runId, assembledText)
     Services.runStateStore?.setRunStatus(runId, succeeded.status)
-    recordStageArtifact(runId, RunStatus.SUCCEEDED, assembledText = assembledText)
     broadcastEvent(
         runId,
         mapOf(
@@ -864,34 +882,206 @@ fun sha256Hex(input: String): String {
     return bytes.joinToString("") { "%02x".format(it) }
 }
 
-fun ensureRunArtifacts(runId: String): MutableList<Map<String, String>> = runArtifacts.getOrPut(runId) { mutableListOf() }
+private data class ArtifactCandidate(
+    val objectKey: String,
+    val sha256: String = "",
+    val contentType: String? = null,
+    val glyphPosition: Int? = null,
+)
 
-fun recordStageArtifact(
-    runId: String,
-    status: RunStatus,
-    assembledText: String? = null,
-) {
-    val list = ensureRunArtifacts(runId)
-    val stage = stageLabel(status)
-    if (list.any { it["stage"] == stage }) return
-    val maturity = maturityForStatus(status)
-    val id = "$runId:${stage.lowercase()}"
-    val hashBase = if (assembledText != null) "$runId:$stage:$assembledText" else "$runId:$stage:$maturity"
-    val sha = sha256Hex(hashBase)
-    val entry =
-        mutableMapOf(
-            "id" to id,
-            "artifactId" to id,
-            "stage" to stage,
-            "sha256" to sha,
-            "maturity" to maturity.toString(),
-            "contentType" to if (stage == "SUCCEEDED") "text/plain" else "application/json",
-            "proxyUrl" to "/api/v1/runs/$runId/artifacts/$id",
-            "createdAt" to Instant.now().toString(),
-        )
-    if (assembledText != null) entry["assembledText"] = assembledText
-    list.add(entry)
+private fun JsonObject.stringValue(name: String): String? = this[name]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
+
+private fun JsonObject.intValue(name: String): Int? = this[name]?.jsonPrimitive?.intOrNull
+
+private fun JsonElement.stringValue(): String? = jsonPrimitive.contentOrNull?.takeIf { it.isNotBlank() }
+
+private fun JsonElement.objectValue(): JsonObject? = this as? JsonObject
+
+private fun JsonObject.outputArtifactCandidates(
+    contentType: String? = null,
+    sha256: String = "",
+): List<ArtifactCandidate> =
+    (this["outputArtifacts"] as? JsonArray)
+        ?.mapNotNull { element ->
+            element.stringValue()?.let { objectKey ->
+                ArtifactCandidate(objectKey, sha256, contentType, intValue("position"))
+            }
+        }
+        ?: emptyList()
+
+private fun contentTypeForObjectKey(objectKey: String): String =
+    when {
+        objectKey.endsWith(".json") -> "application/json"
+        objectKey.endsWith(".svg") -> "image/svg+xml"
+        objectKey.endsWith(".png") -> "image/png"
+        else -> "application/octet-stream"
+    }
+
+private fun contentTypeValue(
+    value: String?,
+    fallback: String,
+): String =
+    value?.takeIf { it.isNotBlank() }?.let {
+        runCatching { ContentType.parse(it).toString() }.getOrElse { "application/octet-stream" }
+    } ?: fallback
+
+private fun candidatesForEvent(
+    topic: String,
+    data: JsonObject,
+): List<ArtifactCandidate> =
+    when (topic) {
+        Services.GEOMETRY_TOPIC -> {
+            data.outputArtifactCandidates(
+                contentType = "application/json",
+                sha256 = data["geometry"]?.objectValue()?.stringValue("geometrySha256") ?: "",
+            )
+        }
+
+        Services.NORMALIZED_TOPIC -> {
+            data.outputArtifactCandidates().map { candidate ->
+                val sha256 = if (candidate.objectKey.endsWith(".svg")) data.stringValue("svgSha256") ?: "" else ""
+                candidate.copy(sha256 = sha256, contentType = contentTypeForObjectKey(candidate.objectKey))
+            }
+        }
+
+        Services.RASTERIZED_TOPIC -> {
+            listOfNotNull(
+                data["raster"]?.objectValue()?.let { raster ->
+                    raster.stringValue("objectKey")?.let { objectKey ->
+                        ArtifactCandidate(
+                            objectKey = objectKey,
+                            sha256 = raster.stringValue("sha256") ?: "",
+                            contentType = raster.stringValue("contentType"),
+                            glyphPosition = data.intValue("position"),
+                        )
+                    }
+                },
+            )
+        }
+
+        Services.PHRASE_COMPOSED_TOPIC -> {
+            listOfNotNull(
+                data["phraseImage"]?.objectValue()?.let { image ->
+                    image.stringValue("objectKey")?.let { objectKey ->
+                        ArtifactCandidate(
+                            objectKey = objectKey,
+                            sha256 = image.stringValue("sha256") ?: "",
+                            contentType = image.stringValue("contentType") ?: "image/png",
+                            glyphPosition = data.intValue("position"),
+                        )
+                    }
+                },
+            )
+        }
+
+        Services.OCR_IMAGES_TOPIC -> {
+            val image =
+                listOfNotNull(
+                    data["ocrImage"]?.objectValue()?.let { ocrImage ->
+                        ocrImage.stringValue("objectKey")?.let { objectKey ->
+                            ArtifactCandidate(
+                                objectKey = objectKey,
+                                sha256 = ocrImage.stringValue("sha256") ?: "",
+                                contentType = ocrImage.stringValue("contentType") ?: "image/png",
+                            )
+                        }
+                    },
+                )
+            val crops =
+                (data["positionCrops"] as? JsonArray)
+                    ?.mapNotNull { element ->
+                        element.objectValue()?.let { crop ->
+                            crop.stringValue("objectKey")?.let { objectKey ->
+                                ArtifactCandidate(
+                                    objectKey = objectKey,
+                                    contentType = "image/png",
+                                    glyphPosition = crop.intValue("position"),
+                                )
+                            }
+                        }
+                    }
+                    ?: emptyList()
+            image + crops
+        }
+
+        else -> {
+            emptyList()
+        }
+    }
+
+private fun sha256ForCandidate(candidate: ArtifactCandidate): String {
+    if (candidate.sha256.isNotBlank()) return candidate.sha256
+    val store = Services.artifactStore ?: return ""
+    return try {
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+        store.open(candidate.objectKey).use { input ->
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            while (true) {
+                val count = input.read(buffer)
+                if (count < 0) break
+                digest.update(buffer, 0, count)
+            }
+        }
+        digest.digest().joinToString("") { "%02x".format(it) }
+    } catch (_: ArtifactNotFoundException) {
+        ""
+    } catch (_: java.io.IOException) {
+        ""
+    }
 }
+
+fun recordEventArtifacts(
+    runId: String,
+    topic: String,
+    data: JsonObject,
+) {
+    if (topic == Services.PHRASE_ASSEMBLED_TOPIC) return
+    val stage =
+        mapOf(
+            Services.GEOMETRY_TOPIC to "GEOMETRY_EXPANDING",
+            Services.NORMALIZED_TOPIC to "NORMALIZING",
+            Services.RASTERIZED_TOPIC to "RASTERIZING",
+            Services.PHRASE_COMPOSED_TOPIC to "COMPOSING",
+            Services.OCR_IMAGES_TOPIC to "PREPROCESSING",
+        )[topic] ?: return
+    val runPrefix = "runs/$runId/"
+    candidatesForEvent(topic, data)
+        .distinctBy { it.objectKey to it.glyphPosition }
+        .forEach { candidate ->
+            if (!candidate.objectKey.startsWith(runPrefix)) return@forEach
+            try {
+                validateArtifactObjectKey(candidate.objectKey)
+            } catch (_: IllegalArgumentException) {
+                return@forEach
+            }
+            val artifactId = sha256Hex("$runId|$topic|${candidate.glyphPosition ?: ""}|${candidate.objectKey}")
+            val objectKeys = artifactObjectKeys.computeIfAbsent(runId) { ConcurrentHashMap() }
+            if (objectKeys.putIfAbsent(artifactId, candidate.objectKey) != null) return@forEach
+            val descriptor =
+                buildMap {
+                    put("id", artifactId)
+                    put("artifactId", artifactId)
+                    put("stage", stage)
+                    put("sha256", sha256ForCandidate(candidate))
+                    put("maturity", maturityForArtifactTopic(topic).toString())
+                    put("contentType", contentTypeValue(candidate.contentType, contentTypeForObjectKey(candidate.objectKey)))
+                    put("proxyUrl", "/api/v1/runs/$runId/artifacts/$artifactId")
+                    put("createdAt", Instant.now().toString())
+                    candidate.glyphPosition?.let { put("glyphPosition", it.toString()) }
+                }
+            runArtifacts.computeIfAbsent(runId) { CopyOnWriteArrayList() }.add(descriptor)
+        }
+}
+
+private fun maturityForArtifactTopic(topic: String): Int =
+    when (topic) {
+        Services.GEOMETRY_TOPIC -> 20
+        Services.NORMALIZED_TOPIC -> 30
+        Services.RASTERIZED_TOPIC -> 40
+        Services.PHRASE_COMPOSED_TOPIC -> 50
+        Services.OCR_IMAGES_TOPIC -> 60
+        else -> 0
+    }
 
 suspend fun handleListArtifacts(call: ApplicationCall) {
     val runId = call.parameters["runId"]
@@ -899,46 +1089,44 @@ suspend fun handleListArtifacts(call: ApplicationCall) {
         call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Missing runId"))
         return
     }
-    val state = runs[runId]
     val stored = runArtifacts[runId]?.toList() ?: emptyList()
-    if (stored.isNotEmpty()) {
-        call.respond(mapOf("artifacts" to stored))
+    call.respond(ArtifactListResponse(runId, stored))
+}
+
+suspend fun handleGetArtifact(call: ApplicationCall) {
+    val runId = call.parameters["runId"]
+    val artifactId = call.parameters["artifactId"]
+    if (runId == null || artifactId == null) {
+        call.respond(HttpStatusCode.BadRequest, "Missing artifact identifiers")
         return
     }
-    if (state != null) {
-        val pct = percentageForStatus(state.status)
-        val count = (pct / 10).coerceIn(1, 10)
-        val stages =
-            listOf(
-                "PLANNING",
-                "GEOMETRY_EXPANDING",
-                "NORMALIZING",
-                "RASTERIZING",
-                "COMPOSING",
-                "PREPROCESSING",
-                "OCR_RUNNING",
-                "ADJUDICATING",
-                "ASSEMBLING",
-                "SUCCEEDED",
-            ).take(count)
-        val synthetic =
-            stages.mapIndexed { idx, stage ->
-                val id = "$runId:${stage.lowercase()}"
-                mapOf(
-                    "id" to id,
-                    "artifactId" to id,
-                    "stage" to stage,
-                    "sha256" to sha256Hex("$runId:$stage:$idx"),
-                    "maturity" to ((idx + 1) * 10).toString(),
-                    "contentType" to "application/json",
-                    "proxyUrl" to "/api/v1/runs/$runId/artifacts/$id",
-                    "createdAt" to Instant.now().toString(),
-                )
-            }
-        call.respond(mapOf("artifacts" to synthetic))
+    val objectKey = artifactObjectKeys[runId]?.get(artifactId)
+    val descriptor = runArtifacts[runId]?.firstOrNull { it["id"] == artifactId }
+    if (objectKey == null || descriptor == null) {
+        call.respond(HttpStatusCode.NotFound, "Artifact not found")
         return
     }
-    call.respond(mapOf("artifacts" to emptyList<Map<String, String>>()))
+    val store = Services.artifactStore
+    if (store == null) {
+        call.respond(HttpStatusCode.ServiceUnavailable, "Artifact store unavailable")
+        return
+    }
+    val contentType = ContentType.parse(contentTypeValue(descriptor["contentType"], "application/octet-stream"))
+    val input =
+        try {
+            store.open(objectKey)
+        } catch (_: ArtifactNotFoundException) {
+            call.respond(HttpStatusCode.NotFound, "Artifact not found")
+            return
+        }
+    try {
+        call.respondOutputStream(contentType, HttpStatusCode.OK) {
+            input.use { it.copyTo(this) }
+        }
+    } catch (error: Exception) {
+        input.close()
+        throw error
+    }
 }
 
 suspend fun handleCancelRun(call: ApplicationCall) {

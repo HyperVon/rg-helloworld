@@ -188,8 +188,11 @@ class StageMonitorTest {
         expectedTexts.clear()
         sseClients.clear()
         lastRunEvents.clear()
+        runArtifacts.clear()
+        artifactObjectKeys.clear()
         Services.runStateStore = null
         Services.eventProducer = null
+        Services.artifactStore = null
     }
 
     private fun monitor(): StageMonitor = StageMonitor(StageProgressTracker(), StageEventValidator())
