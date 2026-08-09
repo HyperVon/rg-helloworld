@@ -74,13 +74,6 @@ public class RasterRendererTests
     }
 
     [Fact]
-    public void PixelDensityIsEmSizeOverMaxDimension()
-    {
-        var result = new RasterRenderer().Render(RequestWith(SampleGlyph));
-        Assert.Equal(1024.0 / Math.Max(result.Width, result.Height), result.PixelDensity, 6);
-    }
-
-    [Fact]
     public void ThickerStrokeDrawsMorePixels()
     {
         var renderer = new RasterRenderer();

@@ -8,18 +8,17 @@ using SixLabors.ImageSharp.Processing;
 
 namespace Rghw.Rasterizer;
 
-public sealed record RasterResult(byte[] Bytes, string Sha256Hex, int Width, int Height, double PixelDensity);
+public sealed record RasterResult(byte[] Bytes, string Sha256Hex, int Width, int Height);
 
-// Stage 4 rendering: normalized em-square segments (1024 units, baseline at
-// 800) are drawn onto a transparent canvas with rounded caps, configurable
-// antialiasing and stroke width, and deterministic integer supersampling
-// with box downsampling. The image is cropped to the drawn content plus an
-// OCR margin, then encoded as PNG. Every step is pure arithmetic on the
-// request, so identical requests produce byte-identical PNGs.
+// Stage 4 rendering: normalized em-square segments (1024 units) are drawn
+// onto a transparent canvas with rounded caps, configurable antialiasing and
+// stroke width, and deterministic integer supersampling with box downsampling.
+// The image is cropped to the drawn content plus an OCR margin, then encoded
+// as PNG. Every step is pure arithmetic on the request, so identical requests
+// produce byte-identical PNGs.
 public sealed class RasterRenderer
 {
     public const double EmSize = 1024.0;
-    public const double Baseline = 800.0;
     public const double OcrMarginRatio = 0.05;
     public const double MinOcrMarginPx = 8.0;
     public const string ContentType = "image/png";
@@ -65,8 +64,7 @@ public sealed class RasterRenderer
         int outHeight = Math.Max(1, (bottom - top) / ss);
         byte[] png = DownsampleAndEncode(image, left, top, outWidth, outHeight, ss);
         string sha = Convert.ToHexString(SHA256.HashData(png)).ToLowerInvariant();
-        double density = EmSize / Math.Max(outWidth, outHeight);
-        return new RasterResult(png, sha, outWidth, outHeight, density);
+        return new RasterResult(png, sha, outWidth, outHeight);
     }
 
     private static EndCapStyle CapFor(string lineCap) =>

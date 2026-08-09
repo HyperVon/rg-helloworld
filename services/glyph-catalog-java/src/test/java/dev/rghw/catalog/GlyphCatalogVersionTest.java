@@ -10,9 +10,4 @@ class GlyphCatalogVersionTest {
   void versionMatchesMilestone4() {
     assertEquals("0.1.0-milestone4", GlyphCatalogVersion.VERSION);
   }
-
-  @Test
-  void versionIsNotEmpty() {
-    assertEquals(false, GlyphCatalogVersion.VERSION.isBlank());
-  }
 }

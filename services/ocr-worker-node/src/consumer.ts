@@ -2,7 +2,6 @@ import { Producer } from 'kafkajs';
 import { existsSync, mkdirSync, renameSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { spawnSync } from 'node:child_process';
 
 import { createKafka, WorkerConfig } from './kafka.js';
 import { createMinioClient, downloadToTemp, cleanupTemp, MinioConfig } from './minio.js';

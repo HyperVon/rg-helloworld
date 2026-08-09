@@ -8,7 +8,7 @@
     "auto": true,
     "prune": true
   },
-  "lsp": true,
+  "lsp": false,
   "plugin": [
     "context-mode",
     "@tarquinen/opencode-dcp"

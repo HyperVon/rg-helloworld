@@ -293,6 +293,7 @@ coverage-cpp:
 	$(call guard_librdkafka)
 	@command -v gcovr >/dev/null 2>&1 || { echo "SKIP: gcovr not installed (CI enforces C++ coverage)"; exit 0; }; \
 	if ! command -v g++ >/dev/null 2>&1; then echo "SKIP: GNU g++ required for C++ coverage (CI enforces)"; exit 0; fi; \
+	if ! g++ --version 2>&1 | grep -q "Free Software Foundation"; then echo "SKIP: GNU g++ required for C++ coverage (CI enforces)"; exit 0; fi; \
 	echo ">> ctest + gcovr (90% line gate) ($(CPP_DIR))"; \
 	cmake -S $(CPP_DIR) -B $(CPP_BUILD) -DCMAKE_BUILD_TYPE=Debug -DENABLE_COVERAGE=ON >/dev/null && \
 	cmake --build $(CPP_BUILD) >/dev/null && \

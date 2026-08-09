@@ -207,17 +207,4 @@ class AdjudicatorLogicTest < Minitest::Test
     assert_equal(0.30, Adjudicator::MIN_CONFIDENCE)
     assert_equal(0.40, Adjudicator::HIGH_CONFIDENCE)
   end
-
-  private
-
-  def deep_symbolize_keys(obj)
-    case obj
-    when Hash
-      obj.transform_keys(&:to_sym).transform_values { |v| deep_symbolize_keys(v) }
-    when Array
-      obj.map { |v| deep_symbolize_keys(v) }
-    else
-      obj
-    end
-  end
 end

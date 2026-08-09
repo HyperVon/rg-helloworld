@@ -85,6 +85,16 @@ class HttpApiTest {
             Services.OCR_IMAGES_TOPIC,
             stageEvent(Services.OCR_IMAGES_TOPIC, runId, "glyph-0", 50, 60),
         )
+        // OCR observations event (run-level, maturity 60 -> 70)
+        monitor.handle(
+            Services.OCR_OBSERVATIONS_TOPIC,
+            stageEvent(Services.OCR_OBSERVATIONS_TOPIC, runId, "glyph-0", 60, 70),
+        )
+        // Symbols adjudicated event (maturity 70 -> 80)
+        monitor.handle(
+            Services.SYMBOLS_ADJUDICATED_TOPIC,
+            stageEvent(Services.SYMBOLS_ADJUDICATED_TOPIC, runId, "glyph-0", 70, 80),
+        )
         // Final assembly triggers completion
         completeRun(runId, "Hello World")
     }
@@ -469,7 +479,6 @@ class HttpApiTest {
                 runId = "abc-123",
                 status = "SUCCEEDED",
                 createdAt = "2026-08-08T00:00:00Z",
-                message = "Hello World",
                 links = links,
             )
         val itemCopy = item.copy(status = "FAILED")
@@ -590,7 +599,7 @@ class HttpApiTest {
             }
         val mem = mutableListOf<RunListItemResponse>()
         // pre-populate mem with xyz to test deduplication (already in memory)
-        mem.add(RunListItemResponse("xyz", "SUCCEEDED", "2026-08-08T03:00:00Z", "Hello World", buildLinks("xyz")))
+        mem.add(RunListItemResponse("xyz", "SUCCEEDED", "2026-08-08T03:00:00Z", buildLinks("xyz")))
         collectRedisRuns(fakeSync, mem)
         // should add abc and def, but skip xyz (already present) and skip :result/:createdAt keys
         assertTrue(mem.any { it.runId == "abc" }, "should have abc: $mem")

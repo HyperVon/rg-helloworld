@@ -95,8 +95,10 @@ module Adjudicator
         violations
       end
 
-      def build_symbol_event(run_id, step_id, glyph_instance_id, attempt, position, symbol)
-        operation_id = build_operation_id(run_id, step_id, attempt, [glyph_instance_id])
+      def build_symbol_event(run_id, step_id, glyph_instance_id, attempt, position, symbol,
+                             input_artifacts: [], output_artifacts: [])
+        operation_id = build_operation_id(run_id, step_id, attempt,
+                                          [glyph_instance_id, position.to_s, symbol['utf8'].to_s])
         {
           specversion: '1.0',
           id: operation_id,
@@ -114,8 +116,8 @@ module Adjudicator
             attempt: attempt,
             inputMaturity: 70,
             outputMaturity: 80,
-            inputArtifacts: [],
-            outputArtifacts: [],
+            inputArtifacts: input_artifacts,
+            outputArtifacts: output_artifacts,
             transformation: { name: 'adjudicate-symbol', version: '1.0.0' },
             symbol: symbol
           }
@@ -204,13 +206,6 @@ module Adjudicator
         full_symbols.find do |s|
           s['position'] == position || s['x'] == x
         end
-      end
-
-      def geometrically_aligned?(full_symbols, layout_entry, crop_candidate)
-        symbol = find_full_phrase_symbol(full_symbols, layout_entry)
-        return false unless symbol
-
-        symbol['text'] == crop_candidate && symbol['confidence'].to_f > HIGH_CONFIDENCE
       end
 
       def build_accepted(position, utf8, confidence, full_symbol, crop_candidate, agreement,

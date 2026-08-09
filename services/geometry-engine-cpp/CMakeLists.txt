@@ -8,7 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 find_package(Threads REQUIRED)
 find_path(RDKAFKA_INCLUDE_DIR rdkafka.h HINTS /opt/homebrew/include /usr/local/include /usr/include
         PATH_SUFFIXES librdkafka)
-find_library(RDKAFKA_LIBRARY NAMES rdkafka HINTES /opt/homebrew/lib /usr/local/lib /usr/lib)
+find_library(RDKAFKA_LIBRARY NAMES rdkafka HINTS /opt/homebrew/lib /usr/local/lib /usr/lib)
 if(NOT RDKAFKA_INCLUDE_DIR OR NOT RDKAFKA_LIBRARY)
   message(FATAL_ERROR "librdkafka not found (brew install librdkafka / apt install librdkafka-dev)")
 endif()

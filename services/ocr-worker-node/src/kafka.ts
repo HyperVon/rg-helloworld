@@ -2,10 +2,11 @@ import { createRequire } from 'node:module';
 import { Kafka, logLevel } from 'kafkajs';
 
 const require = createRequire(import.meta.url);
-const RequestQueue = require('kafkajs/src/network/requestQueue');
-
+// Monkey-patch kafkajs RequestQueue to reduce the pending-request check
+// interval from the library default to 10 ms. This is an internal API
+// workaround for kafkajs@2.2.4; revisit or remove when upgrading kafkajs.
 const CHECK_PENDING_REQUESTS_INTERVAL = 10;
-
+const RequestQueue = require('kafkajs/src/network/requestQueue');
 const originalScheduleCheckPendingRequests = RequestQueue.prototype.scheduleCheckPendingRequests;
 RequestQueue.prototype.scheduleCheckPendingRequests =
   function patchedScheduleCheckPendingRequests() {

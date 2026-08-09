@@ -53,11 +53,16 @@ module AdjudicatorConsumer
       attempt: attempt
     )
 
-    publish_events(producer, data, result)
+    input_artifacts = data['inputArtifacts'] || []
+    output_artifacts = data['outputArtifacts'] || []
+
+    publish_events(producer, data, result, input_artifacts, output_artifacts)
   rescue JSON::ParserError => e
     warn "Failed to parse message: #{e.message}"
+    raise
   rescue StandardError => e
     warn "Failed to process message: #{e.message}"
+    raise
   end
 
   def validate_no_prohibited_fields(event)
@@ -73,21 +78,23 @@ module AdjudicatorConsumer
     raise "Invalid maturity: input=#{input_maturity}, output=#{output_maturity}"
   end
 
-  def publish_events(producer, data, result)
+  def publish_events(producer, data, result, input_artifacts, output_artifacts)
     run_id = data['runId'] || 'unknown'
     step_id = data['stepId'] || 'unknown'
     attempt = data['attempt'] || 1
 
     result[:acceptedSymbols].each do |symbol|
       event = Adjudicator::AdjudicatorImpl.build_symbol_event(
-        run_id, step_id, generate_glyph_instance_id(symbol[:position]), attempt, symbol[:position], symbol
+        run_id, step_id, generate_glyph_instance_id(symbol[:position]), attempt, symbol[:position], symbol,
+        input_artifacts: input_artifacts, output_artifacts: output_artifacts
       )
       producer.produce(topic: ADJUDICATED_TOPIC, payload: JSON.generate(event))
     end
 
     result[:gaps].each do |gap|
       event = Adjudicator::AdjudicatorImpl.build_symbol_event(
-        run_id, step_id, generate_glyph_instance_id(gap[:position]), attempt, gap[:position], gap
+        run_id, step_id, generate_glyph_instance_id(gap[:position]), attempt, gap[:position], gap,
+        input_artifacts: input_artifacts, output_artifacts: output_artifacts
       )
       producer.produce(topic: ADJUDICATED_TOPIC, payload: JSON.generate(event))
     end
@@ -98,6 +105,6 @@ module AdjudicatorConsumer
   end
 
   def generate_glyph_instance_id(position)
-    "glyph-#{position}"
+    position.nil? ? 'glyph-gap' : "glyph-#{position}"
   end
 end

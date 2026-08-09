@@ -90,7 +90,6 @@ data class RunListItemResponse(
     val runId: String,
     val status: String,
     val createdAt: String,
-    val message: String,
     val links: Links,
 )
 
@@ -184,7 +183,7 @@ object RunStateMachine {
             }
 
             RunEvent.ASSEMBLED -> {
-                if (status == RunStatus.OCR_RUNNING || status == RunStatus.ADJUDICATING || status == RunStatus.ASSEMBLING) {
+                if (status == RunStatus.ADJUDICATING || status == RunStatus.ASSEMBLING) {
                     RunStatus.SUCCEEDED
                 } else {
                     status
@@ -723,13 +722,11 @@ fun collectRedisRuns(
         if (fromMemory.any { it.runId == runId }) continue
         val status = sync.get("run:$runId") ?: "SUCCEEDED"
         val createdAt = sync.get("run:$runId:createdAt") ?: Instant.now().toString()
-        val msg = sync.get("run:$runId:message") ?: expectedTexts[runId] ?: "HELLO WORLD"
         fromMemory.add(
             RunListItemResponse(
                 runId = runId,
                 status = status,
                 createdAt = createdAt,
-                message = msg,
                 links = buildLinks(runId),
             ),
         )
@@ -743,13 +740,11 @@ fun collectRedisRuns(
         val status = sync.get(k) ?: continue
         if (status == "SUCCEEDED" || status == "FAILED") continue
         val createdAt = sync.get("run:$runId:createdAt") ?: Instant.now().toString()
-        val msg = sync.get("run:$runId:message") ?: expectedTexts[runId] ?: "HELLO WORLD"
         fromMemory.add(
             RunListItemResponse(
                 runId = runId,
                 status = status,
                 createdAt = createdAt,
-                message = msg,
                 links = buildLinks(runId),
             ),
         )
@@ -765,7 +760,6 @@ suspend fun handleListRuns(call: ApplicationCall) {
                     runId = state.runId,
                     status = Services.runStateStore?.getRunStatus(state.runId) ?: state.status.name,
                     createdAt = state.createdAt.toString(),
-                    message = state.message,
                     links = buildLinks(state.runId),
                 )
             }.toMutableList()
@@ -788,7 +782,9 @@ suspend fun handleListRuns(call: ApplicationCall) {
             conn.close()
             client.shutdown()
         }
-    } catch (_: Exception) {
+    } catch (e: Exception) {
+        System.err.println("handleListRuns redis error: ${e.message}")
+        // Return in-memory runs only; do not fail the whole request on Redis issues.
     }
 
     val sorted = fromMemory.sortedByDescending { it.createdAt }

@@ -55,19 +55,6 @@ export interface PreprocessReport {
   totalHeight: number;
 }
 
-export interface PreprocessData {
-  ocrImageSha256: string;
-  ocrImageWidth: number;
-  ocrImageHeight: number;
-  positionCrops: number;
-}
-
-export interface CropInfo {
-  position: number;
-  imagePath: string;
-  bbox: { x: number; y: number; width: number; height: number };
-}
-
 export function banner(): string {
   return `${SERVICE_NAME} ${SERVICE_VERSION}`;
 }

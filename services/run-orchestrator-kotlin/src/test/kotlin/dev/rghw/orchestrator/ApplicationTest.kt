@@ -110,7 +110,7 @@ class ApplicationTest {
         )
         assertEquals(
             RunStatus.SUCCEEDED,
-            RunStateMachine.transition(RunStatus.OCR_RUNNING, RunEvent.ASSEMBLED),
+            RunStateMachine.transition(RunStatus.ADJUDICATING, RunEvent.ASSEMBLED),
         )
         // Events out of order are ignored (no backward transitions).
         assertEquals(
@@ -152,7 +152,7 @@ class ApplicationTest {
         val runState =
             RunState(
                 runId = runId,
-                status = RunStatus.OCR_RUNNING,
+                status = RunStatus.ASSEMBLING,
                 message = "Hello World",
                 idempotencyKey = "key",
                 createdAt = java.time.Instant.now(),

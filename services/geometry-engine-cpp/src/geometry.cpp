@@ -37,18 +37,6 @@ bool properIntersect(const Segment& a, const Segment& b) {
   if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) {
     return true;
   }
-  if (std::fabs(d1) < kEpsilon && onSegment(p3, p1, p4)) {
-    return false;
-  }
-  if (std::fabs(d2) < kEpsilon && onSegment(p3, p2, p4)) {
-    return false;
-  }
-  if (std::fabs(d3) < kEpsilon && onSegment(p1, p3, p2)) {
-    return false;
-  }
-  if (std::fabs(d4) < kEpsilon && onSegment(p1, p4, p2)) {
-    return false;
-  }
   return false;
 }
 

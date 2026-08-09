@@ -119,10 +119,6 @@ final class GlyphDefinitions {
     return primitive;
   }
 
-  private static Primitive polygon(double cx, double cy, double radius, int sides) {
-    return ellipse(cx, cy, radius, radius, sides);
-  }
-
   private static Primitive ellipse(
       double cx, double cy, double radiusX, double radiusY, int sides) {
     Primitive primitive = new Primitive();

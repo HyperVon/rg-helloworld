@@ -6,7 +6,3 @@ export interface RedisClient {
   getArtifacts(runId: string): Promise<RunArtifacts>;
   close(): Promise<void>;
 }
-
-export function isTerminalStatus(status: string): boolean {
-  return status === 'SUCCEEDED' || status === 'FAILED' || status === 'CANCELLED';
-}
