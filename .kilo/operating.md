@@ -36,6 +36,7 @@ configuration in the same change.
 | Incremental docs sync after a change | `docs-sync` |
 | Review skills / agent files for content depth | `skill-reviewer` |
 | Audit rules/skills structure, overlap, drift | `rules-and-skills-audit` |
+| Audit or stage external agent guidance safely | `agent-foundation-audit` |
 | Create or modify a skill | `skill-authoring` |
 | Fan-out parallel work | `parallel-multi-agent` |
 | QA loop / test hardening | `continuous-quality` |
