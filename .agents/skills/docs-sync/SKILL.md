@@ -22,9 +22,10 @@ wrong, stale), use [documentation-review](../documentation-review/SKILL.md).
 | Architecture, protocols, milestone order | `docs/architecture.md` + `docs/adr/` when the change is architectural |
 | Artifact lineage / hashes | `docs/artifact-lineage.md` |
 | Operation / troubleshooting commands | `docs/runbook.md`, `docs/troubleshooting.md` |
+| User-facing CLI, UI, or operator workflow | `docs/user-guide.md` |
 | Dependency or image version bumps | `versions.env`, per-language lockfiles, Helm chart pins — never `latest` tags |
 | Agent workflows / quality paths | `AGENTS.md` task-to-skill table and relevant skills |
-| Behavior in screenshots | `docs/screenshots/` (regenerate deterministically when artifacts change) |
+| Behavior or layout in screenshots | `docs/screenshots/` (use `docs-screenshot-refresh` and regenerate deterministically when artifacts change) |
 
 ## Ordering rule
 

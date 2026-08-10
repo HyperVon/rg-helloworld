@@ -18,9 +18,12 @@ manifest:
 | Skill | Preset |
 | :--- | :--- |
 | `documentation-review` | `documentation-review` |
+| `code-review` | `code-review` |
 | Documentation-review adversarial re-review | `documentation-adversarial-review` |
 | `autonomous-code-optimizer` | `autonomous-code-optimizer` |
 | `continuous-quality` | `continuous-quality` |
+| `continuous-improvement` | `continuous-improvement` |
+| `comprehensive-quality-overhaul` | `comprehensive-quality-overhaul` |
 | `adversarial-pr-review` | `adversarial-pr-review` |
 | `ai-slop-detector` | `ai-slop-detector` |
 | `complex-code-comments` | `complex-code-comments` |

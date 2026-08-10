@@ -126,11 +126,14 @@ optional focused-development aid.
 
 ## Skills and agents
 
-Always-on norms live in `.kilo/operating.md` (loaded via `kilo.json`). For a
-task that matches a skill, read and follow that skill before inventing a
-process. Portable skills live in `.agents/skills/`; Kilo-only project skills
-live in `.kilo/skills/`. Both paths are registered in `kilo.json`; Kilo
-commands and agents live in `.kilo/command/` and `.kilo/agent/`.
+Always-on norms live canonically in `.kilo/operating.md` (loaded via
+`kilo.json`). Harness-specific entrypoints and projections should remain thin
+and aligned with that file. For a task that matches a skill, read and follow
+that skill before inventing a process. Portable skills live in
+`.agents/skills/`; Kilo-only project skills live in `.kilo/skills/`. Both paths
+are registered in `kilo.json`; Kilo commands and agents live in
+`.kilo/command/` and `.kilo/agent/`. The cross-project integration decisions are
+recorded in [the guidance review](docs/agent-guidance-integration-review.md).
 
 | User intent | Skill / command |
 | --- | --- |
@@ -138,6 +141,7 @@ commands and agents live in `.kilo/command/` and `.kilo/agent/`.
 | Run gates / evidence before changes | `/quality-gate` |
 | Review working-tree changes before commit | `/review-diff` |
 | Boot the acceptance stack and verify | `/acceptance-smoke` |
+| Review a diff or subsystem | `code-review` |
 | Commit / push | `commit-and-push` |
 | Open PR | `open-pr` (+ mandatory `adversarial-pr-review`) |
 | Adversarial / multi-agent PR review | `adversarial-pr-review` |
@@ -149,12 +153,18 @@ commands and agents live in `.kilo/command/` and `.kilo/agent/`.
 | Create or modify a skill | `skill-authoring` |
 | Fan-out parallel work | `parallel-multi-agent` |
 | QA loop / test hardening | `continuous-quality` |
+| Broad bounded improvement cycle | `continuous-improvement` |
+| Comprehensive read-only quality sweep | `comprehensive-quality-overhaul` |
 | Unattended multi-pass cleanup | `autonomous-code-optimizer` |
 | TODO burn-down | `todo-resolution` |
 | Comment hygiene / explain complex code | `complex-code-comments` |
 | Dependency upgrades | `dependency-upgrade` |
 | Architecture review / redesign brainstorm | `architecture-review` |
 | Code-size reduction / large-file splits | `reduce-code-size` |
+| Manual browser interaction QA | `ui-manual-qa` |
+| Fast post-deploy UI smoke | `post-deploy-ui-smoke` |
+| Refresh committed UI screenshots | `docs-screenshot-refresh` |
+| Maintain the end-user guide | `user-guide` |
 | Model routing for delegation | `.kilo/model-router/` (optional; see its `instructions.md`) |
 
 ## Context and output discipline

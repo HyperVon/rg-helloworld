@@ -1,5 +1,5 @@
 ---
-description: "Bounded read-only audit of agent rules, skills, commands, and CI"
+description: "Bounded read-only audit of agent rules, skills, projections, commands, and CI"
 mode: subagent
 steps: 8
 color: "#8B5CF6"
@@ -28,12 +28,11 @@ permission:
 Perform a read-only audit of the explicitly requested agent-guidance and
 workflow paths against current repository truth.
 
-- Check only `AGENTS.md`, `.kilo/` (operating norms, skills, commands,
-  agents, model-router), `.agents/`, `.github/workflows/`, `Makefile`, and
-  named config/skill paths.
+- Check only `AGENTS.md`, `CLAUDE.md`, `.windsurfrules`, `.cursor/`,
+  `.agents/`, `.kilo/`, `.github/`, `Makefile`, and named config/skill paths.
 - Verify constants, APIs, commands, links, version pins, and projection
-  alignment (AGENTS.md vs operating norms vs skills) from the minimum source
-  files required.
+  alignment (AGENTS.md vs operating norms vs harness stubs and projections)
+  from the minimum source files required.
 - Classify concrete findings as WRONG, STALE, MISSING, ORPHAN, or SKILL
   DRIFT.
 - Report each finding with `path:line`, source evidence, impact, and the

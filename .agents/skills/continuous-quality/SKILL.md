@@ -97,11 +97,11 @@ touches cross-service behavior.
 
 ## Step 5 — Persist the backlog
 
-Keep a durable `quality-backlog.md` (or a dated section) with
-open/in_progress/done/deferred/dropped states so findings survive context
-compression. File **L** items (and deferred items older than a week) as
-GitHub issues with labels, deduplicating against existing issues. Never leave
-discoveries only in chat.
+Keep the durable [`.agents/quality-backlog.md`](../../quality-backlog.md)
+with `open`, `in_progress`, `done`, `deferred`, and `dropped` states so findings
+survive context compression. Never leave discoveries only in chat. Do not
+create GitHub issues or other remote artifacts automatically; issue tracking is
+an explicit user-authorized follow-up.
 
 ## Step 6 — Report
 

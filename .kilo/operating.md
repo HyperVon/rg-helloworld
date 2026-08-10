@@ -1,10 +1,15 @@
 # Agent operating norms
 
 Portable, harness-agnostic operating rules for any coding agent working in this
-repository. `AGENTS.md` is the thin invariants file; this file owns the
-always-on norms. Deep how-to lives in the registered skills under
-`.agents/skills/` and `.kilo/skills/` — prefer a skill over inventing a
-parallel workflow.
+repository. `AGENTS.md` owns the invariants and task-to-skill index; this file
+is the canonical source for always-on norms. Deep how-to lives in the registered
+skills under `.agents/skills/` and `.kilo/skills/` — prefer a skill over
+inventing a parallel workflow.
+
+Harness-specific entrypoints and projections (`CLAUDE.md`, Copilot, Cursor,
+Windsurf, and Kilo files) should point to or summarize these rules. Keep any
+duplicated summary aligned with this file rather than creating a second source
+of truth.
 
 ## 1. Prefer project skills
 
@@ -12,6 +17,10 @@ For a task that matches a skill, **read and follow that skill** before
 inventing a process. Repository skills take precedence over user-level or
 global skills; external material may fill a verified gap but never overrides
 project invariants.
+
+When adding or renaming a project skill, update the `AGENTS.md` index. If its
+skill root or registration path changes, update the registered `skills.paths`
+configuration in the same change.
 
 | User intent | Skill |
 | :--- | :--- |
@@ -21,6 +30,7 @@ project invariants.
 | Commit / push | `commit-and-push` |
 | Open PR | `open-pr` (+ mandatory `adversarial-pr-review`) |
 | Adversarial / multi-agent PR review | `adversarial-pr-review` |
+| Review a diff or subsystem | `code-review` |
 | Artifact-quality / "de-slop" audit | `ai-slop-detector` |
 | Docs audit vs source truth | `documentation-review` |
 | Incremental docs sync after a change | `docs-sync` |
@@ -29,12 +39,18 @@ project invariants.
 | Create or modify a skill | `skill-authoring` |
 | Fan-out parallel work | `parallel-multi-agent` |
 | QA loop / test hardening | `continuous-quality` |
+| Broad bounded improvement cycle | `continuous-improvement` |
+| Comprehensive read-only quality sweep | `comprehensive-quality-overhaul` |
 | Unattended multi-pass cleanup | `autonomous-code-optimizer` |
 | TODO burn-down | `todo-resolution` |
 | Comment hygiene / explain complex code | `complex-code-comments` |
 | Dependency upgrades | `dependency-upgrade` |
 | Architecture review / redesign brainstorm | `architecture-review` |
 | Code-size reduction / large-file splits | `reduce-code-size` |
+| Manual browser interaction QA | `ui-manual-qa` |
+| Fast post-deploy UI smoke | `post-deploy-ui-smoke` |
+| Refresh committed UI screenshots | `docs-screenshot-refresh` |
+| Maintain the end-user guide | `user-guide` |
 | Boot the acceptance stack and verify | `/acceptance-smoke` command |
 
 If no skill fits, proceed normally. Never skip quality gates a skill names.
@@ -53,6 +69,12 @@ If no skill fits, proceed normally. Never skip quality gates a skill names.
 Parallelize only when workstreams touch **disjoint files**, each has a
 self-contained goal, and the parent can integrate results. One coupled track
 for shared files; fan out the rest together in a single parallel message.
+
+Before material or parallel delegation, apply the model-selection gate in §8:
+define the minimum capability, select a host-enforceable route and effort when
+the host exposes them, record the fallback and availability evidence, and keep
+the work parent-owned when no usable route can be selected. A worker role or
+agent label is not evidence of the underlying model.
 
 - Give each worker: repo path, branch, goal, files to touch/avoid,
   already-done context, acceptance criteria, iteration cap, and a compact
@@ -86,6 +108,8 @@ Do not leave the user waiting on a foreground command that never exits
    Java, or Node processes.
 6. Clean up only your own temporary artifacts; preserve `.local/` persistent
    directories.
+7. Prefer an exit notification or bounded completion wait when the host supports
+   it; do not keep polling a process that has already exited.
 
 ## 5. Complex-code comments
 
@@ -119,6 +143,10 @@ confident inside them.
   --tail`. Summarize instead of dumping thousands of lines.
 - Redact credentials, tokens, hostnames, and personal paths from output.
 - Never log the requested plaintext, image bytes, or huge payloads.
+- Keep source, tests, committed docs, screenshots, and PR artifacts free of
+  absolute user paths, machine-specific hostnames, credentials, tokens, and
+  account data. Operational docs may use documented loopback placeholders such
+  as `localhost`, never personal machine names.
 - Resolve deprecation warnings before declaring a change complete. When an
   upstream or toolchain constraint makes resolution impossible, record the
   exact warning, why it cannot be fixed, the mitigation, and the condition
@@ -152,6 +180,18 @@ launch contract, presets, and report format.
   limitation; do not claim a role-only Task call changed the model.
 - Never persist credentials, balances, or raw provider errors in repository
   files; `env.local` and `manifest.local` are git-ignored.
+
+Before the first material or parallel worker launch:
+
+1. Define the task profile and minimum capability.
+2. Record the primary host route, effort when exposed, fallback, cost class or
+   entitlement, availability evidence, and any substitution.
+3. Start with the least expensive capable route and escalate only for
+   demonstrated complexity, repeated failure, or safety-sensitive reasoning.
+4. Treat a catalog entry or configured credential as insufficient proof of live
+   quota; use the launcher's report when exact routing matters.
+5. If the host cannot expose the selected route, do not silently substitute a
+   role-only worker; keep the track parent-owned or use the repository launcher.
 
 ## 9. Context-mode plugin and MCP servers
 
@@ -198,3 +238,22 @@ quality gates or evidence discipline.
 This does not replace the repo's evidence discipline: keep captured logs under
 `.local/diagnostics/`, redact credentials, and never log plaintext or image
 bytes.
+
+## 11. User-visible UI change verification
+
+When editing `services/web-shell`, `services/artifact-inspector-ruby`,
+`web/`, HTML/CSS/JavaScript, browser-facing routes, or documented screenshots:
+
+1. For responsive changes, verify fresh captures at phone (about 390px), tablet
+   (about 768px), laptop (about 1280px), desktop (about 1440px), and wide (about
+   1920px) viewports; use DPR 2 when the capture tool supports it. For a
+   non-responsive change, use phone and laptop plus any directly affected width.
+2. Use a fresh build or hard refresh and confirm the served assets are current
+   before judging styling. Stale CSS or JavaScript is not valid visual evidence.
+3. Exercise the changed browser interactions and states, not only unit tests;
+   browser behavior can regress while backend tests remain green.
+4. Capture fresh screenshots for user-visible changes. Keep throwaway evidence
+   under `.local/diagnostics/`; refresh committed documentation screenshots only
+   when the canonical presentation changed.
+5. Complete the relevant visual and interaction checks before opening a PR. A
+   code-only claim is not sufficient for a visual change.

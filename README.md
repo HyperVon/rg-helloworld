@@ -238,9 +238,11 @@ coding agents:
 - Scaffold harness: KiloCode (Kilo CLI) — `opencode-go/deepseek-v4-flash` (2026-08-04)
 - Hardening and operationalization: **Muse Code powered by Meta Muse Spark** — `muse-spark-1.2-contributor` (xhigh) — runbook expansion, web UI documentation, CI restoration (Go/Docs/C++/Python/Shell/Node/Rust coverage), adjudicator threshold alignment, and low-memory profile hardening (2026-08-08)
 
-Agent guidance lives in `AGENTS.md` (canonical), with harness-specific copies
-in `CLAUDE.md`, `.github/copilot-instructions.md`, `.cursor/rules/`,
-`.windsurfrules`, and `.kilo/` (commands, agents, skills).
+Agent guidance is split by purpose: `AGENTS.md` is canonical for invariants and
+skill routing, while `.kilo/operating.md` is canonical for portable always-on
+norms. Harness-specific copies live in `CLAUDE.md`,
+`.github/copilot-instructions.md`, `.cursor/rules/`, `.windsurfrules`, and
+`.kilo/` (commands, agents, skills).
 
 ## License
 
