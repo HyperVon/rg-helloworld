@@ -29,4 +29,4 @@ Enforce the boundary at four layers:
   cannot cheat even if modified.
 - Event schemas must be reviewed whenever new fields are proposed.
 - This ADR is the standing justification for the prohibited-field scans in
-  `tests/anti-cheating/`.
+  `tests/anti-cheating/` (directory reserved; tests deferred).

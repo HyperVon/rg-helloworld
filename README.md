@@ -9,12 +9,12 @@ functional purpose is to derive, recognize, assemble, and print:
 HELLO WORLD
 ```
 
-> **This project is intentionally *EXTRA*.** Eleven services, ten languages, Kafka, Kubernetes, and a full observability stack — all to print one line — and the web UI and docs are *supposed* to look like a real product. First impression: “WOW that looks amazing.” Punchline: “Wait, it just does `HELLO WORLD`? WTF LOL.” See [docs/architecture.md#milestone-12-hardening-and-demonstration](docs/architecture.md#milestone-12-hardening-and-demonstration) and the screenshots below.
+> **This project is intentionally *EXTRA*.** Fourteen services, nine languages, Kafka, Kubernetes, and a full observability stack — all to print one line — and the web UI and docs are *supposed* to look like a real product. First impression: “WOW that looks amazing.” Punchline: “Wait, it just does `HELLO WORLD`? WTF LOL.” See [docs/architecture.md#milestone-12-hardening-and-demonstration](docs/architecture.md#milestone-12-hardening-and-demonstration) and the screenshots below.
 
 The acceptance phrase uses uppercase glyphs only: `HELLO WORLD`.
 
 The project runs entirely on one laptop — no cloud account, no paid service, no
-external runtime API. It exercises ten programming languages, REST, SOAP, gRPC,
+external runtime API. It exercises nine programming languages, REST, SOAP, gRPC,
 Kafka, Redis Streams, PostgreSQL, MinIO, Kubernetes (k3d/k3s), and a complete
 local observability stack (OpenTelemetry Collector, Prometheus, Loki, Tempo,
 Grafana).
@@ -41,7 +41,7 @@ vector glyph blueprints
 The system now includes:
 
 - Full pipeline: CLI → orchestrator → glyph catalog → geometry → rasterization → composition → OCR → adjudication → assembly → SSE
-- 10 programming languages (Go, Kotlin, Java, C++, C#, Python, TypeScript, Ruby, Rust)
+- 9 programming languages (Go, Kotlin, Java, C++, C#, Python, TypeScript, Ruby, Rust)
 - Kafka, Redis Streams, PostgreSQL, MinIO, Kubernetes (k3d)
 - OpenTelemetry tracing, Prometheus metrics, Grafana dashboards
 - Whitespace provenance attestation and Brainfuck integrity guards
@@ -211,7 +211,7 @@ make demo            full demonstration (later milestone)
 make e2e             full milestone acceptance
 make chaos           chaos tests
 make diagnostics     collect diagnostics
-make down            scale workloads down (later milestone)
+make down            delete the k3d cluster (later milestone)
 make destroy         delete the local environment (later milestone)
 ```
 

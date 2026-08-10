@@ -14,7 +14,7 @@ project invariants.
 
 | User intent | Skill |
 | :--- | :--- |
-| Implement / resume a milestone | `rghello-milestone` |
+| Implement / resume a milestone | `rghw-milestone` |
 | Run gates / evidence before changes | `/quality-gate` command |
 | Review working-tree changes before commit | `/review-diff` command |
 | Commit / push | `commit-and-push` |

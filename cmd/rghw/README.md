@@ -2,7 +2,7 @@
 
 Go command-line client for Rube Goldberg Hello World.
 
-Milestone 3: `rghw run` submits a phrase to the orchestrator over REST,
+Milestone 12: `rghw run` submits a phrase to the orchestrator over REST,
 streams SSE updates, and prints the final assembled text to stdout.
 
 ## Commands
@@ -18,7 +18,7 @@ gofmt -l .          # format check
 
 ```bash
 rghw run
-rghw run --message "Hello World"
+rghw run --message "<obfuscated phrase>"
 rghw run --api-url http://localhost:8080 --timeout 3m
 rghw run --quiet
 ```

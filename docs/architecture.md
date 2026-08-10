@@ -789,7 +789,7 @@ The only successful print path must use the terminal response’s `assembledText
 
 | Service | Language and framework | Primary responsibility | Inputs | Outputs |
 | --- | --- | --- | --- | --- |
-| `rghw-cli` | Go, Cobra | Start a run, follow progress, print result | REST/SSE | Console |
+| `cmd/rghw` | Go, Cobra | Start a run, follow progress, print result | REST/SSE | Console |
 | `run-orchestrator` | Kotlin, Spring Boot, Spring Kafka, Flyway | Run state machine, scheduling, validation, persistence | REST, SOAP, Kafka | Kafka, SSE, Redis |
 | `glyph-catalog` | Java, Spring Boot, Spring Web Services | Phrase planning and vector glyph blueprints | SOAP | SOAP |
 | `geometry-engine` | C++20, CMake, librdkafka | Expand primitives into line segments | Kafka | MinIO, Kafka |
@@ -2189,11 +2189,10 @@ Maintain:
 versions.env
 .tool-versions
 gradle/libs.versions.toml
-package-lock.json or pnpm-lock.yaml
+package-lock.json
 Cargo.lock
 go.sum
 Gemfile.lock
-requirements.lock
 Directory.Packages.props
 ```
 
@@ -2201,19 +2200,19 @@ Reasonable baseline families:
 
 ```text
 Java: 25 LTS
-Kotlin: 2.x
-Go: stable 1.24+
-Node.js: current LTS
-TypeScript: current stable
+Kotlin: 2.4.10
+Go: 1.26.5
+Node.js: 26.6.0
+TypeScript: 7.0.2
 C++: C++20
-.NET: current LTS
-Ruby: 3.4+
-Rust: stable
-Python: 3.13+
-Kafka: 4.x, KRaft
-PostgreSQL: 17+
+.NET: 10.0.302
+Ruby: 4.0.6
+Rust: 1.97.1
+Python: 3.14.6
+Kafka: 4.3.1
+PostgreSQL: 18.8.6
 Redis: 8.x
-Terraform: current stable 1.x
+Terraform: 1.15.8
 ```
 
 The implementation should pin exact patch versions available when the repository is bootstrapped.
@@ -2243,7 +2242,12 @@ rube-goldberg-hello-world/
 │       ├── 0002-kafka-kraft.md
 │       ├── 0003-contract-first.md
 │       ├── 0004-redis-projection.md
-│       └── 0005-anti-cheating-boundary.md
+│       ├── 0005-anti-cheating-boundary.md
+│       ├── 0006-dependency-upgrade-sweep.md
+│       ├── 0007-milestone5-topics-artifact-keys.md
+│       ├── 0008-milestone6-grpc-rasterization.md
+│       ├── 0009-milestone7-image-pipeline.md
+│       └── 0010-licensing.md
 ├── contracts/
 │   ├── openapi/
 │   ├── asyncapi/
@@ -2357,7 +2361,7 @@ make e2e
 
 `make destroy` deletes the cluster and local persistent data.
 
-`make down` scales application workloads down but preserves the cluster and persistent volumes.
+`make down` deletes the k3d cluster and preserves nothing — run `make destroy` only after `make down` if you also want to tear down Terraform-managed infrastructure.
 
 ---
 
