@@ -41,8 +41,9 @@ ladder shows a real win and every safety rule holds.
    lines as an investigation trigger per language; do not split mechanically.
 5. **Refactor in cohesive slices** — each slice compiles and tests green
    before the next. Run the per-language formatter after each slice.
-6. **Verify** — `make format`, `make lint`, `make unit`, `make coverage`
-   with `STRICT=1`; `make build`; plus `make integration`/`make e2e` when
+6. **Verify** — `STRICT=1 make prerequisites`, `STRICT=1 make format`,
+   `STRICT=1 make lint`, `STRICT=1 make unit`, `STRICT=1 make coverage`, and
+   `STRICT=1 make build`; plus `make integration`/`make e2e` when
    cross-service behavior is touched. Confirm test counts did not drop.
 
 ## Safety rules

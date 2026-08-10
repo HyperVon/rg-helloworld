@@ -19,9 +19,10 @@ context compression.
    before implementing.
 4. Implement the smallest complete milestone; add tests before proceeding.
 5. Iterate with targeted per-language targets (`make unit-<lang>`,
-   `make build-<lang>`); finish with the full gates:
-   `make format && make lint && make unit && make coverage && make build`
-   (with `STRICT=1`).
+   `make build-<lang>`); finish with the full gates serially:
+   `STRICT=1 make prerequisites`, `STRICT=1 make format`, `STRICT=1 make
+   lint`, `STRICT=1 make unit`, `STRICT=1 make coverage`, and `STRICT=1 make
+   build`.
 6. Update documentation and the verification log.
 7. Commit only when authorized, as one coherent change.
 

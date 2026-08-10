@@ -128,7 +128,8 @@ optional focused-development aid.
 
 Always-on norms live in `.kilo/operating.md` (loaded via `kilo.json`). For a
 task that matches a skill, read and follow that skill before inventing a
-process. Skills live in `.agents/skills/` (registered in `kilo.json`); Kilo
+process. Portable skills live in `.agents/skills/`; Kilo-only project skills
+live in `.kilo/skills/`. Both paths are registered in `kilo.json`; Kilo
 commands and agents live in `.kilo/command/` and `.kilo/agent/`.
 
 | User intent | Skill / command |

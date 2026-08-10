@@ -34,7 +34,7 @@ Build a complete inventory before touching anything. Per-language anchors:
 
 | Ecosystem | Manifest / lockfile |
 | :--- | :--- |
-| Go | `cmd/rghello/go.mod`, `services/vector-normalizer-go/go.mod` (+ `go.sum`) |
+| Go | `cmd/rghw/go.mod`, `services/vector-normalizer-go/go.mod` (+ `go.sum`) |
 | Kotlin | `services/run-orchestrator-kotlin/build.gradle.kts` |
 | Java | `services/glyph-catalog-java/pom.xml` |
 | C++ | `services/geometry-engine-cpp/CMakeLists.txt` |
@@ -72,9 +72,10 @@ upgrades in one commit.
    tooling (`make prerequisites` re-installs per-language deps).
 2. Let the strict linter surface deprecations (`make lint` with `STRICT=1`);
    migrate against the official docs, not by silencing warnings.
-3. Run the full gates serially: `make format`, `make lint`, `make unit`,
-   `make coverage`, `make build`. Add `make integration` / `make e2e` when
-   container images or cross-service contracts changed.
+3. Run the full gates serially: `STRICT=1 make prerequisites`,
+   `STRICT=1 make format`, `STRICT=1 make lint`, `STRICT=1 make unit`,
+   `STRICT=1 make coverage`, `STRICT=1 make build`. Add `make integration` /
+   `make e2e` when container images or cross-service contracts changed.
 4. One failure → revert the single bump, not the group; re-run.
 
 ## Step 5 — Docs and commit

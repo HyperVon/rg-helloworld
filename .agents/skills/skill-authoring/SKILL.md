@@ -28,9 +28,10 @@ a replacement for the project's domain skills.
 
 ## Canonical ownership
 
-- The canonical skill is `.agents/skills/<name>/SKILL.md`. Skills are
-  registered for Kilo in `kilo.json` under `skills.paths`; keep that entry
-  present.
+- Portable skills use `.agents/skills/<name>/SKILL.md`. Kilo-only project
+  skills may use `.kilo/skills/<name>/SKILL.md` when they depend on Kilo
+  integration. Both paths are registered for Kilo in `kilo.json` under
+  `skills.paths`; keep the applicable entry present.
 - `AGENTS.md` owns the thin task-to-skill index and non-negotiable
   invariants; do not copy a full procedure into it.
 - `.kilo/operating.md` owns portable always-on norms. Change it only for a

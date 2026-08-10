@@ -46,14 +46,15 @@ Run the pre-commit gate script (markdown lint + full milestone gates):
 Or manually, serially:
 
 ```bash
-make format
-make lint
-make unit
-make coverage
-make build
+STRICT=1 make prerequisites
+STRICT=1 make format
+STRICT=1 make lint
+STRICT=1 make unit
+STRICT=1 make coverage
+STRICT=1 make build
 ```
 
-`STRICT=1` must be used so missing toolchains fail. Run the milestone's
+Run the milestone's
 acceptance/e2e gates (`make integration`, `make e2e`) when the change affects
 cross-service behavior. Fix failures; do not proceed on red.
 
@@ -77,7 +78,7 @@ Coverage expectation: >= 90% per language where tooling allows, enforced by
 ## Step 3: Commit
 
 ```bash
-git add -A
+git add -- path/to/reviewed-file ...
 git commit -m "$(cat <<'EOF'
 <type>: <concise description>
 
@@ -137,7 +138,9 @@ SHA check fails, stop and investigate instead of claiming the push succeeded.
 ## Checklist
 
 - [ ] Docs / implementation-status / ADR synced as needed
-- [ ] `make format lint unit coverage build` green with `STRICT=1`
+- [ ] `STRICT=1 make prerequisites`, `STRICT=1 make format`, `STRICT=1 make
+      lint`, `STRICT=1 make unit`, `STRICT=1 make coverage`, and `STRICT=1
+      make build` green
 - [ ] If an open PR exists: [adversarial-pr-review](../adversarial-pr-review/SKILL.md) converged
 - [ ] If opening a PR next: all Test plan verifications done first ([open-pr](../open-pr/SKILL.md))
 - [ ] Tests green; pushed **current** branch via `gh`

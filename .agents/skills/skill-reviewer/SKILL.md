@@ -49,13 +49,14 @@ agents be taught?"
 | Path | Role |
 | :--- | :--- |
 | `.agents/skills/*/SKILL.md` (+ siblings one level deep) | **Primary** — content to deepen |
+| `.kilo/skills/*/SKILL.md` | Kilo-only project skills; include when reviewing the full playbook |
 | `AGENTS.md` | Invariants / index (keep thin; push how-to into skills) |
 | `.kilo/operating.md` | Always-on norms; meta sync |
 | `CLAUDE.md` | Thin stub only |
 
 Default content targets (highest leverage):
 
-- `rghello-milestone`, `adversarial-pr-review`, `ai-slop-detector`
+- `rghw-milestone`, `adversarial-pr-review`, `ai-slop-detector`
 - `documentation-review`, `docs-sync`, `parallel-multi-agent`
 - `continuous-quality`, `autonomous-code-optimizer`, `complex-code-comments`
 
@@ -133,7 +134,7 @@ Mine ideas from:
 **Good (do this):**
 
 ```markdown
-- **[CR-ARCH-1] Add "do not" bullets to rghello-milestone** — §Integrity
+- **[CR-ARCH-1] Add "do not" bullets to rghw-milestone** — §Integrity
   - Gap: Agents still put expected-character fields in downstream events.
   - Draft add:
     - No `targetText`, `expectedCharacter`, `unicodeCodePoint`, or

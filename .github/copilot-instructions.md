@@ -7,8 +7,10 @@ Read `AGENTS.md` before working in this repository and follow it.
 - Milestone-driven development, one milestone at a time
   (`docs/architecture.md` section 29, tracked in
   `docs/implementation-status.md`).
-- Required gates: `make format`, `make lint`, `make unit`, `make build`
-  (plus `make coverage` for the 90% coverage gates) must all pass.
+- Required gates: `make prerequisites`, `make format`, `make lint`, `make unit`,
+  `make coverage`, and `make build` must all pass; use `STRICT=1` when checking
+  for missing toolchains. Run integration/e2e gates when the change requires
+  cross-service verification.
 - Non-negotiable integrity rules: only the CLI, orchestrator, and glyph
   catalog may see the requested plaintext; downstream events must never
   contain expected-character fields (see `docs/architecture.md` section 7).

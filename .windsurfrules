@@ -5,8 +5,10 @@ Read `AGENTS.md` at the repository root before making changes and follow it.
 - Milestone-driven development, one milestone at a time
   (`docs/architecture.md` section 29; status in
   `docs/implementation-status.md`).
-- Required gates: `make format`, `make lint`, `make unit`, `make coverage`,
-  `make build` must all pass from the repository root.
+- Required gates: `make prerequisites`, `make format`, `make lint`, `make unit`,
+  `make coverage`, and `make build` must all pass from the repository root;
+  use `STRICT=1` to fail on missing toolchains and run integration/e2e gates
+  when the change requires cross-service verification.
 - Non-negotiable integrity rules: only the CLI, orchestrator, and glyph
   catalog may see the requested plaintext; downstream events must never
   contain expected-character fields (`docs/architecture.md` section 7).

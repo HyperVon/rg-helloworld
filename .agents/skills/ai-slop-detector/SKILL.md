@@ -34,7 +34,7 @@ asks to clean up, eliminate, or fix findings.
 
 This skill covers **all repository artifacts**, including:
 
-1. **Source code**: all services (`services/*`), the CLI (`cmd/rghello`),
+1. **Source code**: all services (`services/*`), the CLI (`cmd/rghw`),
    and shared libraries (`libraries/`).
 2. **Tests**: per-service unit tests, integration tests, golden artifacts,
    and the anti-cheating suite (`tests/anti-cheating/`).
@@ -60,7 +60,7 @@ This skill covers **all repository artifacts**, including:
 
 This skill does not replace an applicable owner skill, mandatory PR workflow,
 or quality gate. Load domain skills for touched code, especially
-`rghello-milestone`.
+`rghw-milestone`.
 
 ## Evidence standard
 

@@ -91,7 +91,7 @@ counter++
 - Kafka consumer idempotency and retry paths
 - Artifact provenance / hash recording
 - Maturity-rank transitions
-- CLI output boundaries (`cmd/rghello`)
+- CLI output boundaries (`cmd/rghw`)
 - Protocol boundaries (gRPC/SOAP/HTTP) and trace propagation
 
 ## Workflow

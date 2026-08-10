@@ -59,7 +59,7 @@ Gather facts from code/build (do not trust docs yet):
 1. **Versions** — `versions.env`, per-service build files, lockfiles,
    `rust-toolchain.toml`, `global.json`, Helm chart pins.
 2. **Architecture** — services under `services/` (one language each), the CLI
-   (`cmd/rghello`), `contracts/` definitions, `infra/` (k3d, Terraform,
+   (`cmd/rghw`), `contracts/` definitions, `infra/` (k3d, Terraform,
    PostgreSQL, Kafka, Redis, MinIO).
 3. **Protocols** — gRPC/SOAP/HTTP/Kafka/SSE surfaces in `contracts/` and
    `docs/architecture.md`.
@@ -242,7 +242,7 @@ Do not declare complete until markdown lint is clean on touched files.
 | Topic | Code anchors | Doc anchors |
 | :--- | :--- | :--- |
 | Milestones | `docs/architecture.md` §29 order | `docs/implementation-status.md` |
-| Integrity rules | service boundaries, `cmd/rghello` | `docs/architecture.md` §7, `AGENTS.md` |
+| Integrity rules | service boundaries, `cmd/rghw` | `docs/architecture.md` §7, `AGENTS.md` |
 | Artifacts / lineage | pipeline outputs | `docs/artifact-lineage.md` |
 | Operations | Makefile targets, `infra/` | `docs/runbook.md`, `docs/troubleshooting.md` |
 | Dependencies | `versions.env`, lockfiles | `README.md`, `AGENTS.md` |

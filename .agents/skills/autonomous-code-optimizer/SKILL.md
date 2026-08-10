@@ -56,10 +56,12 @@ integrity rules stay authoritative — this skill only refines within them.
 - Re-run everything with forced re-execution — never trust cached green:
 
   ```bash
-  make format
-  make lint
-  make unit
-  make coverage
+  STRICT=1 make prerequisites
+  STRICT=1 make format
+  STRICT=1 make lint
+  STRICT=1 make unit
+  STRICT=1 make coverage
+  STRICT=1 make build
   ```
 
   Plus `make integration` / `make e2e` when the change touches

@@ -2,8 +2,9 @@
 
 Portable, harness-agnostic operating rules for any coding agent working in this
 repository. `AGENTS.md` is the thin invariants file; this file owns the
-always-on norms. Deep how-to lives in skills under `.kilo/skills/` — prefer a
-skill over inventing a parallel workflow.
+always-on norms. Deep how-to lives in the registered skills under
+`.agents/skills/` and `.kilo/skills/` — prefer a skill over inventing a
+parallel workflow.
 
 ## 1. Prefer project skills
 
@@ -72,7 +73,7 @@ for shared files; fan out the rest together in a single parallel message.
 ## 4. No blocking long processes
 
 Do not leave the user waiting on a foreground command that never exits
-(k3d port-forwards, `rghello run`, watchers, long sleeps).
+(k3d port-forwards, `rghw run`, watchers, long sleeps).
 
 1. Start long-lived processes in the background.
 2. Wait for readiness with short polls / log patterns, not by awaiting the
@@ -189,14 +190,10 @@ context to keep long sessions small.
 
 ## 10. LSP servers
 
-LSP is enabled (`"lsp": true` in `kilo.json`) so language-server diagnostics
-are fed back when files are read. Servers auto-start on matching extensions
-and auto-install when the toolchain is present: clangd and rust-analyzer are
-already on PATH; gopls installs via `go install` on first `.go` read;
-kotlin-ls and jdtls download on first `.kt`/`.java` read (JVM servers,
-memory-heavy — the acceptance cluster shares the same laptop). C# and Python
-servers stay inactive (no .NET SDK / pyright). `KILO_DISABLE_LSP_DOWNLOAD=1`
-disables all auto-installs if the downloads become a problem.
+The project config sets `"lsp": false` in `kilo.json`, so this repository does
+not request automatic LSP startup or language-server installation. A host may
+enable LSP independently, but those diagnostics do not replace the repository's
+quality gates or evidence discipline.
 
 This does not replace the repo's evidence discipline: keep captured logs under
 `.local/diagnostics/`, redact credentials, and never log plaintext or image

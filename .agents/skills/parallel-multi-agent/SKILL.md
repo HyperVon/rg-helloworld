@@ -31,9 +31,10 @@ paths and minimum dependencies.
 - **Independent** → parallel Task agents (same parent turn).
 - **Coupled** → one agent or the parent.
 
-State the delegation plan to the user and obtain approval before the first
-material or parallel worker launch. Treat `subagent_type` as the worker role,
-not proof of the underlying model.
+State the delegation plan to the user before the first material or parallel
+worker launch and obtain approval unless the user explicitly requested the
+named read-only workflow or its instructions authorize bounded discovery.
+Treat `subagent_type` as the worker role, not proof of the underlying model.
 
 For explicit cross-provider routing of a named read-only workflow, use the
 optional launcher instead of raw Task calls:
@@ -86,9 +87,10 @@ reserved for coupled work whose next step depends on the result.
 1. Read each agent's compact summary; verify diffs with `git status` /
    `git diff`
 2. Fix overlap conflicts yourself (do not re-fan the same files)
-3. Run gates **serially** (`make format`, `make lint`, `make unit`,
-   `make coverage`, `make build` with `STRICT=1`); never run concurrent gate
-   or e2e runs in one clone — they corrupt each other and fake green
+3. Run gates **serially** (`STRICT=1 make prerequisites`, `STRICT=1 make
+    format`, `STRICT=1 make lint`, `STRICT=1 make unit`, `STRICT=1 make
+    coverage`, `STRICT=1 make build`); never run concurrent gate or e2e runs
+    in one clone — they corrupt each other and fake green
 4. Re-run only tracks affected by an edit; add a cross-track verifier only
    when a fix crosses ownership boundaries
 5. Update `docs/implementation-status.md` / skills if behavior or workflows

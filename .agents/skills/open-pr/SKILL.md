@@ -53,8 +53,9 @@ If one exists, return its URL instead of duplicating.
 ./.agents/skills/commit-and-push/scripts/pre_commit_check.sh
 ```
 
-Must pass: markdown lint, `make format`, `make lint` (`STRICT=1`), `make unit`,
-`make coverage`, `make build`. Plus milestone-relevant gates when the change
+Must pass: markdown lint, `STRICT=1 make prerequisites`, and `STRICT=1 make format`,
+`STRICT=1 make lint`, `STRICT=1 make unit`, `STRICT=1 make coverage`,
+`STRICT=1 make build`. Plus milestone-relevant gates when the change
 touches cross-service behavior: `make integration` and `make e2e`
 (anti-cheating suite must pass).
 
@@ -67,7 +68,7 @@ Run whatever the change requires **before** drafting checked boxes:
 | Milestone implementation | `make e2e` + the milestone's acceptance conditions in `docs/implementation-status.md` |
 | Contract changes | `make contracts` regenerated; `make contract-test` green; generated code not hand-edited |
 | Cross-service integration | `make integration`; artifact lineage matches `docs/artifact-lineage.md` |
-| Orchestrator / SSE / CLI behavior | Targeted service tests plus a bounded `rghello run` smoke (see `/acceptance-smoke`) |
+| Orchestrator / SSE / CLI behavior | Targeted service tests plus a bounded `rghw run` smoke (see `/acceptance-smoke`) |
 
 Do not invent a Test plan item you have not executed.
 
@@ -108,7 +109,9 @@ Give the user the clickable PR link.
 ## Checklist
 
 - [ ] Not on `main`; current branch pushed
-- [ ] `make format lint unit coverage build` green with `STRICT=1`; e2e/anti-cheating green when applicable
+- [ ] `STRICT=1 make prerequisites`, `STRICT=1 make format`, `STRICT=1 make
+      lint`, `STRICT=1 make unit`, `STRICT=1 make coverage`, and `STRICT=1
+      make build` green; e2e/anti-cheating green when applicable
 - [ ] All change-specific verifications done (no deferred "after merge" checks)
 - [ ] [adversarial-pr-review](../adversarial-pr-review/SKILL.md) converged
 - [ ] PR body Test plan / Verification Results all `[x]` or omitted as N/A

@@ -8,7 +8,7 @@ subtask: true
 Perform a read-only review of the current working-tree changes.
 
 - Read `AGENTS.md`, `.kilo/operating.md`, and any domain skill that matches
-  the changed files (e.g. `rghello-milestone` for milestone work,
+  the changed files (e.g. `rghw-milestone` for milestone work,
   `adversarial-pr-review` conventions for review format).
 - Inspect `git status --short`, `git diff --check`, the unstaged diff, the
   staged diff, and relevant untracked files.

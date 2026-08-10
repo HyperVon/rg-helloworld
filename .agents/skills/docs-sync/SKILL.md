@@ -44,21 +44,10 @@ markdownlint target.)
 
 ## Mermaid diagrams (architecture / runbook / README)
 
-When adding or editing a ```mermaid fence, **parse it under Mermaid 8.x**
-before finishing — IDE preview panes often lag GitHub's Mermaid and fail on
-unquoted non-ASCII labels (`≥`) and the sequenceDiagram `actor` keyword.
-
-```bash
-python3 -m venv /tmp/rghello-mermaid
-/tmp/rghello-mermaid/bin/pip install -q playwright
-/tmp/rghello-mermaid/bin/python .kilo/scripts/validate_mermaid.py
-# Or only the files you touched:
-#   .../validate_mermaid.py docs/architecture.md docs/runbook.md
-```
-
-Syntax rules and the full audit path live in
-[documentation-review](../documentation-review/SKILL.md) (Mermaid
-compatibility).
+For Mermaid edits, follow the canonical compatibility rules and validator in
+[documentation-review](../documentation-review/SKILL.md#mermaid-compatibility).
+Use that same validator before finishing; the checklist below records the
+required verification.
 
 ## Checklist
 

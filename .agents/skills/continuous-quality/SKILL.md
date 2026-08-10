@@ -35,13 +35,15 @@ must match wrong production behavior.
 Failures here become backlog items, not "expected red":
 
 ```bash
-make format
-make lint
-make unit
-make coverage
+STRICT=1 make prerequisites
+STRICT=1 make format
+STRICT=1 make lint
+STRICT=1 make unit
+STRICT=1 make coverage
+STRICT=1 make build
 ```
 
-Run serially with `STRICT=1`. Record gate results and any failures in the
+Record gate results and any failures in the
 quality backlog **before** starting discovery. Never start discovery on a
 broken baseline and call the result "quality".
 
@@ -87,9 +89,11 @@ make unit-<lang> 2>&1 | tee .local/diagnostics/qa-unit.log
 ```
 
 Compare test counts before/after from the log; a green result with the same
-count means the new tests did not actually run. Then run the full gates
-serially (`make coverage`, and `make integration`/`make e2e` when the change
-touches cross-service behavior).
+count means the new tests did not actually run. Then rerun the full gates
+serially (`STRICT=1 make prerequisites`, `STRICT=1 make format`,
+`STRICT=1 make lint`, `STRICT=1 make unit`, `STRICT=1 make coverage`, and
+`STRICT=1 make build`). Add `make integration` / `make e2e` when the change
+touches cross-service behavior.
 
 ## Step 5 — Persist the backlog
 
@@ -105,7 +109,8 @@ discoveries only in chat.
 # Quality cycle — YYYY-MM-DD (mode: cycle|loop|discover-only)
 
 ## Baseline
-- make format / lint / unit / coverage: pass | fail (details)
+- make prerequisites / format / lint / unit / coverage / build: pass | fail
+  (details)
 
 ## Findings
 - [S|M|L] finding — path — evidence — proposed fix

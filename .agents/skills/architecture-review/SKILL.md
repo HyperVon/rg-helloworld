@@ -33,7 +33,7 @@ rules (section 7) are constraints, not review targets.
    Makefile targets.
 3. **As-is map** — one page: service graph, protocol boundaries (SOAP, gRPC,
    HTTP, Kafka, SSE), artifact maturity path (0 → 10 → … → 100), and the
-   acceptance flow (`rghello run`).
+   acceptance flow (`rghw run`).
 4. **Stress-test dimensions** (use the ones that apply):
    - Integrity rules: any place plaintext/expected-character fields could
      leak below the glyph catalog?

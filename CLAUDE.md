@@ -9,8 +9,8 @@ Key facts:
   `docs/architecture.md` section 29; never start the next milestone while the
   current one's acceptance conditions fail.
 - Track everything in `docs/implementation-status.md`.
-- Required gates from the repo root: `make format`, `make lint`,
-  `make unit`, `make coverage`, `make build` (all must pass; use
+- Required gates from the repo root: `make prerequisites`, `make format`,
+  `make lint`, `make unit`, `make coverage`, `make build` (all must pass; use
   `STRICT=1` to fail on missing toolchains).
 - Integrity rules (anti-cheating boundaries) are non-negotiable — see
   `AGENTS.md` and `docs/architecture.md` section 7.

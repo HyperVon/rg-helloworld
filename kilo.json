@@ -2,7 +2,7 @@
   "$schema": "https://app.kilo.ai/config.json",
   "instructions": ["AGENTS.md", ".kilo/operating.md", ".kilo/model-router/instructions.md"],
   "skills": {
-    "paths": [".agents/skills"]
+    "paths": [".agents/skills", ".kilo/skills"]
   },
   "compaction": {
     "auto": true,

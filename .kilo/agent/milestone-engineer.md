@@ -37,9 +37,10 @@ Follow this workflow:
    applicable. Add tests before proceeding; keep per-language coverage at
    90% or higher.
 4. Run targeted checks during iteration (`make unit-<lang>`,
-   `make build-<lang>`), then the full gates: `make format`, `make lint`,
-   `make unit`, `make coverage`, `make build` — all must pass with
-   `STRICT=1`.
+   `make build-<lang>`), then the full gates serially: `STRICT=1 make
+   prerequisites`, `STRICT=1 make format`, `STRICT=1 make lint`, `STRICT=1
+   make unit`, `STRICT=1 make coverage`, `STRICT=1 make build` — all must
+   pass.
 5. Update documentation and the verification log.
 6. Report: files created, commands executed, test results, remaining
    limitations, next milestone.

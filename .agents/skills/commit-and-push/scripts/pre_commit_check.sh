@@ -15,19 +15,22 @@ else
     echo "WARN: markdownlint-cli2 not available; skipping markdown lint" >&2
 fi
 
+echo "==> make prerequisites"
+STRICT=1 make prerequisites
+
 echo "==> make format"
-make format
+STRICT=1 make format
 
 echo "==> make lint"
 STRICT=1 make lint
 
 echo "==> make unit"
-make unit
+STRICT=1 make unit
 
 echo "==> make coverage"
-make coverage
+STRICT=1 make coverage
 
 echo "==> make build"
-make build
+STRICT=1 make build
 
 echo "==> Pre-commit checks passed"
