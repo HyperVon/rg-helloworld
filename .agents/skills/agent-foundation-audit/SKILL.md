@@ -42,17 +42,32 @@ guidance. This skill supplements, but never overrides, Rube's `AGENTS.md`,
    The wrapper calls the foundation's shell entry point and writes inventory
    and scan JSON to an external temporary directory unless an output directory
    is supplied. It never applies a plan.
-3. For an external source, run the foundation's `inventory` and `scan` against
+3. For a new project directory, first use the foundation's shell wrapper in
+   the foundation checkout to preview and then explicitly approve `init`:
+
+   ```text
+   scripts/agent-foundation-init.sh --project /path/to/project
+   scripts/agent-foundation-init.sh --project /path/to/project --approve
+   ```
+
+   `init` creates only missing `.agent-foundation` metadata and starter policy
+   guidance. It does not invent domain-specific `AGENTS.md` content or activate
+   a harness. Render the portable handoff after the source plan is reviewed:
+
+   ```text
+   scripts/agent-foundation-handoff.sh --project /path/to/project --plan /path/to/plan.json
+   ```
+4. For an external source, run the foundation's `inventory` and `scan` against
    that source, then create a `plan` with the Rube checkout as `--project`.
    Pin or record the source revision before review; do not fetch or install it
    from inside this workflow.
-4. Review every proposed decision:
+5. Review every proposed decision:
    `KEEP_LOCAL` preserves the local skill, `ADD_EXTERNAL` is eligible only for
    inactive vendor storage, and `QUARANTINE` requires review before any use.
-5. Stop for approval when a source contains high-risk findings, a collision,
+6. Stop for approval when a source contains high-risk findings, a collision,
    an executable or installer, a network or secret-access instruction, an MCP
    server, or a request to weaken project invariants.
-6. If an approved plan is applied, verify that local guidance is byte-for-byte
+7. If an approved plan is applied, verify that local guidance is byte-for-byte
    unchanged, no existing path was overwritten, unsafe content was not copied,
    and the branch remains recoverable.
 

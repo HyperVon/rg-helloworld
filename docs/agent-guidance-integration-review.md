@@ -110,6 +110,9 @@ The branch adds only a portable bridge:
 - The existing canonical rules and skill index now route external guidance
   work to that bridge. Existing domain skills and the model router remain
   unchanged.
+- The foundation now also supports a new/empty-project path through an
+  approval-gated `init` wrapper and a harness-neutral `handoff` report; Rube
+  uses only the audit portion because it is an existing project.
 
 For an external source, the next operation is still an explicit foundation
 `plan` against this checkout. A safe candidate may be copied only to inactive
