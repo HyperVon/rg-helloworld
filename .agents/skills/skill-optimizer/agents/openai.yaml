@@ -1,0 +1,4 @@
+interface:
+  display_name: "Skill Optimizer"
+  short_description: "Reduce guidance context without losing behavior"
+  default_prompt: "Use $skill-optimizer to reduce this agent playbook context cost without weakening it."

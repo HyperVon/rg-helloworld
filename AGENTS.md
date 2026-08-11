@@ -214,3 +214,16 @@ its output limit while reasoning and produced no actionable output":
   with their milestones; never delete a test that guards an integrity rule.
 - The anti-cheating suite (`tests/anti-cheating/`) must keep passing once it
   exists (Milestone 1+).
+
+<!-- agent-guidance-kit:routes:start -->
+## Agent Guidance Kit skills
+
+These receipt-managed skills were adopted from Agent Guidance Kit.
+
+| Task | Skill |
+| :--- | :--- |
+| Adopt, add, audit, refresh, or update Agent Guidance Kit content | [agent-guidance-maintenance](.agents/skills/agent-guidance-maintenance/SKILL.md) |
+| Review security boundaries, authority, secrets, and sensitive data flows | [security-review](.agents/skills/security-review/SKILL.md) |
+| Reduce guidance context cost without weakening behavior | [skill-optimizer](.agents/skills/skill-optimizer/SKILL.md) |
+| Diagnose an observed failure and find its root cause before fixing it | [systematic-debugging](.agents/skills/systematic-debugging/SKILL.md) |
+<!-- agent-guidance-kit:routes:end -->
