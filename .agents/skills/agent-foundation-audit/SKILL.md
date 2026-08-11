@@ -57,6 +57,7 @@ guidance. This skill supplements, but never overrides, Rube's `AGENTS.md`,
    ```text
    scripts/agent-foundation-handoff.sh --project /path/to/project --plan /path/to/plan.json
    ```
+
 4. For an external source, run the foundation's `inventory` and `scan` against
    that source, then create a `plan` with the Rube checkout as `--project`.
    Pin or record the source revision before review; do not fetch or install it

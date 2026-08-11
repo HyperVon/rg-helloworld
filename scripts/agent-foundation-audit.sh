@@ -1,7 +1,9 @@
 #!/bin/sh
 set -eu
 
+# shellcheck disable=SC1007 # CDPATH= is intentional to suppress CDPATH side effects for cd
 script_dir=$(CDPATH= cd "$(dirname "$0")" && pwd)
+# shellcheck disable=SC1007
 repo_dir=$(CDPATH= cd "$script_dir/.." && pwd)
 
 if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
@@ -9,6 +11,7 @@ if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
   exit 2
 fi
 
+# shellcheck disable=SC1007
 foundation_root=$(CDPATH= cd "$1" 2>/dev/null && pwd) || {
   echo "foundation root is not readable: $1" >&2
   exit 2

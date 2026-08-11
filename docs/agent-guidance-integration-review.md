@@ -89,9 +89,10 @@ not a trading-product roadmap.
 On the dedicated `codex/agent-foundation-integration` branch, the reusable
 agent-project-foundation was run against the repository before the bridge files
 were added, without executing any provider, source script, installer, or MCP
-server. The baseline contained 4,069
-relevant files, 72 guidance files, and 25 skills. Its tree digest was
-`734d1c5225ec32d3bb9421fb3cd238fd5320f4812d1efc61b732bd83f5db9b20`.
+server. The pre-bridge baseline (2026-08-09, digest
+`734d1c5225ec32d3bb9421fb3cd238fd5320f4812d1efc61b732bd83f5db9b20`) contained 4,069
+relevant files, 72 guidance files, and 25 skills; counts after the bridge
+include the added `agent-foundation-audit` skill and therefore differ.
 
 The scanner reviewed 3,660 files and produced 3,436 findings: 724 high,
 459 medium, and 2,253 low. These are review signals rather than proof of
