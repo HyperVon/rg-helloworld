@@ -83,3 +83,80 @@ not a trading-product roadmap.
   approval.
 - No adapted workflow creates remote issues, commits, pushes, opens PRs, or
   changes shared infrastructure unless the user separately authorizes it.
+
+## Agent-project-foundation bridge
+
+On the dedicated `codex/agent-foundation-integration` branch, the reusable
+agent-project-foundation was run against the repository before the bridge files
+were added, without executing any provider, source script, installer, or MCP
+server. The pre-bridge baseline (2026-08-09, digest
+`734d1c5225ec32d3bb9421fb3cd238fd5320f4812d1efc61b732bd83f5db9b20`) contained 4,069
+relevant files, 72 guidance files, and 25 skills; counts after the bridge
+include the added `agent-foundation-audit` skill and therefore differ.
+
+The scanner reviewed 3,660 files and produced 3,436 findings: 724 high,
+459 medium, and 2,253 low. These are review signals rather than proof of
+malice; many are expected because this repository intentionally contains
+credential-handling rules, scripts, infrastructure, test fixtures, and
+provider configuration examples. High findings remain a stop condition before
+external guidance is activated.
+
+The branch adds only a portable bridge:
+
+- `.agents/skills/agent-foundation-audit/SKILL.md` defines the trigger,
+  provenance boundary, preservation rules, and completion contract.
+- `scripts/agent-foundation-audit.sh` provides a shell-only entry point for
+  inventory and scanning; it writes reports outside the repository by default
+  and never applies a plan.
+- The existing canonical rules and skill index now route external guidance
+  work to that bridge. Existing domain skills and the model router remain
+  unchanged.
+- The foundation now also supports a new/empty-project path through an
+  approval-gated `init` wrapper and a harness-neutral `handoff` report; Rube
+  uses only the audit portion because it is an existing project.
+
+For an external source, the next operation is still an explicit foundation
+`plan` against this checkout. A safe candidate may be copied only to inactive
+`.agent-foundation/vendor` storage; local collisions remain canonical and
+unsafe candidates remain quarantined. This bridge does not make any external
+skill active automatically.
+
+## Structural audit outcome
+
+### Inventory summary
+
+The audit reviewed the canonical rules (`AGENTS.md`, `.kilo/operating.md`),
+the thin harness projections (`CLAUDE.md`, Copilot, Cursor, Windsurf, and Kilo
+configuration), the existing cross-project review, model-router instructions,
+and the repository's skill-authoring, skill-reviewer, and rules-and-skills-audit
+contracts. The remaining domain skills were inventoried but not individually
+rewritten because this change does not alter their content or ownership.
+
+### Findings
+
+- **Improvement:** there was no portable, repository-local entry point for
+  safely invoking the reusable foundation against an existing project. The new
+  `agent-foundation-audit` skill and shell wrapper close that gap.
+- **Keep separate:** `agent-foundation-audit` owns provenance/scanning and
+  external-source staging; `rules-and-skills-audit` owns structural overlap and
+  drift; `skill-reviewer` owns content-depth recommendations; the model router
+  owns provider selection. Their triggers and decision boundaries are distinct.
+- **No conflict found:** `AGENTS.md` and `.kilo/operating.md` already make
+  local guidance canonical and projections thin, so no domain skill or router
+  change is justified by this integration.
+
+### Reversible consolidation plan
+
+1. Keep the bridge additive and use it for read-only baselines first.
+2. For each external source, require a pinned revision, scan, plan review, and
+   branch-local apply.
+3. Promote vendor content only after a separate harness-specific review; do
+   not merge the bridge into domain skills by default.
+4. Re-run this structural audit if the foundation contract or skill tree
+   changes materially.
+
+### No-change conclusion
+
+No existing Rube skill, canonical invariant, harness projection, or model-router
+implementation should be merged, deleted, or rewritten as part of this first
+bridge. The branch intentionally adds only the missing trust-boundary workflow.

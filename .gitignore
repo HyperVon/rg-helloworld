@@ -57,5 +57,8 @@ target/release/
 # Ruby bundler vendor path (gems installed locally; never commit)
 services/adjudicator-ruby/vendor/
 
+# Agent foundation inactive vendor staging (never commit staged external guidance)
+.agent-foundation/
+
 # Removed service residual directory (no longer part of the build)
 services/temp-worker-node/
