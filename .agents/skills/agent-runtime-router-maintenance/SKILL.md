@@ -55,10 +55,10 @@ directories or fetch a replacement.
 5. Apply only the unchanged approved plan:
 
    ```text
- python <router-root>/.agents/skills/bootstrap-runtime-router/scripts/install_runtime.py \
-   apply --router-root <router-root> --target . \
-   --plan <temporary-plan.json> --approve
-```
+   python <router-root>/.agents/skills/bootstrap-runtime-router/scripts/install_runtime.py \
+     apply --router-root <router-root> --target . \
+     --plan <temporary-plan.json> --approve
+   ```
 
 ## Harness audit and refresh
 
