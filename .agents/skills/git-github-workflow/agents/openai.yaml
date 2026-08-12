@@ -1,0 +1,4 @@
+interface:
+  display_name: "Git GitHub Workflow"
+  short_description: "Branch, commit, PR, and release hygiene"
+  default_prompt: "Use $git-github-workflow to create branches, commits, PRs, and releases safely."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Catalog Discovery"
+  short_description: "Search and triage catalog expansion candidates"
+  default_prompt: "Use $catalog-discovery to search for and triage catalog expansion candidates."

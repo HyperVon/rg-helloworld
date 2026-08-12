@@ -1,0 +1,4 @@
+interface:
+  display_name: "Upstream Contribution"
+  short_description: "Propose local skills upstream via fork and PR"
+  default_prompt: "Use $upstream-contribution to propose local skill improvements upstream via a pull request."

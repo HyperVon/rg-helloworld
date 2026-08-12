@@ -1,0 +1,4 @@
+interface:
+  display_name: "Harness Adaptation"
+  short_description: "Adapt canonical guidance to any agent harness"
+  default_prompt: "Use $harness-adaptation to integrate this project guidance with the active agent harness."
