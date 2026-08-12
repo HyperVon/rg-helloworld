@@ -172,6 +172,11 @@ export function useSseStream(streamUrl: string, reconnectMs = 5000): SseState {
           const msg = JSON.parse((ev as MessageEvent).data) as any;
           const id = (ev as MessageEvent).lastEventId || eventIdRef.current;
           if (id) eventIdRef.current = id;
+          if (evt === 'artifact-created') {
+            try {
+              window.dispatchEvent(new CustomEvent('rghw:artifact-created', { detail: msg }));
+            } catch {}
+          }
           setState((prev) => ({
             ...prev,
             eventTypeCount: {

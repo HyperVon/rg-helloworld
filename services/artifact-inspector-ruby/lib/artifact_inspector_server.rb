@@ -171,6 +171,24 @@ get '/inspector/runs/:run_id' do
   lister.to_html(artifacts, params[:run_id])
 end
 
+# Proxy artifact bytes from orchestrator so <img src="/api/v1/..."> works from inspector origin.
+get '/api/v1/runs/:run_id/artifacts/:artifact_id' do
+  orchestrator = ENV['ORCHESTRATOR_URL'] || 'http://localhost:4567'
+  target = "#{orchestrator}/api/v1/runs/#{params[:run_id]}/artifacts/#{params[:artifact_id]}"
+  begin
+    uri = URI(target)
+    resp = Net::HTTP.get_response(uri)
+    status resp.code.to_i
+    content_type resp['content-type'] || 'application/octet-stream'
+    headers['cache-control'] = 'public, max-age=60'
+    body resp.body || ''
+  rescue StandardError => e
+    status 502
+    content_type :json
+    { error: 'upstream_unavailable', detail: e.message }.to_json
+  end
+end
+
 # rubocop:enable Metrics/BlockLength
 get '/inspector/runs/:run_id/artifacts/:artifact_id/view' do
   lister = ArtifactInspector::ArtifactLister.new(ENV['ORCHESTRATOR_URL'] || 'http://localhost:4567')

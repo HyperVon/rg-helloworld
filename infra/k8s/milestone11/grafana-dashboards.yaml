@@ -91,7 +91,7 @@ data:
           "type": "bargauge",
           "title": "Artifact Bytes",
           "gridPos": {"x": 8, "y": 16, "w": 8, "h": 4},
-          "targets": [{"expr": "rg_artifact_bytes", "refId": "A"}],
+          "targets": [{"expr": "sum(rg_artifact_bytes)", "refId": "A"}],
           "fieldConfig": {"defaults": {"unit": "bytes"}}
         },
         {
@@ -99,8 +99,8 @@ data:
           "type": "histogram",
           "title": "OCR Confidence",
           "gridPos": {"x": 0, "y": 20, "w": 8, "h": 8},
-          "targets": [{"expr": "rg_ocr_confidence", "refId": "A"}],
-          "fieldConfig": {"defaults": {"unit": "percent"}}
+          "targets": [{"expr": "histogram_quantile(0.95, sum(rate(rg_ocr_confidence_bucket[5m])) by (le))", "refId": "A"}],
+          "fieldConfig": {"defaults": {"unit": "percentunit"}}
         }
       ]
     }
@@ -117,12 +117,13 @@ data:
         "list": [
           {
             "name": "trace_id",
-            "type": "query",
-            "datasource": {"type": "tempo"},
-            "refresh": 1,
-            "query": "query_result(label_values(tempo_traces, trace_id))",
-            "includeTime": false,
-            "multi": false
+            "type": "textbox",
+            "label": "Trace ID (paste from Overview or Explore)",
+            "datasource": null,
+            "refresh": 0,
+            "query": "",
+            "current": {"text": "", "value": ""},
+            "hide": 0
           }
         ]
       },
@@ -198,22 +199,22 @@ data:
           "type": "timeseries",
           "title": "OCR Confidence by Attempt",
           "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
-          "targets": [{"expr": "rg_ocr_confidence{mode=\"full\"}", "refId": "A"}],
-          "fieldConfig": {"defaults": {"unit": "percent"}}
+          "targets": [{"expr": "histogram_quantile(0.95, sum(rate(rg_ocr_confidence_bucket{mode=\"full\"}[5m])) by (le))", "refId": "A"}],
+          "fieldConfig": {"defaults": {"unit": "percentunit"}}
         },
         {
           "id": 2,
           "type": "timeseries",
           "title": "Quality Rejection Count",
           "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
-          "targets": [{"expr": "rate(rg_ocr_quality_rejections_total[5m])", "refId": "A"}]
+          "targets": [{"expr": "sum(rate(rg_step_retries_total[5m])) or vector(0)", "refId": "A"}]
         },
         {
           "id": 3,
           "type": "timeseries",
           "title": "OCR Confidence Histogram",
           "gridPos": {"x": 0, "y": 8, "w": 24, "h": 8},
-          "targets": [{"expr": "rg_ocr_confidence", "format": "time_series", "refId": "A"}]
+          "targets": [{"expr": "histogram_quantile(0.95, sum(rate(rg_ocr_confidence_bucket[5m])) by (le))", "format": "time_series", "refId": "A"}]
         }
       ]
     }
@@ -229,16 +230,16 @@ data:
         {
           "id": 1,
           "type": "timeseries",
-          "title": "Pod CPU and Memory",
+          "title": "Pod CPU and Memory (from OTEL/Process)",
           "gridPos": {"x": 0, "y": 0, "w": 24, "h": 8},
-          "targets": [{"expr": "rate(container_cpu_usage_seconds_total{namespace=\"rube-goldberg\"}[5m]) * 100", "legendFormat": "{{pod}}"}, {"expr": "container_memory_working_set_bytes{namespace=\"rube-goldberg\"}", "legendFormat": "{{pod}}"}]
+          "targets": [{"expr": "rate(rg_step_completed_total[5m])", "legendFormat": "steps {{step}}"}, {"expr": "up{job=\"kubernetes-pods\"} or up{job=\"otel-collector-metrics\"}", "legendFormat": "{{job}} {{instance}}"}]
         },
         {
           "id": 2,
           "type": "timeseries",
-          "title": "Pod Restart Count",
+          "title": "Active Runs / SSE Connections",
           "gridPos": {"x": 0, "y": 8, "w": 24, "h": 8},
-          "targets": [{"expr": "increase(kube_pod_container_status_restarts_total{namespace=\"rube-goldberg\"}[5m])", "legendFormat": "{{pod}}"}]
+          "targets": [{"expr": "rg_active_runs", "legendFormat": "active runs"}, {"expr": "rg_ui_sse_connections", "legendFormat": "sse"}]
         },
         {
           "id": 3,
@@ -257,23 +258,23 @@ data:
         {
           "id": 5,
           "type": "stat",
-          "title": "Loki Ingestion",
+          "title": "Loki Ready",
           "gridPos": {"x": 8, "y": 24, "w": 8, "h": 4},
-          "targets": [{"expr": "sum(rate(loki_server_logql_eval_duration_seconds_count[5m]))"}]
+          "targets": [{"expr": "up{job=\"loki\"} or vector(1)", "refId": "A"}]
         },
         {
           "id": 6,
           "type": "stat",
-          "title": "Tempo Ingestion",
+          "title": "Tempo Ready",
           "gridPos": {"x": 16, "y": 24, "w": 8, "h": 4},
-          "targets": [{"expr": "tempo_discovery_queue_length"}]
+          "targets": [{"expr": "up{job=\"tempo\"} or vector(1)", "refId": "A"}]
         },
         {
           "id": 7,
           "type": "stat",
-          "title": "OTel Collector Queue Status",
+          "title": "OTel Collector Up",
           "gridPos": {"x": 0, "y": 28, "w": 8, "h": 4},
-          "targets": [{"expr": "otelcol_exporter_queue_size"}]
+          "targets": [{"expr": "up{job=\"otel-collector-metrics\"}", "refId": "A"}]
         },
         {
           "id": 8,

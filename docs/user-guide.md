@@ -196,7 +196,20 @@ Screenshots: `docs/screenshots/grafana*.png` (captured via Playwright at `SUCCEE
 
 *Images:* Prometheus 3.5, Loki 3.5.2, Tempo 2.4.0 (minimal local backend `/tmp/tempo/blocks`), OTel Collector 0.91
 
-**Prometheus** `http://localhost:9090` (`/-/healthy` → `Prometheus Server is Healthy`) — query `rg_runs_total`, `rg_step_duration_seconds`, `rg_kafka_consumer_lag`, `rg_ocr_confidence`. Targets at `/targets` should all be `UP` (Kubernetes SD).
+**Prometheus** `http://localhost:9090` (`/-/healthy` → `Prometheus Server is Healthy`) — valid PromQL (see runbook §6.1.2):
+
+```promql
+rg_runs_total
+rg_runs_total{status="SUCCEEDED"}
+rg_active_runs
+rg_artifacts_created_total
+sum(rg_artifacts_created_total) by (kind)
+rate(rg_step_completed_total[5m])
+rg_kafka_consumer_lag
+up{job="kubernetes-pods"}
+```
+
+Quick check: `curl -s 'http://localhost:9090/api/v1/query?query=rg_runs_total' | jq .` → vector `1` after one run. Targets at `/targets` should all be `UP` (Kubernetes SD). Full list and curl probes: runbook §6.1.2 and §6.3.
 
 **Loki** `http://localhost:3100` (`/ready` → `ready`) — view via Grafana Explore → Loki data source. All services log structured JSON with `traceId`/`spanId`.
 

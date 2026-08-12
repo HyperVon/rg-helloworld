@@ -269,7 +269,7 @@ All UIs are namespace `rube-goldberg`. The stack includes 4 Grafana dashboards (
 | **Artifact Inspector** | `http://rghw.localhost/inspector/runs/{runId}` | `kubectl port-forward svc/artifact-inspector 3001:80` → `http://localhost:3001` (landing at `/` shows form, then `/inspector/runs/{runId}`) | HTMX-rendered intermediate images (glyph blueprints, geometry JSON, SVG, raster PNG, phrase image), metadata, SHA-256 lineage; view links use stable opaque descriptor IDs and the orchestrator's run-scoped MinIO byte proxy | Ruby + HTMX (`services/artifact-inspector-ruby`, `GET /` and `/inspector` now show a form) |
 | **Event Gateway (SSE)** | `http://rghw.localhost/api/v1/runs/{runId}/stream` | `kubectl port-forward svc/event-gateway 8081:80` → `http://localhost:8081/health` → `{"status":"ok"}`; stream also via orchestrator `http://localhost:8080/api/v1/runs/{runId}/stream` | Raw Server-Sent Events: snapshot + heartbeats every 15s, `Last-Event-ID` replay, closes after terminal event (§19.5) | TypeScript (`services/event-gateway-node`, Redis Streams) + Kotlin orchestrator stream |
 | **Grafana** | `http://grafana.rghw.localhost/` | `kubectl port-forward svc/grafana 3002:80` → `http://localhost:3002` (→ `/login`) | 4 provisioned dashboards (see §6.2), Explore for Prometheus/Loki/Tempo | Grafana Enterprise 12.0.2 (`infra/k8s/milestone11/grafana.yaml`) |
-| **Prometheus** | — | `kubectl port-forward svc/prometheus 9090:9090` → `http://localhost:9090`/-/healthy → `Prometheus Server is Healthy` | Metrics: `rg_runs_total{status}`, `rg_active_runs`, `rg_step_*`, `rg_kafka_consumer_lag`, `rg_ocr_confidence` (§20.2) | Prometheus 3.5.0 |
+| **Prometheus** | — | `kubectl port-forward svc/prometheus 9090:9090` → `http://localhost:9090`/-/healthy → `Prometheus Server is Healthy` | Metrics: `rg_runs_total{status}`, `rg_active_runs`, `rg_step_*`, `rg_kafka_consumer_lag`, `rg_ocr_confidence` (§20.2); see §6.1.2 for valid PromQL queries | Prometheus 3.5.0 |
 | **Loki** | — | `kubectl port-forward svc/loki 3100:3100` → `http://localhost:3100`/ready → `ready` | JSON structured logs from every service (§20.3) | Grafana Loki 3.5.2 |
 | **Tempo** | — | `kubectl port-forward svc/tempo 3200:3200` → `http://localhost:3200`/status | Distributed traces: one `rube-goldberg.run` root span per run with children `orchestrator.create-run`, `soap.plan-phrase`, `kafka.produce/consume`, `geometry.expand`, `grpc.render-glyph`, `image.compose`, `ocr.*`, `adjudicate.symbol`, `assemble.phrase` (§20.1) | Grafana Tempo 2.4.0 (minimal local backend `/tmp/tempo/blocks`) |
 | **OTel Collector** | — | `kubectl port-forward svc/otel-collector 4317:4317` (gRPC) / 4318 (HTTP) | Telemetry intake, `Everything is ready` (0.91.0), forwards to Prometheus/Tempo/Loki | OTel Collector (`infra/k8s/milestone11/otel-collector.yaml`) |
@@ -336,6 +336,41 @@ Four dashboards (§20.4):
 
 Provisioned via ConfigMaps `grafana-dashboards` and `grafana-provisioning` (`infra/k8s/milestone11/grafana.yaml:38`).
 
+#### 6.1.2 Prometheus — valid queries
+
+Prometheus is `http://localhost:9090` (port-forward `svc/prometheus 9090:9090`; `rghw.sh` starts it for you). If you are unsure what to query, start with these — they are the `rg_*` metrics the dashboards use and are known to return data after at least one `rghw run`:
+
+```promql
+# runs (Overview dashboard)
+rg_runs_total
+rg_runs_total{status="SUCCEEDED"}
+sum(rate(rg_runs_total[5m])) by (status)
+rg_active_runs
+
+# artifacts / stages
+rg_artifacts_created_total
+sum(rg_artifacts_created_total) by (kind)
+rg_artifact_bytes
+rate(rg_step_completed_total[5m])
+rg_run_end_to_end_seconds
+
+# gateway / infra
+rg_kafka_consumer_lag
+rg_ui_sse_connections
+up{job="kubernetes-pods"}
+up{job="otel-collector-metrics"}
+```
+
+Quick check without the UI:
+
+```bash
+curl -s 'http://localhost:9090/api/v1/query?query=rg_runs_total' | jq .
+# -> {"status":"success","data":{"result":[{"metric":{"status":"SUCCEEDED"},"value":[...,"1"]}]}}
+curl -s http://localhost:8080/metrics | grep rg_runs_total
+```
+
+If a query returns `No Data` in Grafana but `curl` above returns a vector, the dashboard panel's query is stale — see §6.2. `rg_ocr_confidence` and infrastructure `container_*` metrics are only populated when the OCR/metrics-generator paths are enabled.
+
 ### 6.3 Quick UI smoke check
 
 ```bash
@@ -344,7 +379,8 @@ curl -sf http://localhost:3000/ | head -5        # web-shell: contains "Rube Gol
 curl -sf http://localhost:8081/healthz           # event-gateway
 curl -sf http://localhost:3002/api/health | jq . # grafana -> {"database":"ok","version":"12.0.2"}
 curl -sf http://localhost:9090/-/healthy         # prometheus -> Prometheus Server is Healthy
-curl -sf http://localhost:3100/ready             # loki -> ready
+curl -sf 'http://localhost:9090/api/v1/query?query=rg_runs_total' | jq .  # prometheus -> rg_runs_total vector
+curl -sf http://localhost:3100/ready             # loki -> ready (503 for ~15s after startup is normal)
 curl -sf http://localhost:3200/status | head -20 # tempo -> server listening http [::]:3200
 kubectl logs -n rube-goldberg deploy/otel-collector | grep "Everything is ready"
 ```

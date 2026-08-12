@@ -3,8 +3,16 @@ import { ArtifactModal } from './components/ArtifactModal';
 import { ProcessGraph } from './components/ProcessGraph';
 import { RunSelector } from './components/RunSelector';
 import { useSseStream } from './hooks/useSseStream';
-import type { RunSummary, ArtifactNode } from './types';
+import type { ArtifactNode } from './types';
 import { parseSseFrame } from './hooks/useSseStream';
+
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      'rg-telemetry-panel': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement> & { 'run-id'?: string }, HTMLElement>;
+    }
+  }
+}
 
 function apiBase(): string {
   if (
@@ -91,11 +99,43 @@ export function App() {
 
   useEffect(() => {
     if (!runId) return;
-    fetch(`${base}/api/v1/runs/${runId}/artifacts`)
-      .then((r) => r.json())
-      .then((data) => setArtifacts((data as { artifacts: ArtifactNode[] }).artifacts || []))
-      .catch(() => {});
-  }, [runId]);
+    let cancelled = false;
+    let timer: number | null = null;
+    const load = async () => {
+      try {
+        const r = await fetch(`${base}/api/v1/runs/${runId}/artifacts`);
+        if (!r.ok) return;
+        const data = (await r.json()) as { artifacts: ArtifactNode[] };
+        if (cancelled) return;
+        setArtifacts(data.artifacts || []);
+      } catch {}
+    };
+    load();
+    const poll = () => {
+      if (summary?.terminal) return;
+      timer = window.setTimeout(async () => {
+        await load();
+        if (!cancelled) poll();
+      }, 1500) as unknown as number;
+    };
+    poll();
+    return () => {
+      cancelled = true;
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, [runId, base, summary?.terminal]);
+
+  useEffect(() => {
+    const onArtifact = () => {
+      if (!runId) return;
+      fetch(`${base}/api/v1/runs/${runId}/artifacts`)
+        .then((r) => r.json())
+        .then((data) => setArtifacts((data as { artifacts: ArtifactNode[] }).artifacts || []))
+        .catch(() => {});
+    };
+    window.addEventListener('rghw:artifact-created' as any, onArtifact);
+    return () => window.removeEventListener('rghw:artifact-created' as any, onArtifact);
+  }, [runId, base]);
 
   const handleSelectRun = (id: string) => {
     setRunId(id);
@@ -136,9 +176,10 @@ export function App() {
                 <div>
                   Events received: {Object.values(eventTypeCount).reduce((a, b) => a + b, 0)}
                 </div>
-                {runStatus === 'SUCCEEDED' && (
-                  <button onClick={() => setShowArtifacts(true)}>View Artifacts</button>
-                )}
+                <button onClick={() => setShowArtifacts(true)} disabled={artifacts.length === 0} title={artifacts.length === 0 ? 'No artifacts yet' : `${artifacts.length} artifacts`}>
+                  View Artifacts {artifacts.length > 0 ? `(${artifacts.length})` : ''}
+                </button>
+                {artifacts.length > 0 && <span className="artifact-count-hint">{artifacts.filter((a) => a.contentType?.startsWith('image/')).length} images</span>}
               </div>
             </section>
 
@@ -150,6 +191,65 @@ export function App() {
                 runStatus={runStatus}
                 glyphCount={glyphCount}
               />
+            </section>
+
+            <section className="telemetry-element-section">
+              <h2>Run Ledger — Angular Telemetry</h2>
+              <div className="telemetry-element-wrap">
+                {/* Spec §19.1: Angular Elements telemetry panel; React supplies run-id, element fetches independently */}
+                {/* @ts-ignore custom element */}
+                {React.createElement('rg-telemetry-panel', { 'run-id': runId || '' } as any)}
+                <div className="telemetry-fallback">
+                  <div className="telemetry-fallback-grid">
+                    <div><strong>Run:</strong> {runId?.slice(0, 8)}…</div>
+                    <div><strong>Status:</strong> {runStatus}</div>
+                    <div><strong>Stage:</strong> {currentStage}</div>
+                    <div><strong>Artifacts:</strong> {artifacts.length}</div>
+                    <div><strong>Images:</strong> {artifacts.filter((a) => a.contentType?.startsWith('image/')).length}</div>
+                    <div><strong>SSE:</strong> {connected ? 'connected' : 'disconnected'}</div>
+                  </div>
+                  <div className="artifact-thumbs">
+                    {artifacts
+                      .filter((a) => a.contentType?.startsWith('image/'))
+                      .slice(0, 8)
+                      .map((a) => (
+                        <img
+                          key={a.id}
+                          src={`${base}${a.proxyUrl}`}
+                          alt={a.stage}
+                          title={`${a.stage} — ${a.sha256.slice(0, 8)}`}
+                          loading="lazy"
+                          onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')}
+                        />
+                      ))}
+                    {artifacts.filter((a) => a.contentType?.startsWith('image/')).length === 0 && (
+                      <span style={{ opacity: 0.6, fontSize: '0.85rem' }}>No images yet — artifacts appear as pipeline progresses (polling every 1.5 s).</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="telemetry-links">
+                <a href={`${base}/api/v1/runs/${runId}/artifacts`} target="_blank" rel="noopener noreferrer">Artifacts JSON</a>
+                <span> · </span>
+                <a href={`${base}/api/v1/runs/${runId}/stream`} target="_blank" rel="noopener noreferrer">SSE stream</a>
+                <span> · </span>
+                <a href={`${base}/metrics`} target="_blank" rel="noopener noreferrer">Orchestrator metrics</a>
+                <span> · </span>
+                <a href="http://localhost:3001/health" target="_blank" rel="noopener noreferrer">Event gateway</a>
+              </div>
+            </section>
+
+            <section className="observability-section">
+              <h2>Observability</h2>
+              <div className="observability-grid">
+                <a href="/" className="obs-card" target="_blank" rel="noopener noreferrer"><strong>Web Shell</strong><span>React Flow graph + artifacts</span></a>
+                <a href="http://localhost:4568" className="obs-card" target="_blank" rel="noopener noreferrer"><strong>Artifact Inspector</strong><span>Ruby/HTMX gallery with image previews</span></a>
+                <a href="http://localhost:9090" className="obs-card" target="_blank" rel="noopener noreferrer"><strong>Prometheus</strong><span>rg_* metrics</span></a>
+                <a href="http://localhost:3001" className="obs-card" target="_blank" rel="noopener noreferrer"><strong>Grafana</strong><span>Overview / Deep Dive / OCR Lab / Infra (via ingress grafana.rghw.localhost)</span></a>
+                <a href="http://localhost:3100/ready" className="obs-card" target="_blank" rel="noopener noreferrer"><strong>Loki</strong><span>Logs via OTLP</span></a>
+                <a href="http://localhost:3200/status" className="obs-card" target="_blank" rel="noopener noreferrer"><strong>Tempo</strong><span>Traces + service graph</span></a>
+              </div>
+              <div className="observability-hint">If Grafana shows “No data”, check <code>rg_runs_total</code> in Prometheus — orchestrator now exposes <code>/metrics</code> and OTLP metrics via <code>otel-collector:8889</code>. In k8s: <code>http://grafana.rghw.localhost</code>, <code>http://prometheus.rghw.localhost</code>, <code>http://tempo.rghw.localhost:3200</code>.</div>
             </section>
           </main>
 
@@ -264,9 +364,35 @@ export function App() {
           cursor: pointer;
           box-shadow: 0 6px 16px rgba(139,92,246,0.35);
         }
+        .metrics button:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+        .artifact-count-hint { font-size: 0.75rem; opacity: 0.7; align-self: center; grid-column: span 2; }
         @media (max-height: 820px) {
           .graph-section { min-height: 420px; }
         }
+        .telemetry-element-section, .observability-section {
+          background: rgba(255,255,255,0.06);
+          backdrop-filter: blur(10px);
+          border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 14px;
+          padding: 1rem;
+          box-shadow: 0 8px 24px rgba(2,6,23,0.35);
+        }
+        .telemetry-element-wrap { display: grid; gap: 1rem; }
+        .telemetry-fallback-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; font-size: 0.85rem; }
+        .telemetry-fallback-grid > div { background: rgba(15,23,42,0.6); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 0.5rem; }
+        .artifact-thumbs { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.75rem; }
+        .artifact-thumbs img { width: 96px; height: 64px; object-fit: contain; background: white; border-radius: 8px; padding: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        .telemetry-links { margin-top: 0.75rem; font-size: 0.8rem; opacity: 0.8; }
+        .telemetry-links a { color: #22d3ee; text-decoration: none; font-weight: 600; }
+        .telemetry-links code { background: rgba(148,163,184,0.15); padding: 0.1rem 0.3rem; border-radius: 4px; }
+        .observability-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-top: 0.5rem; }
+        .obs-card { display: flex; flex-direction: column; background: rgba(15,23,42,0.6); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 0.7rem 0.8rem; text-decoration: none; color: #e2e8f0; }
+        .obs-card strong { font-size: 0.9rem; }
+        .obs-card span { font-size: 0.75rem; opacity: 0.7; }
+        .obs-card:hover { border-color: rgba(34,211,238,0.4); box-shadow: 0 4px 16px rgba(34,211,238,0.15); }
+        .observability-hint { margin-top: 0.75rem; font-size: 0.8rem; opacity: 0.7; line-height: 1.4; }
+        .observability-hint code { background: rgba(148,163,184,0.15); padding: 0.1rem 0.3rem; border-radius: 4px; }
+        rg-telemetry-panel { display: block; min-height: 40px; }
       `}</style>
     </div>
   );

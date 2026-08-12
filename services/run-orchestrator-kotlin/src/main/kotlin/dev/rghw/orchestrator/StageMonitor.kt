@@ -254,6 +254,14 @@ class StageMonitor(
                     }
 
                     Services.OCR_OBSERVATIONS_TOPIC -> {
+                        try {
+                            val conf =
+                                data["confidence"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull()
+                                    ?: data["avgConfidence"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull()
+                                    ?: data["confidenceAvg"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull()
+                            if (conf != null) RgMetrics.recordOcrConfidence(conf, "full")
+                        } catch (_: Exception) {
+                        }
                         if (tracker.markOcrObservationsReceived(runId) == StageTransition.STAGE_COMPLETE) {
                             transitionRun(runId, RunEvent.OCR_OBSERVATIONS_RECEIVED)
                         }

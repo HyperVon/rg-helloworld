@@ -24,20 +24,25 @@ data:
         actions:
           - key: service.name
             value: unknown_service
-            action: upsert
+            action: insert
+      resourcedetection:
+        detectors: [env, system]
+        system:
+          hostname_sources: [os]
 
     exporters:
       debug:
-        verbosity: detailed
+        verbosity: basic
       otlp/tempo:
         endpoint: tempo:4317
         tls:
           insecure: true
       prometheus:
         endpoint: 0.0.0.0:8889
-        namespace: rube_goldberg
       loki:
         endpoint: http://loki:3100/loki/api/v1/push
+        tls:
+          insecure: true
 
     service:
       telemetry:
