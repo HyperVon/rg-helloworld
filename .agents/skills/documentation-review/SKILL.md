@@ -81,10 +81,9 @@ memory.
 ### Parallel audit handoff
 
 For a broad audit with at least two disjoint evidence tracks, use
-[parallel-multi-agent](../parallel-multi-agent/SKILL.md) (or the
-`documentation-review` preset of `.kilo/model-router/route-subagents` when
-explicit cross-provider routing is wanted) after the parent captures a
-bounded source/build fact sheet:
+[parallel-multi-agent](../parallel-multi-agent/SKILL.md) or the active
+harness's native read-only delegation after the parent captures a bounded
+source/build fact sheet and obtains any required approval:
 
 | Track | Scope |
 | :--- | :--- |

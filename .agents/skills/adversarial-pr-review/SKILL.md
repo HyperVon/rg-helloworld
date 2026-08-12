@@ -113,13 +113,10 @@ Before launching any material or parallel review track, state the plan to the
 user and obtain explicit approval. Record the track, role, scope, and any
 substitution. Do not claim that a role label changed the model.
 
-For explicit cross-provider routing, the optional
-`.kilo/model-router/route-subagents --workflow adversarial-pr-review --run`
-launcher plans one exact provider/model route per track and launches read-only
-workers from temporary repository copies; inspect its route report before
-claiming independent-model diversity (see
-`.kilo/model-router/instructions.md`). If no usable route is available, keep
-the review parent-owned and state the limitation.
+For a broad review, use the active harness's native read-only delegation only
+when the user authorizes it. Record the actual session and model evidence, do
+not claim role-label diversity, and keep the review parent-owned when that
+evidence is unavailable.
 
 A prompt must contain:
 

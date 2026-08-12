@@ -49,9 +49,9 @@ broken baseline and call the result "quality".
 
 ## Step 2 — Discovery tracks
 
-Use the tracks that match the change surface; for a broad pass use the
-`continuous-quality` preset of `.kilo/model-router/route-subagents` when
-explicit cross-provider routing is wanted (parent owns triage and edits):
+Use the tracks that match the change surface; for a broad pass use the active
+harness's native read-only delegation only after explicit approval and when the
+tracks are disjoint (the parent owns triage and edits):
 
 1. **Runtime edges** — deliberately invent edge cases for the changed code:
    boundaries, empty inputs, failure modes, duplicate events, out-of-order

@@ -134,13 +134,12 @@ review-budget signal, not evidence of slop.
 
 ### Optional parallel evidence pass
 
-For a full-repository or broad PR audit, use the `ai-slop-detector` preset of
-`.kilo/model-router/route-subagents` after Step 0 when explicit cross-provider
-routing is wanted (see `.kilo/model-router/instructions.md`). It supplies
-disjoint production/build, tests, docs/skills/rules, and contracts/generated
-tracks. Workers return findings only; the parent owns severity triage,
-cleanup decisions, edits, and serial quality gates. Do not fan out a small or
-tightly coupled audit, and never use an unverified role-only worker.
+For a full-repository or broad PR audit, use the active harness's native
+read-only delegation after Step 0 only when the user authorizes it and the
+tracks are disjoint. Workers return findings only; the parent owns severity
+triage, cleanup decisions, edits, and serial quality gates. Do not fan out a
+small or tightly coupled audit, and never treat an unverified role label as
+evidence of model diversity.
 
 ### Step 1: Gather diff and high-risk evidence
 

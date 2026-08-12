@@ -165,7 +165,6 @@ recorded in [the guidance review](docs/agent-guidance-integration-review.md).
 | Fast post-deploy UI smoke | `post-deploy-ui-smoke` |
 | Refresh committed UI screenshots | `docs-screenshot-refresh` |
 | Maintain the end-user guide | `user-guide` |
-| Model routing for delegation | `.kilo/model-router/` (optional; see its `instructions.md`) |
 
 ## Context and output discipline
 

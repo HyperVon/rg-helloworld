@@ -82,5 +82,5 @@ copied to inactive vendor storage.
 ## Non-goals
 
 This skill does not replace `rules-and-skills-audit` for overlap and routing
-analysis, `skill-reviewer` for content depth, or Rube's router policy. It does
-not select providers, start workers, modify `.kilo/model-router`, or open a PR.
+analysis, `skill-reviewer` for content depth, or the harness's native
+delegation policy. It does not select providers, start workers, or open a PR.

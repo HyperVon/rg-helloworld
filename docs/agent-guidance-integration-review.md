@@ -22,8 +22,8 @@ polyglot, contract-first, local-only architecture:
 
 Portable operating guidance also incorporated into `.kilo/operating.md` and its
 harness projections includes isolated/disjoint delegation, serial final gates,
-background process hygiene, host-enforceable route evidence, projection
-alignment, path/credential hygiene, and fresh responsive UI evidence.
+background process hygiene, harness capability evidence, projection alignment,
+path/credential hygiene, and fresh responsive UI evidence.
 
 ## Existing equivalents or merges
 
@@ -31,7 +31,7 @@ No duplicate skill was created for these source skills:
 
 | Source skill | Decision |
 | :--- | :--- |
-| `adversarial-pr-review` | Existing current skill already owns bounded PR review; portable routing and isolation gaps were folded into operating norms. |
+| `adversarial-pr-review` | Existing current skill already owns bounded PR review; portable delegation and isolation gaps were folded into operating norms. |
 | `ai-slop-detector` | Existing polyglot/integrity-aware audit is the better local owner. |
 | `architecture-review` | Existing milestone- and integrity-aware recommendation workflow is narrower and safer here. |
 | `autonomous-code-optimizer` | Existing local bounded cleanup loop covers the source concept without KMP/trading passes. |
@@ -109,8 +109,7 @@ The branch adds only a portable bridge:
   inventory and scanning; it writes reports outside the repository by default
   and never applies a plan.
 - The existing canonical rules and skill index now route external guidance
-  work to that bridge. Existing domain skills and the model router remain
-  unchanged.
+  work to that bridge. Existing domain skills remain unchanged.
 - The foundation now also supports a new/empty-project path through an
   approval-gated `init` wrapper and a harness-neutral `handoff` report; Rube
   uses only the audit portion because it is an existing project.
@@ -127,10 +126,10 @@ skill active automatically.
 
 The audit reviewed the canonical rules (`AGENTS.md`, `.kilo/operating.md`),
 the thin harness projections (`CLAUDE.md`, Copilot, Cursor, Windsurf, and Kilo
-configuration), the existing cross-project review, model-router instructions,
-and the repository's skill-authoring, skill-reviewer, and rules-and-skills-audit
-contracts. The remaining domain skills were inventoried but not individually
-rewritten because this change does not alter their content or ownership.
+configuration), the existing cross-project review, and the repository's
+skill-authoring, skill-reviewer, and rules-and-skills-audit contracts. The
+remaining domain skills were inventoried but not individually rewritten
+because this change does not alter their content or ownership.
 
 ### Findings
 
@@ -139,11 +138,12 @@ rewritten because this change does not alter their content or ownership.
   `agent-foundation-audit` skill and shell wrapper close that gap.
 - **Keep separate:** `agent-foundation-audit` owns provenance/scanning and
   external-source staging; `rules-and-skills-audit` owns structural overlap and
-  drift; `skill-reviewer` owns content-depth recommendations; the model router
-  owns provider selection. Their triggers and decision boundaries are distinct.
+  drift; `skill-reviewer` owns content-depth recommendations; harness-native
+  delegation remains session-local and is not a repository capability. Their
+  triggers and decision boundaries are distinct.
 - **No conflict found:** `AGENTS.md` and `.kilo/operating.md` already make
-  local guidance canonical and projections thin, so no domain skill or router
-  change is justified by this integration.
+  local guidance canonical and projections thin, so no domain skill or
+  delegation change is justified by this cleanup.
 
 ### Reversible consolidation plan
 
@@ -157,6 +157,7 @@ rewritten because this change does not alter their content or ownership.
 
 ### No-change conclusion
 
-No existing Rube skill, canonical invariant, harness projection, or model-router
-implementation should be merged, deleted, or rewritten as part of this first
-bridge. The branch intentionally adds only the missing trust-boundary workflow.
+No existing Rube skill, canonical invariant, or harness projection should be
+merged, deleted, or rewritten as part of this first bridge review. This
+routerless branch intentionally removes the former provider-selection helper
+while preserving the trust-boundary workflow.

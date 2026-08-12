@@ -36,18 +36,11 @@ worker launch and obtain approval unless the user explicitly requested the
 named read-only workflow or its instructions authorize bounded discovery.
 Treat `subagent_type` as the worker role, not proof of the underlying model.
 
-For explicit cross-provider routing of a named read-only workflow, use the
-optional launcher instead of raw Task calls:
-
-```bash
-./.kilo/model-router/route-subagents --workflow <preset> --task "<request>" --run
-```
-
-It plans one exact provider/model route per track, prints the route/quota
-plan, and launches read-only workers from temporary repository copies. See
-`.kilo/model-router/instructions.md` for presets and the launch contract. If
-no usable route is available, keep the work parent-owned; never claim that a
-role label changed the model.
+Use the active harness's native delegation for named read-only workflows only
+after explicit approval, with disjoint ownership and a bounded prompt for each
+track. Record the actual session or model evidence when the harness exposes
+it. If it does not, keep the work parent-owned; never claim that a role label
+changed the model.
 
 ## Step 2 — Brief each agent
 

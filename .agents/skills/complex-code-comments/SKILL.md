@@ -112,10 +112,10 @@ Copy and track:
 
 - Default: full production code across services and the CLI.
 - If the user names packages/files, stay in that scope.
-- For "everywhere", use the `complex-code-comments` preset of
-  `.kilo/model-router/route-subagents` on **disjoint** packages; one owner per
-  hot file. The parent owns integration and must not give every worker the
-  full repository or use manual compaction to continue an oversized task.
+- For "everywhere", use the active harness's native delegation only after
+  explicit approval and on **disjoint** packages; one owner per hot file. The
+  parent owns integration and must not give every worker the full repository or
+  use manual compaction to continue an oversized task.
 
 ### Step 1: Complexity scan
 
