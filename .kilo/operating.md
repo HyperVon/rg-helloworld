@@ -71,11 +71,11 @@ Parallelize only when workstreams touch **disjoint files**, each has a
 self-contained goal, and the parent can integrate results. One coupled track
 for shared files; fan out the rest together in a single parallel message.
 
-Before material or parallel delegation, apply the model-selection gate in §8:
-define the minimum capability, select a host-enforceable route and effort when
-the host exposes them, record the fallback and availability evidence, and keep
-the work parent-owned when no usable route can be selected. A worker role or
-agent label is not evidence of the underlying model.
+Before material or parallel delegation, define the minimum capability and
+disjoint ownership. Record the harness or session evidence actually exposed;
+keep the work parent-owned when the harness cannot expose the needed
+capability. A worker role or agent label is not evidence of the underlying
+model.
 
 - Give each worker: repo path, branch, goal, files to touch/avoid,
   already-done context, acceptance criteria, iteration cap, and a compact
@@ -153,46 +153,22 @@ confident inside them.
   exact warning, why it cannot be fixed, the mitigation, and the condition
   for revisiting it; do not suppress or ignore it without that record.
 
-## 8. Model selection and routed delegation
+## 8. Harness delegation
 
-The session's default model comes from the host or `kilo.json`; treat it as
-the default for ordinary work. Sessions on the free tier have a small output
-cap — keep prompts and delegated briefs bounded, and escalate to a capable
-route for high-risk or reasoning-heavy work instead of letting a long task
-hit its output limit.
+Use the active coding harness's native worker and delegation controls when the
+user authorizes delegation. The parent owns task decomposition, coverage,
+triage, integration, and final serial gates. A worker role or agent label is
+not evidence of a particular model or independent execution.
 
-For explicit cross-provider model selection, the optional launcher
-`.kilo/model-router/route-kilo` discovers provider routes, ranks them by
-capability, effective cost, and quota, and starts `kilo run` with an exact
-`provider/model` route. For bounded parallel discovery or review tracks, use
-`.kilo/model-router/route-subagents --workflow <preset> --run`, which plans
-one exact route per track and launches read-only workers from temporary
-repository copies. See `.kilo/model-router/instructions.md` for the full
-launch contract, presets, and report format.
+Before any material or parallel launch:
 
-- Route selection is optional infrastructure, never a substitute for the
-  parent-owned coverage matrix, triage, integration, and serial gate runs.
-- A role or agent label is not evidence of a model; only an exact route from
-  the launcher report is. For adversarial review, inspect the route report
-  before claiming independent-model diversity.
-- Treat catalog status or configured credentials as insufficient proof of
-  live quota; the launcher persists only secret-free cooldown metadata.
-- When no usable route is available, keep the work parent-owned and state the
-  limitation; do not claim a role-only Task call changed the model.
-- Never persist credentials, balances, or raw provider errors in repository
-  files; `env.local` and `manifest.local` are git-ignored.
-
-Before the first material or parallel worker launch:
-
-1. Define the task profile and minimum capability.
-2. Record the primary host route, effort when exposed, fallback, cost class or
-   entitlement, availability evidence, and any substitution.
-3. Start with the least expensive capable route and escalate only for
-   demonstrated complexity, repeated failure, or safety-sensitive reasoning.
-4. Treat a catalog entry or configured credential as insufficient proof of live
-   quota; use the launcher's report when exact routing matters.
-5. If the host cannot expose the selected route, do not silently substitute a
-   role-only worker; keep the track parent-owned or use the repository launcher.
+1. Define the task profile, minimum capability, and disjoint ownership.
+2. Record the harness or session evidence actually exposed, or state that it is
+   unknown.
+3. Give each worker the repository path, branch, goal, files to touch or avoid,
+   acceptance criteria, iteration cap, and compact output format.
+4. Keep work parent-owned if the harness cannot expose the needed capability;
+   do not silently substitute a role label or provider.
 
 ## 9. Context-mode plugin and MCP servers
 

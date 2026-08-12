@@ -22,6 +22,9 @@ RUBY_DIRS    := services/adjudicator-ruby services/artifact-inspector-ruby
 RUST_DIR    := services/phrase-assembler-rust
 
 VENV      := .venv
+VENV_PY   := $(abspath $(VENV))/bin/python3
+RGHW_PYTHON ?= $(VENV_PY)
+export RGHW_PYTHON
 BUILD_DIR := .local/build
 CPP_BUILD := $(BUILD_DIR)/geometry-engine-cpp
 
@@ -365,7 +368,7 @@ unit-dotnet:
 unit-python:
 	$(call guard_tool,python3,Python 3)
 	@echo ">> unittest ($(PYTHON_DIR))"
-	cd $(PYTHON_DIR) && PYTHONPATH=src $(VENV)/bin/python3 -m unittest discover -s tests -v
+	cd $(PYTHON_DIR) && PYTHONPATH=src $(VENV_PY) -m unittest discover -s tests -v
 
 unit-node:
 	@$(call node_task,test,node --test)

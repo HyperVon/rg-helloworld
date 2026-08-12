@@ -1,6 +1,6 @@
 {
   "$schema": "https://app.kilo.ai/config.json",
-  "instructions": ["AGENTS.md", ".kilo/operating.md", ".kilo/model-router/instructions.md"],
+  "instructions": ["AGENTS.md", ".kilo/operating.md"],
   "skills": {
     "paths": [".agents/skills", ".kilo/skills"]
   },

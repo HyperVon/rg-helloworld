@@ -367,7 +367,7 @@ test('runTesseract error path throws on non-existent image', () => {
 
 function createTestImage(text: string): string {
   const tempPng = resolve(tmpdir(), `tesseract-test-${Date.now()}-${Math.random()}.png`);
-  const result = spawnSync('python3', [
+  const result = spawnSync(process.env.RGHW_PYTHON ?? 'python3', [
     '-c',
     `from PIL import Image, ImageDraw; img = Image.new('RGB', (200, 50), 'white'); d = ImageDraw.Draw(img); d.text((10, 10), '${text}', fill='black'); img.save('${tempPng}')`,
   ]);
