@@ -49,6 +49,12 @@ Claude/Anthropic models, Minimax models, `gpt-5-6-sol`, and the two explicitly
 blocked NVIDIA model IDs. Glob patterns are target policy entries and are
 applied before ARR ranking.
 
+Keep these denials as target-owned glob entries. Current ARR 1.4.x accepts and
+matches safe blacklist globs; do not expand them into a brittle list of every
+currently observed model ID. If an older installed runtime rejects the policy,
+refresh the receipt-managed runtime with the current ARR checkout and rerun
+validation instead of weakening or rewriting the deny set.
+
 The old router's provider list was a direct-provider configuration. Kilo's
 native catalog is an aggregator and exposes additional Gateway model IDs, so
 this integration deliberately keeps the observed Kilo catalog rather than
@@ -66,8 +72,41 @@ malformed plugin output is never promoted to available quota evidence.
 
 ```text
 python .agents/.agent-runtime-router/run.py harness audit --target . --pretty
-python .agents/runtime-router/adapters/kilo/test_launch_dryrun.py
+python .agents/.agent-runtime-router/run.py --python \
+  .agents/runtime-router/adapters/kilo/gen_discovery.py
+python .agents/.agent-runtime-router/run.py --python \
+  .agents/runtime-router/adapters/kilo/test_launch_dryrun.py
 ```
+
+Run `gen_discovery.py` once per machine (and after Kilo is upgraded) before
+adapter tests or discovery. It performs only the local Kilo version check and
+writes ignored machine-local resolution files; it does not list models or
+contact a provider. Always use the target-local runner's `--python` form for
+adapter scripts. It uses the ARR version installed in this target's ignored
+runtime and prevents a different global `agent-runtime-router` installation
+from being imported.
+
+Before any real task, plan several independent routes without contacting a
+provider:
+
+```text
+python .agents/.agent-runtime-router/run.py --python \
+  .agents/runtime-router/adapters/kilo/route_subagents.py --pretty
+```
+
+This reports one route for each target workstream and does not start workers.
+When enough eligible candidates exist, each workstream receives a distinct
+candidate; a later workstream may be `NO_ROUTE` rather than silently reusing a
+previous selection. Any `--policy` or `--cache` override must resolve inside
+the target checkout, preserving target ownership of routing state.
+The workstream labels (`architecture-review`, `security-review`, and so on)
+are local task labels; Kilo's `--agent` labels are not ARR capabilities. The
+adapter's evidenced baseline is `chat`, with `reasoning` required only for the
+two analysis roles. A missing or unusable cache returns structured
+`INCOMPLETE` output and exit code 2, rather than a traceback. Review the routes
+before selecting an approval-gated task command. This route plan is not a
+repository-aware coding run; use an explicitly reviewed workspace snapshot for
+that purpose.
 
 The quota plugin reads OpenAI's OAuth entry from OpenCode's credential store,
 not automatically from Kilo's separate credential store. Refresh the OpenCode
@@ -89,8 +128,8 @@ command shape. It does not launch Kilo or send a provider task. To run one
 ARR-managed task, first render the plan without execution:
 
 ```text
-PYTHONPATH=<arr-root>/src \
-python3 .agents/runtime-router/adapters/kilo/run_arr_task.py \
+python .agents/.agent-runtime-router/run.py --python \
+  .agents/runtime-router/adapters/kilo/run_arr_task.py \
   "Reply with exactly: ARR smoke test passed."
 ```
 

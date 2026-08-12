@@ -278,7 +278,7 @@ def as_markdown(root: Path, records, repeated) -> str:
     return "\n".join(lines) + "\n"
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", default=".", help="Repository root to inspect")
     parser.add_argument("--format", choices=("markdown", "json"), default="markdown")
@@ -291,7 +291,7 @@ def main() -> int:
     parser.add_argument(
         "--output", help="Optional output file; stdout is used otherwise"
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     root = Path(args.root).resolve()
     if not root.is_dir():
         print(f"error: root is not a directory: {root}", file=sys.stderr)
@@ -314,7 +314,16 @@ def main() -> int:
     else:
         output = as_markdown(root, records, repeated)
     if args.output:
-        Path(args.output).write_text(output, encoding="utf-8")
+        output_path = Path(args.output)
+        try:
+            with output_path.open("x", encoding="utf-8") as handle:
+                handle.write(output)
+        except FileExistsError:
+            print(
+                f"error: output file already exists (refusing to overwrite): {output_path}",
+                file=sys.stderr,
+            )
+            return 2
     else:
         sys.stdout.write(output)
     return 0
