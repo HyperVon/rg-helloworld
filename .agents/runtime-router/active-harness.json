@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "harness_id": "kilo",
+  "status": "best_effort",
+  "capabilities": [
+    {
+      "capability": "local_guidance",
+      "status": "best_effort",
+      "source": "kilo-config",
+      "detail": "Kilo harness guidance present in target (AGENTS.md, .agents/AGENTS.md, .agents/OPERATING.md, .kilo/operating.md)."
+    },
+    {
+      "capability": "skill_execution",
+      "status": "best_effort",
+      "source": "session",
+      "detail": "Harness exposed skill execution in the current session; skills resolved under .agents/skills and .kilo."
+    },
+    {
+      "capability": "native_launch",
+      "status": "best_effort",
+      "source": "kilo-run-help-and-smoke",
+      "detail": "Kilo run's shell-free argv shape was verified and a human-approved free KiloGateway smoke task succeeded."
+    }
+  ],
+  "version": "7.4.21",
+  "version_source": "kilo-resolved",
+  "instruction_paths": [
+    "AGENTS.md",
+    ".agents/AGENTS.md",
+    ".agents/OPERATING.md",
+    ".kilo/operating.md"
+  ],
+  "skill_paths": [
+    ".agents/skills",
+    ".kilo/command",
+    ".kilo/agent"
+  ]
+}

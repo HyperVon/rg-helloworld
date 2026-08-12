@@ -71,11 +71,11 @@ Parallelize only when workstreams touch **disjoint files**, each has a
 self-contained goal, and the parent can integrate results. One coupled track
 for shared files; fan out the rest together in a single parallel message.
 
-Before material or parallel delegation, apply the model-selection gate in §8:
-define the minimum capability, select a host-enforceable route and effort when
-the host exposes them, record the fallback and availability evidence, and keep
-the work parent-owned when no usable route can be selected. A worker role or
-agent label is not evidence of the underlying model.
+Before material or parallel delegation, define the minimum capability and
+disjoint ownership. Record the harness or session evidence actually exposed;
+keep the work parent-owned when the harness cannot expose the needed
+capability. A worker role or agent label is not evidence of the underlying
+model.
 
 - Give each worker: repo path, branch, goal, files to touch/avoid,
   already-done context, acceptance criteria, iteration cap, and a compact

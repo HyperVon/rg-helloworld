@@ -58,3 +58,13 @@ services/adjudicator-ruby/vendor/
 
 # Removed service residual directory (no longer part of the build)
 services/temp-worker-node/
+
+# Agent Runtime Router generated state (machine-local, never commit)
+/.agents/runtime-router/catalog-cache.json
+/.agents/runtime-router/adapters/kilo/discovery.json
+/.agents/runtime-router/adapters/kilo/kilo-resolved.json
+/.agents/runtime-router/adapters/kilo/discovery-last-report.json
+
+# Retain the removed router's credential-file guards during migration
+.kilo/model-router/env.local
+.kilo/model-router/manifest.local
