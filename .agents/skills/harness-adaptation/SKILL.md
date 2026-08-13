@@ -103,6 +103,12 @@ Prefer one physical skill owner. Use a supported link only when its behavior is
 documented and portable enough for the target; otherwise propose a generated
 projection and a drift check.
 
+Before applying a projection, check that its trigger, name, and path do not
+collide with another skill or harness entrypoint. Prefer a compact pointer to
+the canonical body and keep rare harness-specific detail behind a reference.
+Record the source revision and the projection's expected round-trip behavior;
+the adapter must not silently become a second source of truth.
+
 ### 5. Present the adapter plan
 
 Report:
@@ -128,6 +134,8 @@ Validate file syntax and links, then follow the harness's documented reload
 behavior. Use a fresh task or session when required. Verify discovery with a
 small, harmless task that should route to one known skill and ask the harness
 to identify the instruction sources it used when that evidence is available.
+Also compare the canonical source and projection for drift, body-size limits,
+name collisions, and loss of stop conditions or safety boundaries.
 
 File presence alone does not prove discovery. Report each capability as:
 
