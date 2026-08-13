@@ -38,21 +38,37 @@ different audiences, and thin harness pointers when they improve discovery.
    token proxy, and exact repeated prose candidates. Treat the proxy as a
    comparison aid, not a tokenizer result or proof of semantic duplication. Use
    `--scope all` only when related archive material is in scope.
-3. Read the candidates and classify evidence as:
+3. Account for the context surface, not only the files in the inventory:
+   loaded skills, root instructions, harness projections, tool descriptions,
+   linked references, and large generated outputs can all create routing or
+   attention cost. Record which surfaces were inspected and which were not.
+4. Read the candidates and classify evidence as:
    - exact or near duplication with one clear canonical owner;
    - projection bloat that repeats rather than points to canonical guidance;
    - a progressive-disclosure miss where rare detail can move behind a clear link;
    - routing waste from broad or ambiguous descriptions and indexes;
+   - context poisoning, distraction, confusion, or instruction clash that makes
+     relevant evidence harder to select or trust;
    - drift or conflict, which is a correctness finding rather than mere savings.
-4. For every candidate, record the current owner, replacement owner, exact change,
+5. For every candidate, record the current owner, replacement owner, exact change,
    estimated removable content, risk, preserved trigger/invariant/exception,
    one matching prompt, one neighboring prompt, one tie-breaker, and checks.
-5. Report before editing. Include the baseline, ranked findings, conservative
+6. Report before editing. Include the baseline, ranked findings, conservative
    savings ranges, keep-separate decisions, skipped files, and a reversible apply
    order. State whether measurements are proxies or tokenizer-verified.
-6. Apply only the named findings or bounded group the user explicitly approves.
+7. Apply only the named findings or bounded group the user explicitly approves.
    Re-run the inventory, inspect the complete diff, and validate routing and
    links after each group through `skill-authoring`.
+
+## Measurement and stop rule
+
+Compare a before/after measure that matches the proposed change: context
+tokens or characters, loaded-file count, routing false positives, task output
+quality, verification completeness, or evaluation pass rates. A smaller file
+is not a success if it causes a safety, ownership, trigger, or verification
+regression. Remove optimization machinery that has no measurable benefit, and
+stop when the remaining repetition is intentional reinforcement, a distinct
+audience projection, or a high-risk rule that must remain visible.
 
 ## Approval boundary
 
