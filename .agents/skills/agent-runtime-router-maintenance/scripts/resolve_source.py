@@ -106,6 +106,8 @@ def resolve_source(
         return validate_router_root(Path(configured)), "environment"
     located = read_locator(target)
     if located is not None:
+        if located == target:
+            return located, "self-source locator"
         return located, "target-local locator"
     adjacent = target.parent / "agent-runtime-router"
     try:
