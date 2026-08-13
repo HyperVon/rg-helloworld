@@ -14,6 +14,47 @@ Use the receipt-managed runner at
 the target-local isolated environment and does not depend on a personal source
 checkout path.
 
+## Harness preflight — always do this first
+
+Before recommending a model, routing a task, or preparing a launch, establish
+which harness is active and whether this target is ready to use ARR with it.
+Use explicit session evidence, a target-owned profile, or another bounded
+adapter observation. Never infer the harness from the conversational model,
+credentials, a product name, or a guessed command.
+
+The skill-level preflight classifies the result as follows (the current CLI
+exposes the underlying profile, audit, and adaptation metadata rather than one
+combined classifier):
+
+- `READY`: evidenced harness, matching ARR contract, valid target profile and
+  adapter, and fresh usable matching catalog; continue with routing.
+- `SUPPORTED_NOT_CONFIGURED`: ARR knows the harness, but this target lacks a
+  valid integration; show a read-only plan and ask approval before writing.
+- `NEEDS_REFRESH`: integration exists but its matching catalog is missing,
+  stale, or unusable; ask approval for bounded discovery/refresh.
+- `UNSUPPORTED`: no ARR contract is registered; tell the user an adapter is
+  needed and ask whether to plan one.
+- `UNKNOWN_HARNESS`: identity cannot be proven; ask for explicit evidence and
+  stop with `INCOMPLETE`.
+
+Consult the secret-free registry before rediscovering a known harness:
+
+```text
+python .agents/.agent-runtime-router/run.py integration list --pretty
+python .agents/.agent-runtime-router/run.py integration show \
+  --id <known-integration-id> --pretty
+python .agents/.agent-runtime-router/run.py harness profile \
+  --target . --pretty
+python .agents/.agent-runtime-router/run.py harness audit \
+  --target . --pretty
+```
+
+The registry is only a command/evidence shortcut. It does not provide this
+target's provider catalog, quota, credentials, blacklist, policy, or execution
+authority. Target configuration writes and live discovery/provider calls need
+separate approval. Never route with another harness's cache or invent missing
+evidence; preserve `INCOMPLETE`, `NO_ROUTE`, and adapter-error distinctions.
+
 ## Commands
 
 All inputs are explicit JSON files. Keep catalogs, tasks, policies, and
@@ -40,6 +81,58 @@ python .agents/.agent-runtime-router/run.py plan \
   --task <task.json> --catalog <catalog.json> --policy <policy.json> \
   --packet <packet.json> --pretty
 ```
+
+## Advisory model recommendation; ARR-owned effort selection
+
+When a user asks which model to use for a task, make a read-only
+recommendation. The user's currently selected primary harness model remains
+authoritative; this workflow does not switch it or launch a worker.
+
+1. Build a task request from the stated capabilities, context, sensitivity,
+   quality minimum, and other explicit constraints. Include `effort` only when
+   the user explicitly requires a particular normalized level; otherwise leave
+   it unset so ARR can choose.
+2. Run the target-local `route` command against the complete target-owned
+   catalog and policy, then report the selected candidate, billing/quota
+   evidence, `selected_effort`, `selected_variant`, `selected_quality`, and
+   the rejection reasons for plausible alternatives.
+3. Let ARR choose effort as part of the `(model, effort)` decision. Effort is
+   not a universal quality scale: a stronger model at low effort may beat a
+   weaker model at maximum effort. ARR must compare effort-specific
+   benchmark/AA evidence, cost, quota, and policy together. Never reuse
+   `Candidate.quality` for a different effort when `effort_profiles` are
+   present.
+4. If the task explicitly requests an effort but no matching effort-specific
+   evidence exists, report `NO_ROUTE`. If no effort was requested and the
+   catalog uses legacy scalar `Candidate.quality`, a valid route may still
+   return `selected_effort: null`; do not claim effort-specific evidence. Say
+   `INCOMPLETE` when the requested recommendation or launch requires missing
+   effort evidence. Do not invent a Kilo/OpenCode/native variant mapping. A
+   target adapter must map normalized effort (`minimal`, `low`, `medium`,
+   `high`, `xhigh`, `max`) to the observed native option.
+
+For subagents, use the same route-and-effort decision only when the target has
+a workspace-aware ARR launcher. Otherwise explain that native harness
+delegation may reuse the parent model and is not proof that ARR selected the
+subagent route.
+
+### Language-neutral task analysis
+
+Do not classify tasks with English-only keywords or translate the user's prompt
+just to route it. The active primary model may interpret the request in its
+original language and emit language-neutral requirements (capabilities,
+context, sensitivity, latency/cost constraints, and confidence) for ARR to
+validate. It must not choose an effort merely from its own impression of task
+difficulty, recommend an effort to the user, or ask the user to accept one:
+omit `effort` unless the user explicitly requested it. ARR owns the
+model-and-effort decision because AA/benchmark quality is specific to each
+pair. ARR's `selected_effort` is a routing result, not an instruction or
+recommendation for the user. ARR never treats the interpretation as authority to bypass policy,
+invent provider evidence, or select a native command. If the model cannot
+produce a valid structured proposal, preserve `INCOMPLETE`/`NO_ROUTE` or ask
+the user for an explicit profile rather than guessing from language-specific
+text. User-facing explanations should remain in the user's language when the
+harness supports that behavior.
 
 Exit status `0` means a usable result, `2` means no candidate was eligible,
 and `64` means invalid input. Always inspect the JSON evidence, including every
