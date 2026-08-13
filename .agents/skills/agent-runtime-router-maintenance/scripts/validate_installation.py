@@ -25,9 +25,9 @@ class ValidationError(RuntimeError):
 
 
 def canonical_json(value: Any) -> bytes:
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode(
-        "utf-8"
-    )
+    return json.dumps(
+        value, sort_keys=True, separators=(",", ":"), ensure_ascii=True
+    ).encode("utf-8")
 
 
 def digest_bytes(value: bytes) -> str:
@@ -63,7 +63,11 @@ def tree_manifest(root: Path) -> list[dict[str, Any]]:
         current = Path(directory)
         for filename in sorted(filenames):
             path = current / filename
-            if path.is_symlink() or not path.is_file() or path.suffix in {".pyc", ".pyo"}:
+            if (
+                path.is_symlink()
+                or not path.is_file()
+                or path.suffix in {".pyc", ".pyo"}
+            ):
                 raise ValidationError(f"managed skill contains an unsafe file: {path}")
             records.append(
                 {
@@ -81,8 +85,10 @@ def manifest_digest(manifest: list[dict[str, Any]]) -> str:
 
 
 def validate_relative(path: Path, label: str) -> None:
-    if path.is_absolute() or not path.parts or any(
-        part in {"", ".", ".."} for part in path.parts
+    if (
+        path.is_absolute()
+        or not path.parts
+        or any(part in {"", ".", ".."} for part in path.parts)
     ):
         raise ValidationError(f"{label} is not a normalized relative path: {path}")
 
@@ -90,13 +96,23 @@ def validate_relative(path: Path, label: str) -> None:
 def git_ignored(target: Path) -> bool:
     try:
         result = subprocess.run(
-            ["git", "-C", str(target), "check-ignore", "--quiet", "--", SOURCE_LOCATOR.as_posix()],
+            [
+                "git",
+                "-C",
+                str(target),
+                "check-ignore",
+                "--quiet",
+                "--",
+                SOURCE_LOCATOR.as_posix(),
+            ],
             check=False,
             capture_output=True,
             timeout=5,
         )
     except (FileNotFoundError, subprocess.TimeoutExpired) as error:
-        raise ValidationError("Git is unavailable for source locator validation") from error
+        raise ValidationError(
+            "Git is unavailable for source locator validation"
+        ) from error
     return result.returncode == 0
 
 
@@ -225,7 +241,11 @@ def validate_target(target: Path) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--target", required=True)
-    parser.add_argument("--info", action="store_true", help="Print installation metadata instead of validating")
+    parser.add_argument(
+        "--info",
+        action="store_true",
+        help="Print installation metadata instead of validating",
+    )
     args = parser.parse_args(argv)
     try:
         if args.info:
@@ -233,7 +253,9 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(info, sort_keys=True, indent=2))
             return 0
         validate_target(Path(args.target))
-        print("Validated router skills, runtime state, source locator, and managed routes.")
+        print(
+            "Validated router skills, runtime state, source locator, and managed routes."
+        )
         return 0
     except ValidationError as error:
         print(f"ERROR {error}", file=sys.stderr)
