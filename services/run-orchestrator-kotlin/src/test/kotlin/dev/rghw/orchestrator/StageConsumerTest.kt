@@ -88,4 +88,15 @@ class StageConsumerTest {
         stageConsumer.runForever(maxPolls = 2)
         consumer.close()
     }
+
+    @Test
+    fun bootstrapConstructorCanCloseWithoutPolling() {
+        val stageConsumer =
+            StageConsumer(
+                "localhost:9092",
+                StageMonitor(StageProgressTracker(), StageEventValidator()),
+            )
+
+        stageConsumer.runForever(maxPolls = 0)
+    }
 }
