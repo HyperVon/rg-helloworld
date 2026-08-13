@@ -48,10 +48,17 @@ history or publish without authority.
    text-level improvements derived from catalog decision procedures rather than
    copying a parallel skill. Keep always-loaded files concise via
    `skill-optimizer`.
-5. **Verify hygiene.** Check `git diff --stat`, relative links, no secrets or
-   personal paths (`scripts/public_hygiene_check.py`), and that the branch does
-   not expose `.kilo`/`.idea` or other ignored state. Run the repository's
-   relevant gate (`make check` or `scripts/check.py --quick`).
+5. **Verify hygiene and target-local gates.** Check `git diff --stat`, relative
+   links, no secrets or personal paths (using the target's documented hygiene
+   check when one exists), and that the branch does not expose ignored runtime
+   state such as `.kilo` or `.idea`. Discover the target repository's own
+   documented format, lint, test, build, and coverage commands from its local
+   guidance and build files, then run the smallest complete relevant gate.
+   `make check` and `scripts/check.py --quick` are examples, not universal
+   commands: never assume a helper, path, language toolchain, or quality
+   threshold from the source project or from another repository. If no
+   complete gate is available, report the exact checks that were run and the
+   limitation rather than inventing or importing one.
 6. **Publish only with approval.** Push to the approved remote/branch, set
    upstream only when requested, and open the PR with `gh pr create` using the
    approved body. Report branch, commit, remote, and checks.
