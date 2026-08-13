@@ -50,6 +50,11 @@ directories or fetch a replacement.
      plan --router-root <router-root> --target . --output <temporary-plan.json>
    ```
 
+Use the same Python interpreter for the plan and apply commands. For an
+existing installation, prefer the target-local interpreter under
+`.agents/.agent-runtime-router/venv/` when it is available; mixing a global
+Python with a target runtime can produce an incompatible site-packages path.
+
 4. Review source revision, package digest, skill statuses, route changes, and
    conflicts. Obtain explicit approval for that exact plan.
 5. Apply only the unchanged approved plan:
@@ -59,6 +64,25 @@ directories or fetch a replacement.
      apply --router-root <router-root> --target . \
      --plan <temporary-plan.json> --approve
    ```
+
+If a receipt-owned skill is `CONFLICT`, do not use `cp`, `rsync`, an editor,
+or a direct overwrite to bypass the installer. Show the local/source digest
+and ask whether the user wants that specific skill replaced by the upstream
+version. After explicit approval, regenerate the plan with the approved skill
+named explicitly:
+
+```text
+python <router-root>/.agents/skills/bootstrap-runtime-router/scripts/install_runtime.py \
+  plan --router-root <router-root> --target . \
+  --accept-upstream-skill agent-runtime-router \
+  --output <temporary-plan.json>
+```
+
+The resulting plan must show `UPDATE (ACCEPT_UPSTREAM)` for only the approved
+skill. Review that exact plan and apply it with `--approve`; the replacement is
+staged and rolled back atomically if any precondition or validation fails.
+Never approve an upstream resolution for a runtime, route block, source
+locator, policy, catalog, adapter, or credential file through this option.
 
 ## Bound the read-only investigation
 
@@ -140,7 +164,9 @@ permission to infer providers or copy a catalog.
 The helper refreshes only receipt-owned content whose current digest still
 matches the prior receipt. A locally changed skill, route block, source
 locator, runtime package, or runtime runner is a conflict and must be resolved
-explicitly.
+explicitly. A plan may also report `RECONCILE` for receipt metadata when the
+managed files are already current but the receipt is stale; this is metadata
+repair, not permission to overwrite local content.
 
 ## Boundaries
 
@@ -151,4 +177,21 @@ explicitly.
 - Do not delete or silently repair a divergent installation. Report the exact
   conflict and stop.
 - After refresh, verify the receipt, route, skill manifests, source locator,
-  and `python .agents/.agent-runtime-router/run.py --version`.
+  and `python .agents/.agent-runtime-router/run.py --version`. Also report
+  `git status --short` (names only), `git diff --check`, which tracked files
+  changed, and that the ignored runtime files are intentionally absent from
+  the change list. Do not commit automatically; tell the user whether a
+  normal source-control commit is appropriate.
+
+## Reload the coding harness after a refresh
+
+The installed ARR runner and package are replaced by the approved refresh, so
+commands invoked through `.agents/.agent-runtime-router/run.py` use the new
+runtime immediately. A long-lived coding-harness session may nevertheless
+retain the old project instructions or skill text in its current context.
+After a successful refresh, close and reopen the harness TUI from the target
+repository, or start a new session, before relying on changed guidance. This
+is the safest portable behavior; a harness-specific reload command may be
+used only when its contract explicitly proves that project instructions and
+skills are reloaded. Do not treat an existing conversation's cached context
+as evidence that the new guidance is active.

@@ -16,26 +16,32 @@ checkout path.
 
 ## Harness preflight — always do this first
 
-Before recommending a model, routing a task, or preparing a launch, establish
-which harness is active and whether this target is ready to use ARR with it.
-Use explicit session evidence, a target-owned profile, or another bounded
-adapter observation. Never infer the harness from the conversational model,
-credentials, a product name, or a guessed command.
+Before routing, recommending a model, or preparing a launch, establish which
+harness is active and whether this target is ready to use ARR with it. Do not
+infer the harness from the conversational model, credentials, a product name,
+or a guessed command. Use only explicit session evidence, a target-owned
+profile, or another bounded adapter-owned observation.
 
-The skill-level preflight classifies the result as follows (the current CLI
-exposes the underlying profile, audit, and adaptation metadata rather than one
-combined classifier):
+The skill-level preflight classifies the result as follows (these are guidance
+states; the current CLI exposes the underlying profile/audit metadata rather
+than a single five-state classifier):
 
-- `READY`: evidenced harness, matching ARR contract, valid target profile and
-  adapter, and fresh usable matching catalog; continue with routing.
-- `SUPPORTED_NOT_CONFIGURED`: ARR knows the harness, but this target lacks a
-  valid integration; show a read-only plan and ask approval before writing.
-- `NEEDS_REFRESH`: integration exists but its matching catalog is missing,
-  stale, or unusable; ask approval for bounded discovery/refresh.
-- `UNSUPPORTED`: no ARR contract is registered; tell the user an adapter is
-  needed and ask whether to plan one.
-- `UNKNOWN_HARNESS`: identity cannot be proven; ask for explicit evidence and
-  stop with `INCOMPLETE`.
+- `READY`: the harness identity is evidenced, ARR has a matching contract, the
+  target-owned profile and adapter are valid, and the matching catalog cache is
+  fresh and usable. Continue with routing.
+- `SUPPORTED_NOT_CONFIGURED`: ARR's bundled integration registry has a
+  contract, but this target lacks a valid profile/adapter or active state.
+  Explain that integration is needed, produce a read-only integration or
+  adaptation plan, and ask the user for approval before writing target files.
+- `NEEDS_REFRESH`: the target integration exists, but its matching catalog is
+  absent, stale, or unusable. Ask for approval for the bounded discovery or
+  refresh; do not route from another harness's cache.
+- `UNSUPPORTED`: no ARR contract is registered for the evidenced harness.
+  Tell the user that a target-owned adapter integration is required and ask
+  whether they want that work planned. Do not claim that generic fallback
+  makes the harness ready.
+- `UNKNOWN_HARNESS`: the active harness cannot be proven. Ask the user to
+  identify it or provide bounded evidence, and stop with `INCOMPLETE`.
 
 Consult the secret-free registry before rediscovering a known harness:
 
@@ -49,11 +55,13 @@ python .agents/.agent-runtime-router/run.py harness audit \
   --target . --pretty
 ```
 
-The registry is only a command/evidence shortcut. It does not provide this
-target's provider catalog, quota, credentials, blacklist, policy, or execution
-authority. Target configuration writes and live discovery/provider calls need
-separate approval. Never route with another harness's cache or invent missing
-evidence; preserve `INCOMPLETE`, `NO_ROUTE`, and adapter-error distinctions.
+The registry is only a command/evidence contract shortcut. It does not supply
+the target's provider/model catalog, quota, credentials, blacklist, policy, or
+execution authority. A known harness is therefore not automatically a ready
+target integration. Target configuration changes require approval; live
+discovery and provider calls require their own approval. Preserve the
+structured `INCOMPLETE`, `NO_ROUTE`, and adapter-error distinction rather than
+editing policy or inventing evidence to make the preflight pass.
 
 ## Commands
 
@@ -102,14 +110,16 @@ authoritative; this workflow does not switch it or launch a worker.
    benchmark/AA evidence, cost, quota, and policy together. Never reuse
    `Candidate.quality` for a different effort when `effort_profiles` are
    present.
-4. If the task explicitly requests an effort but no matching effort-specific
-   evidence exists, report `NO_ROUTE`. If no effort was requested and the
-   catalog uses legacy scalar `Candidate.quality`, a valid route may still
-   return `selected_effort: null`; do not claim effort-specific evidence. Say
-   `INCOMPLETE` when the requested recommendation or launch requires missing
-   effort evidence. Do not invent a Kilo/OpenCode/native variant mapping. A
-   target adapter must map normalized effort (`minimal`, `low`, `medium`,
-   `high`, `xhigh`, `max`) to the observed native option.
+4. If the task explicitly requires an effort but no matching effort-specific
+   evidence exists, report `NO_ROUTE` with the rejection reason. If no effort
+   was requested and the catalog uses the legacy scalar `Candidate.quality`
+   contract, a normal route may still be valid: report `selected_effort: null`
+   and do not claim effort-specific evidence or a native effort mapping. Say
+   `INCOMPLETE` only when the requested recommendation or launch requires
+   effort-specific evidence that the target does not provide. Do not invent a
+   Kilo/OpenCode/native variant mapping. A target adapter must map normalized
+   effort (`minimal`, `low`, `medium`, `high`, `xhigh`, `max`) to the observed
+   native option.
 
 For subagents, use the same route-and-effort decision only when the target has
 a workspace-aware ARR launcher. Otherwise explain that native harness
