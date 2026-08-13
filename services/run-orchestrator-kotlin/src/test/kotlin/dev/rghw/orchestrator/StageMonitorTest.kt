@@ -411,4 +411,31 @@ class StageMonitorTest {
         stage.handle(Services.PHRASE_ASSEMBLED_TOPIC, assemblyEvent(runId, "Hello World", 70, 80))
         assertEquals(RunStatus.FAILED, runs[runId]?.status, "wrong maturity fails the run")
     }
+
+    @Test
+    fun assemblyMissingTextFailsRun() {
+        val runId = UUID.randomUUID().toString()
+        runs[runId] = RunState(runId, RunStatus.ASSEMBLING, "Hello World", "key", java.time.Instant.now())
+        val stage = monitor()
+        stage.registerRun(runId, 1)
+
+        val missingText =
+            assemblyEvent(runId, "Hello World")
+                .replace("        \"assembledText\": \"Hello World\",\n", "")
+        stage.handle(Services.PHRASE_ASSEMBLED_TOPIC, missingText)
+
+        assertEquals(RunStatus.FAILED, runs[runId]?.status)
+    }
+
+    @Test
+    fun assemblyWithoutExpectedTextFailsRun() {
+        val runId = UUID.randomUUID().toString()
+        runs[runId] = RunState(runId, RunStatus.ASSEMBLING, "Hello World", "key", java.time.Instant.now())
+        val stage = monitor()
+        stage.registerRun(runId, 1)
+
+        stage.handle(Services.PHRASE_ASSEMBLED_TOPIC, assemblyEvent(runId, "Hello World"))
+
+        assertEquals(RunStatus.FAILED, runs[runId]?.status)
+    }
 }

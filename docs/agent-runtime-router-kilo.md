@@ -34,15 +34,39 @@ Verbose metadata currently proves model identity, catalog status, cost class,
 context window, and selected capabilities. It does not prove account quota.
 When the local `@slkiser/opencode-quota` package is installed, the generated
 discovery command also performs a bounded, secret-redacted quota refresh and
-joins provider-level remaining percentages to the catalog. It never copies or
-prints OpenCode/Kilo credentials. Expired authentication, provider errors, and
-missing quota remain `blocked`/`unknown`; they are never treated as available.
+joins provider-level remaining percentages or explicit balance values to the
+catalog. It never copies or prints OpenCode/Kilo credentials. Expired
+authentication, provider errors, stale data, missing data, and zero balances
+remain `blocked`/`unknown`/`exhausted`; they are never treated as available.
 
-The target policy keeps `allow_unknown_quota` false for paid/account-priced
-models. ARR preserves the old router's rule that a free model whose provider
-does not expose a meter may remain eligible, while an explicitly blocked or
-exhausted model is still rejected. This means a usable free route can be
-selected without silently opting paid routes into unknown quota.
+The adapter maps explicit account semantics into ARR's generic billing field:
+subscription/rate-limit windows are `billing=subscription`, while OpenRouter
+is target-owned as `billing=payg`. A positive OpenRouter budget/credit (for
+example a balance of `$3.70` reported by the quota source) makes its paid
+models eligible when `allow_paid=true`; it does not store the dollar amount in
+the catalog. ARR ranks candidates in this order: free, subscription-backed
+quota, then PAYG/direct-paid. PAYG remains last even when its model price is
+lower. Unknown or exhausted quota still prevents paid/PAYG routing while
+`allow_unknown_quota=false`.
+
+The currently bundled OpenRouter plugin source reports the API-key budget
+(`limit_remaining`) or cumulative spend; it does not expose OpenRouter's
+account-wide `/api/v1/credits` balance itself. The target adapter therefore
+makes its own bounded, redirect-free credits request through the plugin's
+key-resolver module when that module is present. This requires a key with the
+OpenRouter credits endpoint permission; a rejected or unavailable request is
+redacted and treated as unknown, never as available. Do not infer availability
+from a spend-only row. If the account credit is not visible to either the
+fresh key budget or the credits endpoint, rerun discovery only after the
+quota source/auth configuration is corrected; no ARR policy switch needs to be
+relaxed.
+
+The target policy keeps `allow_unknown_quota` false for paid, PAYG, and
+account-priced models. ARR preserves the old router's rule that a free model
+whose provider does not expose a meter may remain eligible, while an
+explicitly blocked or exhausted model is still rejected. This means a usable
+free route can be selected without silently opting paid routes into unknown
+quota.
 
 The target-owned blacklist preserves the removed router's safety denials:
 Claude/Anthropic models, Minimax models, `gpt-5-6-sol`, and the two explicitly

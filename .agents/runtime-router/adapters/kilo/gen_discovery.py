@@ -41,7 +41,7 @@ def parse_version(stdout: str) -> str:
     return ""
 
 
-def resolve_quota_plugin() -> tuple[Path, Path] | None:
+def resolve_quota_plugin() -> tuple[Path, Path, Path] | None:
     """Resolve Node and the installed quota plugin without invoking it."""
     node = shutil.which("node")
     if not node:
@@ -52,9 +52,10 @@ def resolve_quota_plugin() -> tuple[Path, Path] | None:
     if not matches:
         return None
     script = max(matches, key=lambda path: path.stat().st_mtime).resolve()
-    if not node_path.is_file() or not script.is_file():
+    module = script.parent.parent / "lib" / "openrouter.js"
+    if not node_path.is_file() or not script.is_file() or not module.is_file():
         return None
-    return node_path, script
+    return node_path, script, module
 
 
 def main() -> None:
@@ -89,10 +90,20 @@ def main() -> None:
         "expected_version": EXPECTED_KILO_VERSION,
     }
     if quota is not None:
-        node, script = quota
-        command.extend(["--quota-node", str(node), "--quota-script", str(script)])
+        node, script, module = quota
+        command.extend(
+            [
+                "--quota-node",
+                str(node),
+                "--quota-script",
+                str(script),
+                "--quota-openrouter-module",
+                str(module),
+            ]
+        )
         resolved["opencode_quota_node"] = str(node)
         resolved["opencode_quota_script"] = str(script)
+        resolved["opencode_quota_openrouter_module"] = str(module)
 
     discovery = {
         "schema_version": 1,

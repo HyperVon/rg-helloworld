@@ -34,11 +34,17 @@ operation (5 + 20 + 30 = 55s) fits inside discovery.json's 60s bound.
 Quota: when gen_discovery.py finds the locally installed
 @slkiser/opencode-quota package, it passes absolute Node/package paths to this
 wrapper. The wrapper refreshes the plugin's redacted status JSON and reads its
-redacted show JSON, then maps only provider-level remaining percentages to ARR
-quota fields. Missing, stale, expired-auth, malformed, or failed quota data is
-never promoted to available; candidates remain quota=unknown (free candidates
-retain the generic ARR free-route exemption). The plugin is optional so model
-discovery remains useful on machines that do not use OpenCode/Kilo auth.
+redacted show JSON, then maps only provider-level remaining percentages or
+explicit positive balance values to ARR quota fields. For OpenRouter it also
+makes a bounded, redirect-free request to `/api/v1/credits` through the
+plugin's own key resolver when the resolver module is available; the key and
+response body never enter this process's report. OpenRouter is target-owned as
+PAYG; quota entries with an explicit positive budget/credit make its paid
+candidates eligible, while missing, stale, expired-auth, malformed, zero, or
+failed evidence remains unknown/exhausted and is never promoted to available.
+Providers whose plugin entries explicitly report quota/rate-limit windows are
+labeled subscription. The plugin is optional so model discovery remains useful
+on machines that do not use OpenCode/Kilo auth.
 
 Capability contract: `chat` is the Kilo adapter's documented baseline contract;
 `reasoning` and `tool_call` are added only when explicitly present in verbose
@@ -102,6 +108,10 @@ _MODEL_RE = re.compile(r"^~?[A-Za-z0-9][A-Za-z0-9._:/+\-]*$")
 DIAG_REPORT_FILENAME = "discovery-last-report.json"
 USABLE_STATUSES = ("verified", "documented", "best_effort")
 MAX_QUOTA_AGE_SECONDS = 300.0
+PAYG_PROVIDERS = frozenset({"openrouter"})
+_BALANCE_VALUE_RE = re.compile(
+    r"^\s*[$€£]?\s*[+-]?(?:\d+(?:,\d{3})*|\d+)(?:\.\d+)?\s*$"
+)
 
 
 def _run_bounded(cmd, *, timeout: float, max_output_bytes: int):
@@ -142,6 +152,13 @@ def _run_bounded(cmd, *, timeout: float, max_output_bytes: int):
             pass
     t_out.join()
     t_err.join()
+    # Popen does not close PIPE file objects when the reader threads finish;
+    # close them explicitly so repeated quota/model probes do not accumulate
+    # descriptors (and so offline tests stay warning-free).
+    if proc.stdout is not None:
+        proc.stdout.close()
+    if proc.stderr is not None:
+        proc.stderr.close()
     return bytes(out), bytes(err), proc.returncode, timed_out
 
 
@@ -390,6 +407,50 @@ def _live_probe_rows(value):
     return {}
 
 
+def _entry_accounting_type(entry):
+    if not isinstance(entry, dict):
+        return None
+    accounting = entry.get("accounting")
+    if not isinstance(accounting, dict):
+        return None
+    result_type = accounting.get("resultType")
+    return result_type if isinstance(result_type, str) else None
+
+
+def _parse_balance_value(value):
+    if _number(value):
+        number = float(value)
+        return number if number == number and abs(number) != float("inf") else None
+    if not isinstance(value, str) or not _BALANCE_VALUE_RE.fullmatch(value):
+        return None
+    try:
+        number = float(value.replace("$", "").replace("€", "").replace("£", "").replace(",", ""))
+    except ValueError:
+        return None
+    return number if number == number and abs(number) != float("inf") else None
+
+
+def _billing_kind(provider, entries):
+    """Map only explicit account semantics into the generic billing contract."""
+    if provider in PAYG_PROVIDERS:
+        # OpenRouter's key endpoint is a metered budget/spend account rather
+        # than a subscription quota. Its positive budget/credit evidence is
+        # handled below; absent evidence remains quota=unknown and is rejected.
+        return "payg"
+    result_types = {
+        result_type
+        for entry in entries
+        if (result_type := _entry_accounting_type(entry)) is not None
+    }
+    if "balance" in result_types:
+        return "payg"
+    if result_types & {"quota", "rate_limit"}:
+        return "subscription"
+    if result_types & {"budget", "spend"}:
+        return "payg"
+    return None
+
+
 def _quota_rows(status_payload, show_payload):
     """Map quota-export provider rows to safe ARR quota evidence.
 
@@ -422,6 +483,8 @@ def _quota_rows(status_payload, show_payload):
             state = "blocked"
         else:
             entries = show_row.get("entries", [])
+            if not isinstance(entries, list):
+                entries = []
             percentages = [
                 float(entry["percentRemaining"])
                 for entry in entries
@@ -429,13 +492,27 @@ def _quota_rows(status_payload, show_payload):
                 and isinstance(entry.get("percentRemaining"), (int, float))
                 and not isinstance(entry.get("percentRemaining"), bool)
                 and 0 <= float(entry["percentRemaining"]) <= 100
-            ] if isinstance(entries, list) else []
+            ]
+            balance_values = [
+                balance
+                for entry in entries
+                if _entry_accounting_type(entry) == "balance"
+                and (balance := _parse_balance_value(entry.get("value"))) is not None
+            ]
             if percentages:
                 remaining = min(percentages)
                 state = "exhausted" if remaining <= 1 else "available"
+                if balance_values and min(balance_values) <= 0:
+                    state = "exhausted"
+            elif balance_values:
+                state = "exhausted" if min(balance_values) <= 0 else "available"
             elif show_status not in {"", "ok", "partial"}:
                 state = "blocked"
-        result[provider] = {"quota_status": state, "quota_percent": remaining}
+        evidence = {"quota_status": state, "quota_percent": remaining}
+        billing = _billing_kind(provider, show_row.get("entries", []))
+        if billing is not None:
+            evidence["billing"] = billing
+        result[provider] = evidence
     return result
 
 
@@ -451,7 +528,73 @@ def _quota_error_report(error_code: str, *, timed_out: bool = False):
     }
 
 
-def _quota_probe(node, script, *, timeout: float, max_output_bytes: int):
+_OPENROUTER_CREDITS_SCRIPT = r'''
+import { pathToFileURL } from "node:url";
+
+const modulePath = process.argv[1];
+try {
+  const { resolveOpenRouterApiKey } = await import(pathToFileURL(modulePath).href);
+  const resolved = await resolveOpenRouterApiKey();
+  const key = resolved && typeof resolved.key === "string" ? resolved.key : "";
+  if (!key) {
+    process.stdout.write(JSON.stringify({status: "unavailable"}));
+    process.exit(0);
+  }
+  const response = await fetch("https://openrouter.ai/api/v1/credits", {
+    method: "GET",
+    redirect: "manual",
+    headers: {Authorization: `Bearer ${key}`, Accept: "application/json"},
+  });
+  if (response.redirected || (response.status >= 300 && response.status < 400) || !response.ok) {
+    process.stdout.write(JSON.stringify({status: "unavailable"}));
+    process.exit(0);
+  }
+  const body = await response.json();
+  const data = body && typeof body === "object" ? body.data : null;
+  const total = data && typeof data.total_credits === "number" ? data.total_credits : null;
+  const usage = data && typeof data.total_usage === "number" ? data.total_usage : null;
+  if (!Number.isFinite(total) || total < 0 || !Number.isFinite(usage) || usage < 0) {
+    process.stdout.write(JSON.stringify({status: "unavailable"}));
+    process.exit(0);
+  }
+  process.stdout.write(JSON.stringify({
+    status: total - usage > 0 ? "available" : "exhausted",
+    remaining: Math.max(0, total - usage),
+  }));
+} catch {
+  process.stdout.write(JSON.stringify({status: "unavailable"}));
+}
+'''
+
+
+def _openrouter_credit_probe(node, module, *, timeout: float, max_output_bytes: int):
+    """Fetch OpenRouter account credits through the plugin's key resolver."""
+    if not node or not module:
+        return None
+    out, _err, rc, timed_out = _run_bounded(
+        [node, "--input-type=module", "-e", _OPENROUTER_CREDITS_SCRIPT, module],
+        timeout=timeout,
+        max_output_bytes=max_output_bytes,
+    )
+    if timed_out or rc != 0:
+        return None
+    try:
+        payload = json.loads(out.decode("utf-8", "replace"))
+    except (TypeError, json.JSONDecodeError):
+        return None
+    if not isinstance(payload, dict) or payload.get("status") not in {"available", "exhausted"}:
+        return None
+    remaining = payload.get("remaining")
+    if not _number(remaining) or float(remaining) < 0:
+        return None
+    return {
+        "quota_status": payload["status"],
+        "quota_percent": None,
+        "billing": "payg",
+    }
+
+
+def _quota_probe(node, script, module=None, *, timeout: float, max_output_bytes: int):
     """Refresh and read plugin quota without exposing raw command output."""
     if not node or not script:
         return {}, _quota_error_report("quota_plugin_missing")
@@ -476,14 +619,33 @@ def _quota_probe(node, script, *, timeout: float, max_output_bytes: int):
             return {}, _quota_error_report("quota_invalid_output")
     show_payload = payloads[1]
     cache_age = show_payload.get("cacheAgeSeconds") if isinstance(show_payload, dict) else None
-    if (
-        not isinstance(cache_age, (int, float))
-        or isinstance(cache_age, bool)
-        or cache_age < 0
-        or cache_age > MAX_QUOTA_AGE_SECONDS
-    ):
+    cache_fresh = (
+        isinstance(cache_age, (int, float))
+        and not isinstance(cache_age, bool)
+        and cache_age >= 0
+        and cache_age <= MAX_QUOTA_AGE_SECONDS
+    )
+    rows = _quota_rows(payloads[0], show_payload) if cache_fresh else {}
+    credit_remaining = deadline - time.monotonic()
+    credit = (
+        _openrouter_credit_probe(
+            node,
+            module,
+            timeout=credit_remaining,
+            max_output_bytes=max_output_bytes,
+        )
+        if credit_remaining > 0
+        else None
+    )
+    if credit is not None:
+        existing = rows.get("openrouter")
+        if not existing or existing.get("quota_status") not in {"blocked", "exhausted"}:
+            rows["openrouter"] = {
+                **(existing or {"quota_percent": None}),
+                **credit,
+            }
+    if not cache_fresh and credit is None:
         return {}, _quota_error_report("quota_stale")
-    rows = _quota_rows(payloads[0], show_payload)
     if not rows:
         return {}, _quota_error_report("quota_no_data")
     return rows, {
@@ -505,6 +667,8 @@ def _apply_quota(candidates, quota_rows):
         candidate["quota_status"] = evidence["quota_status"]
         if evidence["quota_percent"] is not None:
             candidate["quota_percent"] = evidence["quota_percent"]
+        if evidence.get("billing") is not None and candidate.get("cost_class") != "free":
+            candidate["billing"] = evidence["billing"]
     return candidates
 
 
@@ -564,6 +728,7 @@ def run_discovery(
     *,
     quota_node=None,
     quota_script=None,
+    quota_module=None,
     expected_version: str = EXPECTED_KILO_VERSION,
     max_output_bytes: int = MAX_OUTPUT_BYTES,
     version_timeout: float = _VERSION_TIMEOUT,
@@ -604,6 +769,7 @@ def run_discovery(
             quota_rows, quota_probe = _quota_probe(
                 quota_node,
                 quota_script,
+                quota_module,
                 timeout=_QUOTA_TIMEOUT,
                 max_output_bytes=max_output_bytes,
             )
@@ -633,6 +799,7 @@ def run_discovery(
     quota_rows, quota_probe = _quota_probe(
         quota_node,
         quota_script,
+        quota_module,
         timeout=_QUOTA_TIMEOUT,
         max_output_bytes=max_output_bytes,
     )
@@ -661,29 +828,34 @@ def _emit(report: dict) -> None:
 
 def _runtime_arguments(argv):
     if not argv:
-        return None, None, None
+        return None, None, None, None
     kilo = argv[0]
     quota_node = None
     quota_script = None
+    quota_module = None
     rest = list(argv[1:])
     while rest:
         flag = rest.pop(0)
-        if flag not in {"--quota-node", "--quota-script"} or not rest:
-            return None, None, None
+        if flag not in {"--quota-node", "--quota-script", "--quota-openrouter-module"} or not rest:
+            return None, None, None, None
         value = rest.pop(0)
         if not Path(value).is_absolute():
-            return None, None, None
+            return None, None, None, None
         if flag == "--quota-node":
             if quota_node is not None:
-                return None, None, None
+                return None, None, None, None
             quota_node = value
-        else:
+        elif flag == "--quota-script":
             if quota_script is not None:
-                return None, None, None
+                return None, None, None, None
             quota_script = value
+        else:
+            if quota_module is not None:
+                return None, None, None, None
+            quota_module = value
     if (quota_node is None) != (quota_script is None):
-        return None, None, None
-    return kilo, quota_node, quota_script
+        return None, None, None, None
+    return kilo, quota_node, quota_script, quota_module
 
 
 def _fake_body(scenario: str) -> str:
@@ -924,6 +1096,90 @@ def _selftest() -> int:
     if not quota_ok:
         failures.append("quota-parser")
 
+    quota_payg_rows = _quota_rows(
+        {
+            "providers": [{"id": "openrouter", "available": True}],
+            "liveProbes": [{"id": "openrouter", "ok": True}],
+        },
+        {
+            "providers": {
+                "openrouter": {
+                    "status": "ok",
+                    "entries": [{
+                        "accounting": {"resultType": "balance"},
+                        "value": "$3.70",
+                    }],
+                }
+            }
+        },
+    )
+    quota_payg_zero_rows = _quota_rows(
+        {
+            "providers": [{"id": "openrouter", "available": True}],
+            "liveProbes": [{"id": "openrouter", "ok": True}],
+        },
+        {
+            "providers": {
+                "openrouter": {
+                    "status": "ok",
+                    "entries": [{
+                        "accounting": {"resultType": "balance"},
+                        "value": "$0.00",
+                    }],
+                }
+            }
+        },
+    )
+    quota_subscription_rows = _quota_rows(
+        {
+            "providers": [{"id": "openai", "available": True}],
+            "liveProbes": [{"id": "openai", "ok": True}],
+        },
+        {
+            "providers": {
+                "openai": {
+                    "status": "ok",
+                    "entries": [{
+                        "accounting": {"resultType": "quota"},
+                        "percentRemaining": 80,
+                    }],
+                }
+            }
+        },
+    )
+    quota_payg_ok = (
+        quota_payg_rows.get("openrouter") == {
+            "quota_status": "available",
+            "quota_percent": None,
+            "billing": "payg",
+        }
+        and quota_payg_zero_rows.get("openrouter") == {
+            "quota_status": "exhausted",
+            "quota_percent": None,
+            "billing": "payg",
+        }
+        and quota_subscription_rows.get("openai") == {
+            "quota_status": "available",
+            "quota_percent": 80.0,
+            "billing": "subscription",
+        }
+    )
+    billing_candidates = _apply_quota(
+        [
+            {"provider": "openrouter", "cost_class": "free", "billing": "free"},
+            {"provider": "openrouter", "cost_class": "paid", "billing": "paid"},
+        ],
+        quota_payg_rows,
+    )
+    quota_payg_ok = quota_payg_ok and (
+        billing_candidates[0]["billing"] == "free"
+        and billing_candidates[1]["billing"] == "payg"
+    )
+    print(f"[quota-billing] payg_balance_and_subscription={quota_payg_ok} -> "
+          f"{'PASS' if quota_payg_ok else 'FAIL'}")
+    if not quota_payg_ok:
+        failures.append("quota-billing")
+
     quota_script = tmp / "quota_probe.py"
     quota_script.write_text(
         "import json, sys\n"
@@ -959,6 +1215,22 @@ def _selftest() -> int:
           f"{'PASS' if quota_probe_ok and stale_ok and failed_ok else 'FAIL'}")
     if not (quota_probe_ok and stale_ok and failed_ok):
         failures.append("quota-probe")
+
+    credits_node = tmp / "credits_node"
+    credits_node.write_text(
+        "#!/usr/bin/env python3\n"
+        "import json\n"
+        "print(json.dumps({'status': 'available', 'remaining': 3.70}))\n",
+        encoding="utf-8",
+    )
+    credits_node.chmod(0o700)
+    credits_ok = _openrouter_credit_probe(
+        str(credits_node), str(tmp / "openrouter.js"), timeout=5, max_output_bytes=MAX_OUTPUT_BYTES
+    ) == {"quota_status": "available", "quota_percent": None, "billing": "payg"}
+    print(f"[openrouter-credits] positive_balance={credits_ok} -> "
+          f"{'PASS' if credits_ok else 'FAIL'}")
+    if not credits_ok:
+        failures.append("openrouter-credits")
 
     missing_plugin_report = _success_report(
         [{
@@ -1018,11 +1290,18 @@ def main(argv=None) -> None:
     if argv and argv[0] == "--selftest":
         sys.exit(_selftest())
     _install_group_cleanup()
-    kilo, quota_node, quota_script = _runtime_arguments(argv)
+    kilo, quota_node, quota_script, quota_module = _runtime_arguments(argv)
     if kilo is None:
         _emit(_error_report("missing_executable"))
         return
-    _emit(run_discovery(kilo, quota_node=quota_node, quota_script=quota_script))
+    _emit(
+        run_discovery(
+            kilo,
+            quota_node=quota_node,
+            quota_script=quota_script,
+            quota_module=quota_module,
+        )
+    )
 
 
 if __name__ == "__main__":

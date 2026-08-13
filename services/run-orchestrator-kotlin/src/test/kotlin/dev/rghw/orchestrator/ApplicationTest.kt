@@ -62,6 +62,37 @@ class ApplicationTest {
     private fun streams(): Pair<ByteArrayOutputStream, ByteArrayOutputStream> = outBuf to errBuf
 
     @Test
+    fun serviceConfigurationAndDependencyInitializersUseSafeDefaults() {
+        assertTrue(Services.kafkaBootstrap().isNotBlank())
+        assertTrue(Services.redisUrl().startsWith("redis://"))
+        assertTrue(Services.glyphCatalogUrl().startsWith("http"))
+        assertTrue(Services.port() > 0)
+
+        Services.initKafka { FakeEventProducer() }
+        Services.initRedis { FakeRunStateStore() }
+        Services.initStageMonitor()
+
+        assertTrue(Services.eventProducer is FakeEventProducer)
+        assertTrue(Services.runStateStore is FakeRunStateStore)
+        assertTrue(Services.stageMonitor != null)
+    }
+
+    @Test
+    fun prometheusMetricsRendersRunAndArtifactCounters() {
+        val runId = UUID.randomUUID().toString()
+        runs[runId] = RunState(runId, RunStatus.GENERATING_GEOMETRY, "Hello World", "key", java.time.Instant.now())
+        runArtifacts[runId] = mutableListOf(mapOf("objectKey" to "glyph.json"))
+        sseClients[runId] = CopyOnWriteArrayList(listOf(SseClient(Channel(1))))
+
+        val metrics = prometheusMetrics()
+
+        assertTrue(metrics.contains("rg_runs_total{status=\"GENERATING_GEOMETRY\"} 1"))
+        assertTrue(metrics.contains("rg_active_runs 1"))
+        assertTrue(metrics.contains("rg_artifacts_created_total 1"))
+        assertTrue(metrics.contains("rg_ui_sse_connections 1"))
+    }
+
+    @Test
     fun versionCommandPrintsVersionToStdout() {
         val (out, err) = streams()
         val code = run(PrintStream(out, true, StandardCharsets.UTF_8), PrintStream(err, true, StandardCharsets.UTF_8), arrayOf("version"))
