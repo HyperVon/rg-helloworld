@@ -59,7 +59,9 @@ def run_git(target: Path, arguments: list[str]) -> subprocess.CompletedProcess[s
             timeout=5,
         )
     except (FileNotFoundError, subprocess.TimeoutExpired) as error:
-        raise SourceResolutionError("Git is unavailable for source locator validation") from error
+        raise SourceResolutionError(
+            "Git is unavailable for source locator validation"
+        ) from error
 
 
 def locator_is_ignored(target: Path) -> bool:
@@ -81,7 +83,9 @@ def read_locator(target: Path) -> Path | None:
         raise SourceResolutionError(f"cannot read source locator: {error}") from error
     raw_root = value.get("router_root") if isinstance(value, dict) else None
     if not isinstance(raw_root, str) or not raw_root.strip():
-        raise SourceResolutionError("source locator must contain a non-empty router_root")
+        raise SourceResolutionError(
+            "source locator must contain a non-empty router_root"
+        )
     candidate = Path(raw_root).expanduser()
     if not candidate.is_absolute():
         candidate = target / candidate

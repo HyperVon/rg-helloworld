@@ -60,6 +60,24 @@ directories or fetch a replacement.
      --plan <temporary-plan.json> --approve
    ```
 
+## Bound the read-only investigation
+
+When a harness is asked to plan a first adoption, keep the investigation
+bounded: spend at most 30 minutes and 40 tool calls on inventory, profiling,
+and plan generation. Inspect the repository guidance and explicitly named
+router/configuration files only. Do not recursively inspect dependency,
+generated, cache, or runtime trees. At minimum exclude `.git`,
+`.agents/.agent-runtime-router`, `.agents/runtime-router`, `.kilo/node_modules`,
+`node_modules`, `.venv`, `venv`, `build`, `dist`, `target`, `.gradle`, `.local`,
+`coverage`, `.idea`, `.cursor`, and `.vscode`. Prefer `git ls-files` and bounded
+`rg --glob` queries; never use unbounded recursive listings.
+
+Do not run `kilo models`, a quota plugin, a provider probe, or a worker during
+the read-only phase unless that exact probe is separately approved. If the
+budget expires or evidence remains incomplete, stop and report `INCONCLUSIVE`
+or `BLOCKED` with the missing evidence. Do not continue exploring, invent
+configuration, or edit the target to make the plan appear complete.
+
 ## Harness audit and refresh
 
 If the target has a target-owned harness profile and adapter configuration,
