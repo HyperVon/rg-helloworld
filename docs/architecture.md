@@ -251,8 +251,8 @@ flowchart LR
 
     REDIS --> GATEWAY[TypeScript Event Gateway]
     GATEWAY --> REACT[React Flow UI]
-    GATEWAY --> ANGULAR[Angular Telemetry Element]
-    RUBY --> HTMX[HTMX Artifact Inspector]
+    GATEWAY --> ANGULAR[TypeScript Telemetry Element]
+    RUBY --> HTMX[Ruby Artifact Inspector]
 
     SERVICES[All services] --> OTEL[OpenTelemetry Collector]
     OTEL --> PROM[Prometheus]
@@ -621,7 +621,7 @@ Example output:
 }
 ```
 
-The service also hosts the HTMX artifact-inspection UI described later.
+The service also hosts the artifact-inspection UI described later.
 
 ## Stage 9: Quality retry loop
 
@@ -731,7 +731,7 @@ Only:
 - Ruby adjudicator.
 - Rust assembler.
 - UI event gateway.
-- React, Angular, and HTMX clients.
+- React and TypeScript Web Component clients.
 
 ## 7.3 Prohibited downstream fields
 
@@ -801,8 +801,8 @@ The only successful print path must use the terminal response’s `assembledText
 | `phrase-assembler` | Rust, Tokio, rdkafka, Serde | Produce final ordered UTF-8 phrase | Kafka | MinIO, Kafka |
 | `event-gateway` | TypeScript, NestJS | Convert Redis run streams into browser SSE | Redis | SSE |
 | `web-shell` | React, Vite, React Flow | Primary visualization | SSE, REST | Browser UI |
-| `telemetry-element` | Angular Elements | Run ledger and numeric telemetry | SSE, REST | Web Component |
-| `artifact-inspector` | Ruby templates and HTMX | Show intermediate images and metadata | REST/HTML | HTML fragments |
+| `telemetry-element` | TypeScript Web Components | Run ledger and numeric telemetry | SSE, REST | Web Component |
+| `artifact-inspector` | Ruby (Sinatra) templates | Show intermediate images and metadata | REST/HTML | HTML fragments |
 | `otel-collector` | OpenTelemetry Collector | Telemetry intake and routing | OTLP | Prometheus, Tempo |
 | `grafana` | Grafana | Metrics, logs, and trace dashboards | Prometheus, Loki, Tempo | Browser UI |
 
@@ -826,7 +826,10 @@ contracts/
 │   ├── geometry-expanded.v1.schema.json
 │   ├── vector-normalized.v1.schema.json
 │   ├── glyph-rasterized.v1.schema.json
+│   ├── dead-letter.v1.schema.json
 │   ├── phrase-composed.v1.schema.json
+│   ├── phrase-composition-scheduled.v1.schema.json
+│   ├── quality-retry.v1.schema.json
 │   ├── ocr-image-prepared.v1.schema.json
 │   ├── ocr-observations-produced.v1.schema.json
 │   ├── symbol-adjudicated.v1.schema.json
@@ -1124,10 +1127,10 @@ Use:
 | `rg.glyph-normalized.v1` | Go normalizer | Orchestrator (fan-in) |
 | `rg.glyph-rasterized.v1` | Go normalizer | Python image pipeline |
 | `rg.phrase-composition.v1` | Orchestrator | Python image pipeline |
-| `rg.phrase-composed.v1` | Python image pipeline | Python preprocessing consumer |
-| `rg.ocr-images.v1` | Python image pipeline | Node OCR worker |
+| `rg.phrase-composed.v1` | Python image pipeline | Python preprocessing consumer, Orchestrator (fan-in) |
+| `rg.ocr-images.v1` | Python image pipeline | Node OCR worker, Orchestrator (fan-in) |
 | `rg.ocr-observations.v1` | Node OCR worker | Ruby adjudicator |
-| `rg.symbols-adjudicated.v1` | Ruby adjudicator | Rust assembler |
+| `rg.symbols-adjudicated.v1` | Ruby adjudicator | Rust assembler, Orchestrator (fan-in) |
 | `rg.quality-retry.v1` | Ruby adjudicator | Orchestrator |
 | `rg.phrase-assembled.v1` | Rust assembler | Orchestrator |
 | `rg.run-events.v1` | Orchestrator | Audit/projector consumers |
@@ -1593,6 +1596,8 @@ When the orchestrator schedules a command:
 
 This prevents the orchestrator from updating state but failing to publish the corresponding command.
 
+> **Note — deferred durability features.** PostgreSQL run/step persistence, the transactional `outbox` described in this section, image-pipeline MinIO read/write round-trips, and raw OCR-artifact persistence to MinIO are designed here but are **not** enabled in the accepted `--once` reference pipeline. They are tracked as deferred in `docs/implementation-status.md`; the milestones that describe them are marked complete for the reference pipeline only.
+
 ---
 
 # 18. Failure and Retry Policy
@@ -1676,9 +1681,9 @@ Owns:
 - Global SSE connection.
 - Error boundary.
 
-### Angular custom element
+### TypeScript telemetry custom element
 
-Compile the Angular application as:
+Implemented as a framework-free TypeScript Web Component (no Angular dependency):
 
 ```html
 <rg-telemetry-panel run-id="..."></rg-telemetry-panel>
@@ -1693,17 +1698,15 @@ Owns:
 - Kafka event count.
 - Resource usage summary.
 
-The React application supplies the `run-id` property. The Angular element independently fetches its data.
+The React application supplies the `run-id` property. The custom element independently fetches its data.
 
-### HTMX artifact inspector
+### Ruby artifact inspector
 
-Serve this from the Ruby service under:
+Served from the Ruby/Sinatra service under:
 
 ```text
 /inspector/runs/{runId}
 ```
-
-Embed it in an iframe to prevent React and HTMX from competing for DOM ownership.
 
 Owns:
 
@@ -1716,7 +1719,7 @@ Owns:
 - Adjudication evidence.
 - Assembly manifest.
 
-Use HTMX fragment requests for incremental updates.
+Navigation is server-rendered (full-page reloads); no HTMX fragments.
 
 ## 19.2 Main graph
 
@@ -2038,7 +2041,7 @@ One replica each initially:
 - Phrase assembler.
 - Event gateway.
 - React web shell.
-- Angular static bundle server.
+- TypeScript Web Component static bundle server.
 
 ## 21.3 Supporting workloads
 
@@ -2573,7 +2576,7 @@ The project is complete only when all of the following are true.
 - TypeScript and Node.js are used in OCR and event delivery.
 - C++ is used in geometry expansion.
 - C# is used in gRPC rasterization.
-- Ruby is used in adjudication and HTMX.
+- Ruby is used in adjudication and the artifact inspector.
 - Rust is used in final phrase assembly.
 - Python is used in image composition and preprocessing.
 - Docker builds every service.
@@ -2583,7 +2586,7 @@ The project is complete only when all of the following are true.
 - PostgreSQL stores authoritative state.
 - Terraform installs Kubernetes infrastructure.
 - REST, SOAP, gRPC, Kafka, SSE, and HTML fragment delivery are all materially used.
-- React, Angular, and HTMX are all visibly used.
+- React and the TypeScript telemetry custom element are all visibly used.
 - Prometheus, Loki, Tempo, Grafana, and OpenTelemetry are locally functional.
 
 ## Integrity
@@ -2819,8 +2822,8 @@ from the OCR-derived assembly.
 Deliver:
 
 - React Flow graph.
-- Angular telemetry custom element.
-- Ruby/HTMX artifact inspector.
+- TypeScript telemetry custom element.
+- Ruby artifact inspector.
 - Redis/SSE event gateway.
 - Mid-run reload support.
 - Success animation.
@@ -2861,7 +2864,7 @@ Deliver:
 **EXTRA acceptance criteria:**
 
 - Web Shell: animated, gradient, glass-morphism or equivalent “wow” styling; smooth React Flow transitions; success animation is theatrical; telemetry is dense and delightful, not just functional.
-- Artifact Inspector: HTMX interactions feel instant and tactile; image previews are gallery-quality with zoom/lightbox.
+- Artifact Inspector: render interactions feel instant and tactile; image previews are gallery-quality with zoom/lightbox.
 - Grafana: dashboards are dark-themed, annotated, and tell a story (not default).
 - Docs/Runbook/README: include large, high-DPI Playwright screenshots (1280×800+) for every UI state (empty, running, succeeded, artifacts, dashboards), with captions that emphasize the absurdity.
 - Overall: the first impression must be “this looks like a real product” — the punchline is the one-line `HELLO WORLD` output.

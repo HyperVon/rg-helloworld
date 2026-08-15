@@ -42,12 +42,21 @@ export function minConfidence(entries: OcrConfidenceEntry[]): number {
   return Math.min(...entries.map((e) => e.confidence));
 }
 
+export function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export function renderStepRow(e: StepLedgerEntry): string {
   return `
     <tr>
-      <td>${formatStepType(e.stepType)}</td>
-      <td>${e.glyphPosition ?? '—'}</td>
-      <td>${e.status}</td>
+      <td>${escapeHtml(formatStepType(e.stepType))}</td>
+      <td>${escapeHtml(e.glyphPosition ?? '—')}</td>
+      <td>${escapeHtml(e.status)}</td>
       <td>${formatDuration(e.durationMs)}</td>
     </tr>
   `;
@@ -57,9 +66,9 @@ export function renderAttemptRow(a: AttemptEntry): string {
   return `
     <tr>
       <td>${a.attempt}</td>
-      <td>${new Date(a.startedAt).toLocaleString()}</td>
+      <td>${escapeHtml(new Date(a.startedAt).toLocaleString())}</td>
       <td>${formatDuration(a.durationMs)}</td>
-      <td>${a.result}</td>
+      <td>${escapeHtml(a.result)}</td>
     </tr>
   `;
 }
@@ -72,8 +81,8 @@ export function renderTemplate(data: TelemetryData | null): string {
   const attemptRows = data.attempts.map(renderAttemptRow).join('');
   return `
       <div class="telemetry-panel">
-        <h3>Run ${data.runId}</h3>
-        <p>Status: <span class="status ${data.status}">${data.status}</span></p>
+        <h3>Run ${escapeHtml(data.runId)}</h3>
+        <p>Status: <span class="status ${escapeHtml(data.status)}">${escapeHtml(data.status)}</span></p>
         <p>Kafka events: ${data.kafkaEventCount}</p>
         <div class="section">
           <h4>Step Ledger</h4>

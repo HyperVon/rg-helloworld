@@ -1,6 +1,6 @@
 # rg-artifact-inspector
 
-Ruby/HTMX artifact browser for Rube Goldberg Hello World.
+Ruby artifact browser for Rube Goldberg Hello World.
 
 Serves artifact listings from the event gateway under `/inspector/runs/{runId}`.
 Designed to be embedded in an iframe to avoid DOM conflicts with the React shell.

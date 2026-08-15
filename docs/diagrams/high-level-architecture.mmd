@@ -28,8 +28,8 @@ flowchart LR
 
     REDIS --> GATEWAY[TypeScript Event Gateway]
     GATEWAY --> REACT[React Flow UI]
-    GATEWAY --> ANGULAR[Angular Telemetry Element]
-    RUBY --> HTMX[HTMX Artifact Inspector]
+    GATEWAY --> TELEMETRY[TypeScript Web Component Telemetry Panel]
+    RUBY --> INSPECTOR[Ruby/Sinatra Artifact Inspector]
 
     SERVICES[All services] --> OTEL[OpenTelemetry Collector]
     OTEL --> PROM[Prometheus]

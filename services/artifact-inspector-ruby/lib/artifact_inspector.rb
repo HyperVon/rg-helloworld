@@ -11,7 +11,7 @@ module ArtifactInspector
   class ArtifactLister
     attr_reader :api_url
 
-    def initialize(api_url = 'http://localhost:4567')
+    def initialize(api_url = 'http://localhost:8080')
       @api_url = api_url
     end
 
@@ -32,7 +32,8 @@ module ArtifactInspector
       resp = JSON.parse(Net::HTTP.get(uri))
       runs = resp['runs'] || []
       runs.sort_by { |r| r['createdAt'] }.reverse
-    rescue StandardError
+    rescue StandardError => e
+      $stderr.puts "[artifact-inspector] WARN: failed to list runs: #{e.message}"
       []
     end
 
@@ -123,8 +124,8 @@ module ArtifactInspector
       content_type = artifact['contentType'] || 'unknown'
       preview_block = image_type?(content_type) && artifact['proxyUrl'] ? <<~IMG : ''
         <div style="margin:1rem 0;background:white;border-radius:12px;padding:12px;box-shadow:0 8px 24px rgba(0,0,0,0.2);text-align:center">
-          <img src="#{h(artifact['proxyUrl'])}" alt="#{h(artifact['stage'])}" style="max-width:100%;max-height:60vh;object-fit:contain;cursor:zoom-in" onclick="window.open(this.src,'_blank')" onerror="this.style.display='none';this.nextElementSibling.style.display='block'" />
-          <div style="display:none;color:#334155;font-size:.9rem">Preview unavailable — <a href="#{h(artifact['proxyUrl'])}" target="_blank" style="color:#0ea5e9">open original</a></div>
+          <img src="#{safe_url(artifact['proxyUrl'])}" alt="#{h(artifact['stage'])}" style="max-width:100%;max-height:60vh;object-fit:contain;cursor:zoom-in" onclick="window.open(this.src,'_blank')" onerror="this.style.display='none';this.nextElementSibling.style.display='block'" />
+          <div style="display:none;color:#334155;font-size:.9rem">Preview unavailable — <a href="#{safe_url(artifact['proxyUrl'])}" target="_blank" style="color:#0ea5e9">open original</a></div>
           <div style="font-size:.75rem;color:#475569;margin-top:.35rem">Click to open full size • SHA-256 verified</div>
         </div>
       IMG
@@ -179,12 +180,19 @@ module ArtifactInspector
       uri = URI("#{api_url}/api/v1/runs/#{run_id}/artifacts")
       resp = JSON.parse(Net::HTTP.get(uri))
       resp['artifacts'] || []
-    rescue StandardError
+    rescue StandardError => e
+      $stderr.puts "[artifact-inspector] WARN: failed to fetch artifacts: #{e.message}"
       []
     end
 
     def h(str)
       str.to_s.gsub('&', '&amp;').gsub('<', '&lt;').gsub('>', '&gt;').gsub('"', '&quot;')
+    end
+
+    def safe_url(url)
+      str = url.to_s
+      return '' unless str =~ %r{\Ahttps?://}i
+      h(str)
     end
   end
 

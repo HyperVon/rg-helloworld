@@ -73,7 +73,7 @@ make run             # rghw run --api-url http://localhost:8080
 | **Adjudicator** | `adjudicator` | Ruby | observations → adjudicated symbols (70→80, `GAP` tokens) | Grafana Deep Dive, adjudicator logs |
 | **Phrase Assembler** | `phrase-assembler` | Rust | adjudicated events → `HELLO WORLD` (80→90, Whitespace provenance) | `GET /api/v1/runs/{id}/artifacts` → `sha256` |
 | **Event Gateway** | `event-gateway` | Node | Redis Stream → SSE `/api/v1/runs/{id}/stream` | Web Shell live, `curl -N` stream |
-| **Telemetry** | `telemetry-element` | Angular | `<rg-telemetry-panel>` step ledger | Embedded in Web Shell |
+| **Telemetry** | `telemetry-element` | TypeScript Web Component | `<rg-telemetry-panel>` step ledger | Embedded in Web Shell |
 
 Supporting: Kafka (11 topics `rg.*.v1`), Redis Streams (`rg:run:{id}:events`), MinIO (`rube-goldberg-artifacts`), PostgreSQL, OpenTelemetry Collector → Prometheus/Loki/Tempo → Grafana.
 
@@ -131,7 +131,7 @@ All UIs are in namespace `rube-goldberg`. Two access modes: **ingress** (`rghw.l
 
 *If the dropdown is empty:* run `rghw run` or `go -C cmd/rghw run . run --api-url http://localhost:8080` first. The list polls every 5s.
 
-### 5.2 Artifact Inspector — `http://localhost:3001` (Ruby + HTMX)
+### 5.2 Artifact Inspector — `http://localhost:3001` (Ruby + Sinatra templates)
 
 *Image:* `artifact-inspector:milestone11` (`services/artifact-inspector-ruby`)
 
@@ -150,7 +150,7 @@ All UIs are in namespace `rube-goldberg`. Two access modes: **ingress** (`rghw.l
 
 ### 5.3 Telemetry Panel — embedded in Web Shell
 
-*Element:* `<rg-telemetry-panel>` (`services/telemetry-element`, Angular Elements)
+*Element:* `<rg-telemetry-panel>` (`services/telemetry-element`, TypeScript Web Component)
 
 **What it is:** Dense numeric telemetry next to the graph — attempt table, duration table, OCR confidence, Kafka event counts, resource usage. It is not a separate page; it renders inside Web Shell’s Telemetry section. No extra port.
 
