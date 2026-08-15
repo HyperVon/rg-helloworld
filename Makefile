@@ -33,7 +33,8 @@ RUSTFMT := $(if $(wildcard $(HOME)/.cargo/bin/rustfmt),$(HOME)/.cargo/bin/rustfm
 DOTNET  := $(if $(wildcard $(HOME)/.dotnet/dotnet),$(HOME)/.dotnet/dotnet,dotnet)
 
 .PHONY: help prerequisites contracts contract-test format lint unit coverage build
-.PHONY: integration images cluster infra deploy wait run demo e2e chaos diagnostics down destroy clean
+.PHONY: help prerequisites contracts contract-test format lint unit coverage build
+.PHONY: integration images cluster infra deploy wait run demo e2e chaos diagnostics down destroy clean disk-guard proto-gen proto-gen-check low-memory
 .PHONY: format-go format-java format-kotlin format-cpp format-dotnet format-python format-node format-ruby format-rust
 .PHONY: lint-go lint-java lint-kotlin lint-cpp lint-dotnet lint-python lint-node lint-ruby lint-rust
 .PHONY: unit-go unit-java unit-kotlin unit-cpp unit-dotnet unit-python unit-node unit-ruby unit-rust
@@ -292,6 +293,8 @@ coverage-java:
 coverage-kotlin:
 	$(call gradlew_task,jacocoTestCoverageVerification,jacoco 90% gate)
 
+# NOTE: coverage gates (cpp/python) skip locally when tooling is missing but are
+# enforced in CI; do not rely on a green local run as proof of the 90% gate.
 coverage-cpp:
 	$(call guard_librdkafka)
 	@command -v gcovr >/dev/null 2>&1 || { echo "SKIP: gcovr not installed (CI enforces C++ coverage)"; exit 0; }; \
@@ -312,7 +315,7 @@ coverage-dotnet:
 coverage-python:
 	@if [ -x $(VENV)/bin/coverage ]; then COV="$(CURDIR)/$(VENV)/bin/coverage"; \
 	elif command -v coverage >/dev/null 2>&1; then COV=coverage; \
-	else echo "SKIP: coverage.py not installed (run 'make prerequisites')"; exit 0; fi; \
+	else echo "SKIP: coverage.py not installed (CI enforces Python coverage)"; exit 0; fi; \
 	echo ">> coverage report (fail-under 90) ($(PYTHON_DIR))"; \
 	cd $(PYTHON_DIR) && PYTHONPATH=src $$COV run -m unittest discover -s tests >/dev/null && $$COV report --fail-under=90
 
