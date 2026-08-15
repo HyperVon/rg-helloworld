@@ -15,8 +15,12 @@ apply_patch() {
   local name
   name=$(basename "$manifest" .yaml)
   say "Patching $name with low-memory profile"
-  kubectl patch deployment "$name" -n "$NS" --type='json' -p="[{\"op\": \"replace\", \"path\": \"/spec/template/spec/containers/0/resources/limits/memory\", \"value\": \"256Mi\"}]" 2>/dev/null || true
-  kubectl patch deployment "$name" -n "$NS" --type='json' -p="[{\"op\": \"replace\", \"path\": \"/spec/template/spec/containers/0/resources/requests/memory\", \"value\": \"64Mi\"}]" 2>/dev/null || true
+  if ! kubectl patch deployment "$name" -n "$NS" --type='json' -p="[{\"op\": \"replace\", \"path\": \"/spec/template/spec/containers/0/resources/limits/memory\", \"value\": \"256Mi\"}]"; then
+    say "ERROR: failed to patch $name memory limits"
+  fi
+  if ! kubectl patch deployment "$name" -n "$NS" --type='json' -p="[{\"op\": \"replace\", \"path\": \"/spec/template/spec/containers/0/resources/requests/memory\", \"value\": \"64Mi\"}]"; then
+    say "ERROR: failed to patch $name memory requests"
+  fi
 }
 
 say "Applying low-memory profile to all deployments..."
