@@ -5,6 +5,7 @@ import { RunSelector } from './components/RunSelector';
 import { useSseStream } from './hooks/useSseStream';
 import type { ArtifactNode } from './types';
 import { parseSseFrame } from './hooks/useSseStream';
+import { sanitizeRunId } from './lib/runId';
 
 declare global {
   namespace JSX {
@@ -35,7 +36,7 @@ interface RunListItem {
 export function App() {
   const [runId, setRunId] = useState<string | null>(() => {
     try {
-      return localStorage.getItem('rghw:lastRunId');
+      return sanitizeRunId(localStorage.getItem('rghw:lastRunId'));
     } catch {
       return null;
     }
@@ -43,7 +44,7 @@ export function App() {
   const [availableRuns, setAvailableRuns] = useState<RunListItem[]>([]);
   const [showArtifacts, setShowArtifacts] = useState(false);
   const base = apiBase();
-  const streamUrl = runId ? `${base}/api/v1/runs/${runId}/stream` : '';
+  const streamUrl = runId ? `${base}/api/v1/runs/${encodeURIComponent(runId)}/stream` : '';
 
   const { summary, connected, error, eventTypeCount } = useSseStream(streamUrl, 5000);
 
@@ -71,7 +72,7 @@ export function App() {
           } else if (!exists) {
             let shouldCorrect = true;
             try {
-              const vr = await fetch(`${base}/api/v1/runs/${current}`);
+              const vr = await fetch(`${base}/api/v1/runs/${encodeURIComponent(current)}`);
               if (vr.ok) {
                 const vdata = (await vr.json()) as { status?: string };
                 if (vdata && vdata.status && vdata.status !== 'UNKNOWN') {
@@ -103,7 +104,7 @@ export function App() {
     let timer: number | null = null;
     const load = async () => {
       try {
-        const r = await fetch(`${base}/api/v1/runs/${runId}/artifacts`);
+        const r = await fetch(`${base}/api/v1/runs/${encodeURIComponent(runId)}/artifacts`);
         if (!r.ok) return;
         const data = (await r.json()) as { artifacts: ArtifactNode[] };
         if (cancelled) return;
@@ -128,7 +129,7 @@ export function App() {
   useEffect(() => {
     const onArtifact = () => {
       if (!runId) return;
-      fetch(`${base}/api/v1/runs/${runId}/artifacts`)
+      fetch(`${base}/api/v1/runs/${encodeURIComponent(runId)}/artifacts`)
         .then((r) => r.json())
         .then((data) => setArtifacts((data as { artifacts: ArtifactNode[] }).artifacts || []))
         .catch(() => {});
@@ -138,9 +139,11 @@ export function App() {
   }, [runId, base]);
 
   const handleSelectRun = (id: string) => {
-    setRunId(id);
+    const safe = sanitizeRunId(id);
+    if (!safe) return;
+    setRunId(safe);
     try {
-      localStorage.setItem('rghw:lastRunId', id);
+      localStorage.setItem('rghw:lastRunId', safe);
     } catch {}
   };
 
@@ -229,9 +232,9 @@ export function App() {
                 </div>
               </div>
               <div className="telemetry-links">
-                <a href={`${base}/api/v1/runs/${runId}/artifacts`} target="_blank" rel="noopener noreferrer">Artifacts JSON</a>
+                <a href={`${base}/api/v1/runs/${encodeURIComponent(runId)}/artifacts`} target="_blank" rel="noopener noreferrer">Artifacts JSON</a>
                 <span> · </span>
-                <a href={`${base}/api/v1/runs/${runId}/stream`} target="_blank" rel="noopener noreferrer">SSE stream</a>
+                <a href={`${base}/api/v1/runs/${encodeURIComponent(runId)}/stream`} target="_blank" rel="noopener noreferrer">SSE stream</a>
                 <span> · </span>
                 <a href={`${base}/metrics`} target="_blank" rel="noopener noreferrer">Orchestrator metrics</a>
                 <span> · </span>
