@@ -117,7 +117,7 @@ Then:
 | --- | --- | --- |
 | Web Shell (React Flow) | `http://rghw.localhost/` | `web-shell:80 -> 3000` |
 | Orchestrator API | `http://rghw.localhost/api/` | `run-orchestrator:8080` |
-| Artifact Inspector (HTMX) | `http://rghw.localhost/inspector/` | `artifact-inspector` |
+| Artifact Inspector (Ruby) | `http://rghw.localhost/inspector/` | `artifact-inspector` |
 | Grafana | `http://grafana.rghw.localhost/` | `grafana:3000` |
 | MinIO Console | `http://minio.rghw.localhost/` | `minio:9000` |
 
@@ -265,8 +265,8 @@ All UIs are namespace `rube-goldberg`. The stack includes 4 Grafana dashboards (
 | UI | Ingress URL | Port-forward (svc port 80 where noted) | What you see | Tech |
 | --- | --- | --- | --- | --- |
 | **Web Shell** (primary) | `http://rghw.localhost/` | `kubectl port-forward svc/web-shell 3000:80` → `http://localhost:3000` — auto-lists runs via `GET /api/v1/runs`, auto-selects latest, dropdown + manual input | React Flow process graph of the pipeline, run state, maturity progression `0→100`, SSE live updates (see §6.1.1) | React + Vite + React Flow (`services/web-shell`, `infra/k8s/milestone10/web-shell.yaml:22` image `rghello-registry:5001/web-shell:milestone11`) |
-| **Telemetry Panel** | embedded in Web Shell | same as web-shell | Run ledger, numeric telemetry, `rg_runs_total`, `rg_step_duration_seconds` | Angular Elements `<rg-telemetry-panel>` (`services/telemetry-element`, `web/telemetry-angular`) |
-| **Artifact Inspector** | `http://rghw.localhost/inspector/runs/{runId}` | `kubectl port-forward svc/artifact-inspector 3001:80` → `http://localhost:3001` (landing at `/` shows form, then `/inspector/runs/{runId}`) | HTMX-rendered intermediate images (glyph blueprints, geometry JSON, SVG, raster PNG, phrase image), metadata, SHA-256 lineage; view links use stable opaque descriptor IDs and the orchestrator's run-scoped MinIO byte proxy | Ruby + HTMX (`services/artifact-inspector-ruby`, `GET /` and `/inspector` now show a form) |
+| **Telemetry Panel** | embedded in Web Shell | same as web-shell | Run ledger, numeric telemetry, `rg_runs_total`, `rg_step_duration_seconds` | TypeScript Web Component `<rg-telemetry-panel>` (`services/telemetry-element`) |
+| **Artifact Inspector** | `http://rghw.localhost/inspector/runs/{runId}` | `kubectl port-forward svc/artifact-inspector 3001:80` → `http://localhost:3001` (landing at `/` shows form, then `/inspector/runs/{runId}`) | HTMX-rendered intermediate images (glyph blueprints, geometry JSON, SVG, raster PNG, phrase image), metadata, SHA-256 lineage; view links use stable opaque descriptor IDs and the orchestrator's run-scoped MinIO byte proxy | Ruby + Sinatra templates (`services/artifact-inspector-ruby`, `GET /` and `/inspector` now show a form) |
 | **Event Gateway (SSE)** | `http://rghw.localhost/api/v1/runs/{runId}/stream` | `kubectl port-forward svc/event-gateway 8081:80` → `http://localhost:8081/health` → `{"status":"ok"}`; stream also via orchestrator `http://localhost:8080/api/v1/runs/{runId}/stream` | Raw Server-Sent Events: snapshot + heartbeats every 15s, `Last-Event-ID` replay, closes after terminal event (§19.5) | TypeScript (`services/event-gateway-node`, Redis Streams) + Kotlin orchestrator stream |
 | **Grafana** | `http://grafana.rghw.localhost/` | `kubectl port-forward svc/grafana 3002:80` → `http://localhost:3002` (→ `/login`) | 4 provisioned dashboards (see §6.2), Explore for Prometheus/Loki/Tempo | Grafana Enterprise 12.0.2 (`infra/k8s/milestone11/grafana.yaml`) |
 | **Prometheus** | — | `kubectl port-forward svc/prometheus 9090:9090` → `http://localhost:9090`/-/healthy → `Prometheus Server is Healthy` | Metrics: `rg_runs_total{status}`, `rg_active_runs`, `rg_step_*`, `rg_kafka_consumer_lag`, `rg_ocr_confidence` (§20.2); see §6.1.2 for valid PromQL queries | Prometheus 3.5.0 |

@@ -15,7 +15,7 @@
           connectedCallback() { this.render(); }
           attributeChangedCallback() { this.render(); }
           render() {
-            const runId = this.getAttribute('run-id') || '';
+            const runId = (this.getAttribute('run-id') || '').replace(/[^0-9a-fA-F-]/g, '');
             const short = runId ? runId.slice(0, 8) + '…' : '—';
             this.shadowRoot.innerHTML = `<style>:host{display:block;font-family:Inter,system-ui,sans-serif;padding:.75rem;background:rgba(15,23,42,0.6);border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#e2e8f0} .row{display:flex;gap:.5rem;flex-wrap:wrap;font-size:.8rem} .badge{background:rgba(139,92,246,0.2);color:#c4b5fd;padding:.15rem .4rem;border-radius:4px;font-family:monospace} a{color:#22d3ee;text-decoration:none;font-weight:600}</style><div><strong style="font-size:.9rem">Telemetry Panel</strong> <span class="badge">run ${short}</span></div><div class="row" style="margin-top:.5rem"><span>run-id: <code>${runId || 'none'}</code></span><span>·</span><a href="/api/v1/runs/${runId}/stream" target="_blank">SSE</a><span>·</span><a href="/api/v1/runs/${runId}/artifacts" target="_blank">artifacts</a></div><div style="margin-top:.5rem;font-size:.75rem;opacity:.7">Full ledger renders here when telemetry-element bundle is loaded; fallback above shows live SSE + artifact thumbnails.</div>`;
           }

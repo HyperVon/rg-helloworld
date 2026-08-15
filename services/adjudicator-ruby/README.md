@@ -1,7 +1,7 @@
 # adjudicator-ruby
 
 Ruby OCR adjudicator (Milestone 0 skeleton). Performs deterministic OCR
-consensus and quality decisions, and hosts the HTMX artifact inspector in
+consensus and quality decisions, and hosts the artifact inspector in
 later milestones.
 
 ## Commands

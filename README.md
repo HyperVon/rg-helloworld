@@ -131,7 +131,7 @@ The flagship UI: dark gradient, glass-morphism header, auto-discovered run dropd
 
 ![Web Shell — SUCCEEDED run with live graph](docs/screenshots/web-shell.png)
 
-### Artifact Inspector (HTMX + Ruby/Sinatra)
+### Artifact Inspector (Ruby/Sinatra)
 
 Same EXTRA treatment: floating glass card, radial violet → cyan glow, live artifact table per run (`/inspector/runs/{runId}`) with SHA-256 and MinIO-backed previews.
 
@@ -174,7 +174,7 @@ Full port-forward table (`svc:80` for web-shell, inspector, grafana, event-gatew
 | C#/.NET | gRPC rasterizer | `services/rasterizer-dotnet` |
 | Python | phrase composition, OCR preprocessing | `services/image-pipeline-python` |
 | TypeScript/Node.js | OCR worker, event gateway | `services/ocr-worker-node`, `services/event-gateway-node` |
-| Ruby | OCR adjudicator, HTMX inspector | `services/adjudicator-ruby` |
+| Ruby | OCR adjudicator, artifact inspector | `services/adjudicator-ruby` |
 | Rust | final phrase assembler | `services/phrase-assembler-rust` |
 
 ## Repository layout

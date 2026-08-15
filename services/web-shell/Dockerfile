@@ -11,5 +11,6 @@ COPY --from=builder /app/dist/ ./dist/
 COPY --from=builder /app/node_modules ./node_modules/
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/index.html ./
+COPY --from=builder /app/vite.config.ts ./
 EXPOSE 3000
 ENTRYPOINT ["npx", "vite", "preview", "--host", "0.0.0.0", "--port", "3000"]

@@ -40,6 +40,7 @@ get '/' do
       .particles{position:fixed;inset:0;pointer-events:none;overflow:hidden}
       .dot{position:absolute;width:4px;height:4px;background:rgba(34,211,238,0.5);border-radius:50%;animation:float 12s infinite}
       @keyframes float{from{transform:translateY(110vh)}to{transform:translateY(-10vh)}}
+      @media (prefers-reduced-motion: reduce){.dot{animation:none}}
       details{margin-top:1rem}
       summary{cursor:pointer;font-size:.85rem;opacity:.7}
       summary:hover{opacity:1}
@@ -136,7 +137,7 @@ get '/inspector' do # rubocop:disable Metrics/BlockLength
 end
 
 get '/api/v1/runs' do
-  lister = ArtifactInspector::ArtifactLister.new(ENV['ORCHESTRATOR_URL'] || 'http://localhost:4567')
+  lister = ArtifactInspector::ArtifactLister.new(ENV['ORCHESTRATOR_URL'] || 'http://localhost:8080')
   content_type :json
   { runs: lister.list_runs }.to_json
 end
@@ -147,14 +148,14 @@ get '/health' do
 end
 
 get '/inspector/runs/:run_id/artifacts' do
-  lister = ArtifactInspector::ArtifactLister.new(ENV['ORCHESTRATOR_URL'] || 'http://localhost:4567')
+  lister = ArtifactInspector::ArtifactLister.new(ENV['ORCHESTRATOR_URL'] || 'http://localhost:8080')
   artifacts = lister.list(params[:run_id])
   content_type :json
   { runId: params[:run_id], artifacts: artifacts }.to_json
 end
 
 get '/inspector/runs/:run_id/artifacts/:artifact_id' do
-  lister = ArtifactInspector::ArtifactLister.new(ENV['ORCHESTRATOR_URL'] || 'http://localhost:4567')
+  lister = ArtifactInspector::ArtifactLister.new(ENV['ORCHESTRATOR_URL'] || 'http://localhost:8080')
   artifact = lister.find(params[:run_id], params[:artifact_id])
   if artifact
     content_type :json
@@ -166,14 +167,21 @@ get '/inspector/runs/:run_id/artifacts/:artifact_id' do
 end
 
 get '/inspector/runs/:run_id' do
-  lister = ArtifactInspector::ArtifactLister.new(ENV['ORCHESTRATOR_URL'] || 'http://localhost:4567')
+  lister = ArtifactInspector::ArtifactLister.new(ENV['ORCHESTRATOR_URL'] || 'http://localhost:8080')
   artifacts = lister.list(params[:run_id])
   lister.to_html(artifacts, params[:run_id])
 end
 
 # Proxy artifact bytes from orchestrator so <img src="/api/v1/..."> works from inspector origin.
 get '/api/v1/runs/:run_id/artifacts/:artifact_id' do
-  orchestrator = ENV['ORCHESTRATOR_URL'] || 'http://localhost:4567'
+  rid = params[:run_id].to_s
+  aid = params[:artifact_id].to_s
+  if rid.empty? || aid.empty? || rid =~ /[^\w.-]/ || aid =~ /[^\w.-]/ || rid.include?('..') || aid.include?('..')
+    status 400
+    content_type :json
+    return { error: 'invalid_identifier' }.to_json
+  end
+  orchestrator = ENV['ORCHESTRATOR_URL'] || 'http://localhost:8080'
   target = "#{orchestrator}/api/v1/runs/#{params[:run_id]}/artifacts/#{params[:artifact_id]}"
   begin
     uri = URI(target)
@@ -191,7 +199,7 @@ end
 
 # rubocop:enable Metrics/BlockLength
 get '/inspector/runs/:run_id/artifacts/:artifact_id/view' do
-  lister = ArtifactInspector::ArtifactLister.new(ENV['ORCHESTRATOR_URL'] || 'http://localhost:4567')
+  lister = ArtifactInspector::ArtifactLister.new(ENV['ORCHESTRATOR_URL'] || 'http://localhost:8080')
   artifact = lister.find(params[:run_id], params[:artifact_id])
   if artifact
     lister.artifact_html(artifact, params[:run_id], params[:artifact_id])

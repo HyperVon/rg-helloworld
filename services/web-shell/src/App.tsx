@@ -303,6 +303,7 @@ export function App() {
           animation: pulse 1.8s infinite;
         }
         @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(16,185,129,0.45)} 70%{box-shadow:0 0 0 8px rgba(16,185,129,0)} 100%{box-shadow:0 0 0 0 rgba(16,185,129,0)} }
+        @media (prefers-reduced-motion: reduce){.status-dot{animation:none}}
         .connected { background: #10b981; }
         .connection-state { font-weight: 600; opacity: 0.9; }
         .error {

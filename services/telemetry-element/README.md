@@ -1,6 +1,6 @@
 # rg-telemetry-element
 
-Angular-style telemetry custom element for Rube Goldberg Hello World.
+TypeScript Web Component telemetry custom element for Rube Goldberg Hello World.
 
 Renders as `<rg-telemetry-panel run-id="...">` in the browser, independently
 fetching telemetry data from the event gateway's SSE stream.
