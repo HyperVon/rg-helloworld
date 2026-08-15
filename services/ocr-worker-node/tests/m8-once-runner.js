@@ -10,12 +10,18 @@ const mockExecutor = (_path, psm) => {
   if (psm === 7) {
     return {
       rawText: 'HHH',
-      symbols: [{ text: 'H', confidence: 0.98, bbox: { x: 0, y: 0, width: 10, height: 20 } }],
+      confidence: 0.97,
+      symbols: [
+        { text: 'H', confidence: 0.98, bbox: { x: 0, y: 0, width: 10, height: 20 } },
+        { text: 'H', confidence: 0.98, bbox: { x: 60, y: 0, width: 10, height: 20 } },
+        { text: 'H', confidence: 0.98, bbox: { x: 120, y: 0, width: 10, height: 20 } },
+      ],
     };
   }
   return {
-    rawText: 'HHH',
-    symbols: [{ text: 'H', confidence: 0.97, bbox: { x: 0, y: 0, width: 10, height: 20 } }],
+    rawText: 'H',
+    confidence: 0.95,
+    symbols: [{ text: 'H', confidence: 0.95, bbox: { x: 0, y: 0, width: 10, height: 20 } }],
   };
 };
 

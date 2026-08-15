@@ -659,10 +659,10 @@ with open('$M8_FIXTURES/ocr-image.png', 'wb') as f:
 
 for pos in [0, 1, 2, 5]:
     if pos == 5:
-        with open('$M8_FIXTURES/crops/crop-%d.png' % pos, 'wb') as f:
+        with open('$M8_FIXTURES/crops/crop-position-%d.png' % pos, 'wb') as f:
             f.write(make_png(50, 50))
     else:
-        with open('$M8_FIXTURES/crops/crop-%d.png' % pos, 'wb') as f:
+        with open('$M8_FIXTURES/crops/crop-position-%d.png' % pos, 'wb') as f:
             f.write(make_png(50, 50, glyph='H'))
 
 import json
