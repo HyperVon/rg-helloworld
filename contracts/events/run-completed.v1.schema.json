@@ -17,7 +17,7 @@
     "assembledText",
     "sha256"
   ],
-  "additionalProperties": false,
+  "additionalProperties": true,
   "properties": {
     "runId": {
       "type": "string",
@@ -27,31 +27,61 @@
       "type": "string",
       "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
     },
-    "attempt": { "type": "integer", "minimum": 1 },
-    "inputMaturity": { "type": "integer", "const": 90 },
-    "outputMaturity": { "type": "integer", "const": 100 },
+    "attempt": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "inputMaturity": {
+      "type": "integer",
+      "const": 90
+    },
+    "outputMaturity": {
+      "type": "integer",
+      "const": 100
+    },
     "inputArtifacts": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
     "outputArtifacts": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
     "transformation": {
       "type": "object",
-      "required": ["name", "version"],
+      "required": [
+        "name",
+        "version"
+      ],
       "additionalProperties": false,
       "properties": {
-        "name": { "type": "string", "const": "validate-output" },
-        "version": { "type": "string" }
+        "name": {
+          "type": "string",
+          "const": "validate-output"
+        },
+        "version": {
+          "type": "string"
+        }
       }
     },
-    "status": { "type": "string", "enum": ["SUCCEEDED", "FAILED"] },
+    "status": {
+      "type": "string",
+      "enum": [
+        "SUCCEEDED",
+        "FAILED"
+      ]
+    },
     "assembledText": {
       "type": "string",
       "description": "The validated terminal text printed to stdout by the CLI"
     },
-    "sha256": { "type": "string" }
-  }
+    "sha256": {
+      "type": "string"
+    }
+  },
+  "$comment": "Validates the event data payload only. The CloudEvents envelope (see cloudevents-envelope.json) is validated separately; envelope fields are permitted as additional properties."
 }

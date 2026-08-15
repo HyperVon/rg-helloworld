@@ -15,7 +15,7 @@
     "transformation",
     "compositionPlan"
   ],
-  "additionalProperties": false,
+  "additionalProperties": true,
   "properties": {
     "runId": {
       "type": "string",
@@ -25,52 +25,95 @@
       "type": "string",
       "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
     },
-    "attempt": { "type": "integer", "minimum": 1 },
-    "inputMaturity": { "type": "integer", "const": 40 },
-    "outputMaturity": { "type": "integer", "const": 50 },
+    "attempt": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "inputMaturity": {
+      "type": "integer",
+      "const": 40
+    },
+    "outputMaturity": {
+      "type": "integer",
+      "const": 50
+    },
     "inputArtifacts": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
     "outputArtifacts": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
     "transformation": {
       "type": "object",
-      "required": ["name", "version"],
+      "required": [
+        "name",
+        "version"
+      ],
       "additionalProperties": false,
       "properties": {
-        "name": { "type": "string", "const": "schedule-composition" },
-        "version": { "type": "string" }
+        "name": {
+          "type": "string",
+          "const": "schedule-composition"
+        },
+        "version": {
+          "type": "string"
+        }
       }
     },
     "compositionPlan": {
       "type": "object",
-      "required": ["positions", "baseline"],
+      "required": [
+        "positions",
+        "baseline"
+      ],
       "additionalProperties": false,
       "properties": {
         "positions": {
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["position", "artifactRef"],
+            "required": [
+              "position",
+              "artifactRef"
+            ],
             "additionalProperties": false,
             "properties": {
-              "position": { "type": "integer", "minimum": 0 },
+              "position": {
+                "type": "integer",
+                "minimum": 0
+              },
               "glyphInstanceId": {
                 "type": "string",
                 "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
               },
-              "artifactRef": { "type": "string" },
-              "advanceWidth": { "type": "number" }
+              "artifactRef": {
+                "type": "string"
+              },
+              "advanceWidth": {
+                "type": "number"
+              }
             }
           }
         },
-        "baseline": { "type": "number" },
-        "canvasWidth": { "type": "integer", "minimum": 1 },
-        "canvasHeight": { "type": "integer", "minimum": 1 }
+        "baseline": {
+          "type": "number"
+        },
+        "canvasWidth": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "canvasHeight": {
+          "type": "integer",
+          "minimum": 1
+        }
       }
     }
-  }
+  },
+  "$comment": "Validates the event data payload only. The CloudEvents envelope (see cloudevents-envelope.json) is validated separately; envelope fields are permitted as additional properties."
 }

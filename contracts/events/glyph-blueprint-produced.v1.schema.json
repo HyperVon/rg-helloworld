@@ -14,7 +14,7 @@
     "transformation",
     "glyphs"
   ],
-  "additionalProperties": false,
+  "additionalProperties": true,
   "properties": {
     "runId": {
       "type": "string",
@@ -34,19 +34,30 @@
     },
     "inputArtifacts": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
     "outputArtifacts": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
     "transformation": {
       "type": "object",
-      "required": ["name", "version"],
+      "required": [
+        "name",
+        "version"
+      ],
       "additionalProperties": false,
       "properties": {
-        "name": { "type": "string" },
-        "version": { "type": "string" }
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
       }
     },
     "glyphs": {
@@ -66,29 +77,55 @@
             "type": "string",
             "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
           },
-          "position": { "type": "integer", "minimum": 0 },
-          "kind": { "type": "string", "enum": ["DRAWABLE", "GAP"] },
-          "advanceWidth": { "type": "number", "minimum": 0 },
+          "position": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "DRAWABLE",
+              "GAP"
+            ]
+          },
+          "advanceWidth": {
+            "type": "number",
+            "minimum": 0
+          },
           "primitives": {
             "type": "array",
             "items": {
               "type": "object",
-              "required": ["type", "points"],
+              "required": [
+                "type",
+                "points"
+              ],
               "additionalProperties": false,
               "properties": {
                 "type": {
                   "type": "string",
-                  "enum": ["POLYLINE", "POINT", "ARC"]
+                  "enum": [
+                    "POLYLINE",
+                    "POINT",
+                    "ARC"
+                  ]
                 },
                 "points": {
                   "type": "array",
                   "items": {
                     "type": "object",
-                    "required": ["x", "y"],
+                    "required": [
+                      "x",
+                      "y"
+                    ],
                     "additionalProperties": false,
                     "properties": {
-                      "x": { "type": "number" },
-                      "y": { "type": "number" }
+                      "x": {
+                        "type": "number"
+                      },
+                      "y": {
+                        "type": "number"
+                      }
                     }
                   }
                 }
@@ -98,5 +135,6 @@
         }
       }
     }
-  }
+  },
+  "$comment": "Validates the event data payload only. The CloudEvents envelope (see cloudevents-envelope.json) is validated separately; envelope fields are permitted as additional properties."
 }

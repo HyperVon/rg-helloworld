@@ -15,7 +15,7 @@
     "transformation",
     "assembledText"
   ],
-  "additionalProperties": false,
+  "additionalProperties": true,
   "properties": {
     "runId": {
       "type": "string",
@@ -25,31 +25,54 @@
       "type": "string",
       "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
     },
-    "attempt": { "type": "integer", "minimum": 1 },
-    "inputMaturity": { "type": "integer", "const": 80 },
-    "outputMaturity": { "type": "integer", "const": 90 },
+    "attempt": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "inputMaturity": {
+      "type": "integer",
+      "const": 80
+    },
+    "outputMaturity": {
+      "type": "integer",
+      "const": 90
+    },
     "inputArtifacts": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
     "outputArtifacts": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
     "transformation": {
       "type": "object",
-      "required": ["name", "version"],
+      "required": [
+        "name",
+        "version"
+      ],
       "additionalProperties": false,
       "properties": {
-        "name": { "type": "string", "const": "assemble-phrase" },
-        "version": { "type": "string" }
+        "name": {
+          "type": "string",
+          "const": "assemble-phrase"
+        },
+        "version": {
+          "type": "string"
+        }
       }
     },
     "assembledText": {
       "type": "string",
       "description": "The assembled UTF-8 phrase. Not present in any downstream event before final validation (section 7.1)"
     },
-    "sha256": { "type": "string" },
+    "sha256": {
+      "type": "string"
+    },
     "provenanceAttestation": {
       "type": "string",
       "description": "Whitespace-encoded provenance attestation (runId, stepId, attempt, maturity, sha256, artifact counts)"
@@ -59,5 +82,6 @@
       "pattern": "^[a-f0-9]{64}$",
       "description": "SHA-256 of the provenance attestation"
     }
-  }
+  },
+  "$comment": "Validates the event data payload only. The CloudEvents envelope (see cloudevents-envelope.json) is validated separately; envelope fields are permitted as additional properties."
 }

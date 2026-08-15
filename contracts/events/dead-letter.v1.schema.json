@@ -14,15 +14,38 @@
     "stackTraceArtifactId",
     "lastOccurredAt"
   ],
-  "additionalProperties": false,
+  "additionalProperties": true,
   "properties": {
-    "originalTopic": { "type": "string" },
-    "originalEventId": { "type": "string" },
-    "failedService": { "type": "string" },
-    "failureClass": { "type": "string", "enum": ["TRANSIENT_EXHAUSTED", "PERMANENT_ERROR"] },
-    "failureMessage": { "type": "string" },
-    "attempts": { "type": "integer", "minimum": 1 },
-    "stackTraceArtifactId": { "type": "string" },
-    "lastOccurredAt": { "type": "string", "format": "date-time" }
-  }
+    "originalTopic": {
+      "type": "string"
+    },
+    "originalEventId": {
+      "type": "string"
+    },
+    "failedService": {
+      "type": "string"
+    },
+    "failureClass": {
+      "type": "string",
+      "enum": [
+        "TRANSIENT_EXHAUSTED",
+        "PERMANENT_ERROR"
+      ]
+    },
+    "failureMessage": {
+      "type": "string"
+    },
+    "attempts": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "stackTraceArtifactId": {
+      "type": "string"
+    },
+    "lastOccurredAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "$comment": "Validates the event data payload only. The CloudEvents envelope (see cloudevents-envelope.json) is validated separately; envelope fields are permitted as additional properties."
 }

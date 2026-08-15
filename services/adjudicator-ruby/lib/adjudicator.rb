@@ -88,7 +88,7 @@ module Adjudicator
 
       def check_prohibited_fields(event_json)
         violations = []
-        prohibited = %w[targetText expectedCharacter unicodeCodePoint characterName glyphLabel]
+        prohibited = %w[message targetText expectedCharacter unicodeCodePoint characterName glyphLabel]
         prohibited.each do |field|
           violations << field if event_json.include?("\"#{field}\"")
         end
