@@ -232,8 +232,9 @@ make contract-test  # all examples validate against schemas; prohibited-field te
 
 ### Next milestone
 
-Milestone 3 — Thin vertical slice (CLI → REST → Kafka → SSE). Not started until
-Milestone 2 acceptance passes.
+Milestone 2 — Local platform (Kafka, Rust, Python, Node) is the next milestone
+after Milestone 1. Milestone 3 — Thin vertical slice (CLI → REST → Kafka → SSE)
+follows once Milestone 2 acceptance passes.
 
 ---
 
@@ -380,8 +381,8 @@ Milestone 2 acceptance passes.
   - [ ] Emit one `glyph-blueprint-produced.v1` event per phrase position to
         `rg.glyph-blueprints.v1` with partition key `runId:glyphInstanceId`
   - [ ] Remove the temp-worker echo path from the run state machine
-- [ ] Remove the temporary worker (`services/temp-worker-node`), its
-      deployment manifest, and Makefile references
+- [x] Remove the temporary worker (`services/temp-worker-node`), its
+      deployment manifest, and Makefile references (orphaned service removed 2026-08-14)
 - [ ] Deploy the glyph catalog to Kubernetes and update smoke tests:
   - [ ] Eleven ordered blueprint records for `"HELLO WORLD"` on
         `rg.glyph-blueprints.v1`
@@ -1060,12 +1061,12 @@ M7 stability update (2026-08-07): Uppercase acceptance required redrawing all gl
   - Run selector, artifact modal, success animation.
   - Global SSE connection with mid-run reload support.
   - Respects `prefers-reduced-motion`.
-- Create `telemetry-element` (Angular custom element):
+- Create `telemetry-element` (TypeScript Web Component custom element):
   - Step ledger, attempt table, duration table.
   - OCR confidence panel, Kafka event count, resource usage summary.
-- Create `artifact-inspector` (Ruby + HTMX):
+- Create `artifact-inspector` (Ruby + Sinatra templates):
   - Artifact metadata browser with safe proxy URLs.
-  - HTMX-driven navigation (no full-page reloads).
+  - Server-rendered navigation (full-page reloads; no HTMX).
 - Update K8s manifests, build-images.sh, smoke-test.sh.
 
 ### Tasks
@@ -1076,8 +1077,8 @@ M7 stability update (2026-08-07): Uppercase acceptance required redrawing all gl
 - [x] React web-shell: process graph with React Flow
 - [x] React web-shell: run selector + artifact modal
 - [x] React web-shell: success animation
-- [x] Angular telemetry custom element
-- [x] Ruby/HTMX artifact inspector
+- [x] TypeScript telemetry custom element (`<rg-telemetry-panel>`)
+- [x] Ruby artifact inspector (Sinatra templates)
 - [x] K8s manifests, build-images.sh, smoke-test.sh
 - [x] Unit tests with 90%+ coverage
 - [x] Update versions.env
@@ -1092,8 +1093,8 @@ M7 stability update (2026-08-07): Uppercase acceptance required redrawing all gl
 - Orchestrator artifact proxy streams the recorded MinIO object with its content
   type and rejects unknown or out-of-scope descriptor IDs
 - React web-shell renders process graph, reconnects on mid-run reload
-- Angular telemetry panel renders as `<rg-telemetry-panel>` custom element
-- Ruby HTMX inspector browses artifacts without full page reload
+- TypeScript telemetry panel renders as `<rg-telemetry-panel>` custom element
+- Ruby inspector browses artifacts (server-rendered navigation)
 - `make format`, `make lint`, `make unit`, `make coverage`, `make build`, `make contracts`,
   `make contract-test`, `make integration` all pass
 
