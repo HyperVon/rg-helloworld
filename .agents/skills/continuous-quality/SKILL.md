@@ -79,6 +79,35 @@ Assertion discipline: one sharp assertion per defect class over snapshot soup;
 derive expected values from contracts or independent oracles, never from the
 implementation's own branch logic.
 
+## Test discipline
+
+Beyond the test-first rule, hold these bar-raising practices on every hardening
+slice:
+
+- **Mock contract fidelity.** Never mock the unit under test or its immediate
+  contract boundary to make a regression test pass. Do not assert only that a
+  mock method was called (`mock.assert_called_once()`); assert the observable
+  state, returned value, or protocol side effect. When mocking external
+  boundaries (HTTP APIs, cloud storage, Kafka, gRPC), reproduce the production
+  error codes, headers, and failure payloads the code must survive.
+- **Flakiness and timing.** Never green a flaky or racey test by adding arbitrary
+  `sleep()` delays, bumping timeouts, or reordering tests until they happen to
+  pass. Use condition-based polling with bounded timeouts, explicit
+  synchronization (events, latches, promises, channels) instead of timing
+  assumptions, and injected deterministic clocks or mock timers for
+  time-dependent logic. Isolate test state (databases, directories, ports) so
+  tests do not interfere when run concurrently or out of order.
+- **Surgical fix boundary.** The production fix is the smallest change that turns
+  the deterministic regression test green. Do not entangle it with stylistic
+  cleanup, signature refactoring, or unrelated optimization in the same slice.
+- **Test-isolation verification.** Confirm a new test passes both in isolation
+  and as part of the full suite (or randomized order), and that its fixtures
+  cleanly tear down modified environment variables, monkeypatches, database
+  state, and open file descriptors.
+- **Incomplete evidence.** A passing command without the relevant test count or
+  artifact is incomplete evidence — report the moved count or the gate artifact,
+  not just a green line.
+
 ## Step 4 — Verify with forced re-execution
 
 Never trust cached green. Re-run the affected gates and confirm the test
