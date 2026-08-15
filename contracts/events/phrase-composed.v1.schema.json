@@ -16,7 +16,7 @@
     "compositionManifest",
     "phraseImage"
   ],
-  "additionalProperties": false,
+  "additionalProperties": true,
   "properties": {
     "runId": {
       "type": "string",
@@ -26,48 +26,90 @@
       "type": "string",
       "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
     },
-    "attempt": { "type": "integer", "minimum": 1 },
-    "inputMaturity": { "type": "integer", "const": 40 },
-    "outputMaturity": { "type": "integer", "const": 50 },
+    "attempt": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "inputMaturity": {
+      "type": "integer",
+      "const": 40
+    },
+    "outputMaturity": {
+      "type": "integer",
+      "const": 50
+    },
     "inputArtifacts": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
     "outputArtifacts": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
     "transformation": {
       "type": "object",
-      "required": ["name", "version"],
+      "required": [
+        "name",
+        "version"
+      ],
       "additionalProperties": false,
       "properties": {
-        "name": { "type": "string", "const": "compose-phrase" },
-        "version": { "type": "string" }
+        "name": {
+          "type": "string",
+          "const": "compose-phrase"
+        },
+        "version": {
+          "type": "string"
+        }
       }
     },
     "compositionManifest": {
       "type": "object",
-      "required": ["layout"],
+      "required": [
+        "layout"
+      ],
       "additionalProperties": false,
       "properties": {
         "layout": {
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["position", "bbox"],
+            "required": [
+              "position",
+              "bbox"
+            ],
             "additionalProperties": false,
             "properties": {
-              "position": { "type": "integer", "minimum": 0 },
+              "position": {
+                "type": "integer",
+                "minimum": 0
+              },
               "bbox": {
                 "type": "object",
-                "required": ["x", "y", "width", "height"],
+                "required": [
+                  "x",
+                  "y",
+                  "width",
+                  "height"
+                ],
                 "additionalProperties": false,
                 "properties": {
-                  "x": { "type": "integer" },
-                  "y": { "type": "integer" },
-                  "width": { "type": "integer" },
-                  "height": { "type": "integer" }
+                  "x": {
+                    "type": "integer"
+                  },
+                  "y": {
+                    "type": "integer"
+                  },
+                  "width": {
+                    "type": "integer"
+                  },
+                  "height": {
+                    "type": "integer"
+                  }
                 }
               }
             }
@@ -77,14 +119,30 @@
     },
     "phraseImage": {
       "type": "object",
-      "required": ["objectKey", "width", "height", "sha256"],
+      "required": [
+        "objectKey",
+        "width",
+        "height",
+        "sha256"
+      ],
       "additionalProperties": false,
       "properties": {
-        "objectKey": { "type": "string" },
-        "width": { "type": "integer", "minimum": 1 },
-        "height": { "type": "integer", "minimum": 1 },
-        "sha256": { "type": "string" }
+        "objectKey": {
+          "type": "string"
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sha256": {
+          "type": "string"
+        }
       }
     }
-  }
+  },
+  "$comment": "Validates the event data payload only. The CloudEvents envelope (see cloudevents-envelope.json) is validated separately; envelope fields are permitted as additional properties."
 }

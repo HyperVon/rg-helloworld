@@ -15,7 +15,7 @@
     "transformation",
     "observations"
   ],
-  "additionalProperties": false,
+  "additionalProperties": true,
   "properties": {
     "runId": {
       "type": "string",
@@ -25,59 +25,115 @@
       "type": "string",
       "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
     },
-    "attempt": { "type": "integer", "minimum": 1 },
-    "inputMaturity": { "type": "integer", "const": 60 },
-    "outputMaturity": { "type": "integer", "const": 70 },
+    "attempt": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "inputMaturity": {
+      "type": "integer",
+      "const": 60
+    },
+    "outputMaturity": {
+      "type": "integer",
+      "const": 70
+    },
     "inputArtifacts": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
     "outputArtifacts": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
     "transformation": {
       "type": "object",
-      "required": ["name", "version"],
+      "required": [
+        "name",
+        "version"
+      ],
       "additionalProperties": false,
       "properties": {
-        "name": { "type": "string", "const": "perform-ocr" },
-        "version": { "type": "string" }
+        "name": {
+          "type": "string",
+          "const": "perform-ocr"
+        },
+        "version": {
+          "type": "string"
+        }
       }
     },
     "observations": {
       "type": "object",
-      "required": ["fullPhrase", "positionObservations"],
+      "required": [
+        "fullPhrase",
+        "positionObservations"
+      ],
       "additionalProperties": false,
       "properties": {
         "fullPhrase": {
           "type": "object",
-          "required": ["rawText", "confidence", "symbols"],
+          "required": [
+            "rawText",
+            "confidence",
+            "symbols"
+          ],
           "additionalProperties": false,
           "properties": {
-            "rawText": { "type": "string" },
-            "confidence": { "type": "number", "minimum": 0, "maximum": 100 },
-            "symbols": { "type": "array", "items": { "type": "object" } }
+            "rawText": {
+              "type": "string"
+            },
+            "confidence": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "symbols": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            }
           }
         },
         "positionObservations": {
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["position", "candidate", "confidence", "alternatives"],
+            "required": [
+              "position",
+              "candidate",
+              "confidence",
+              "alternatives"
+            ],
             "additionalProperties": false,
             "properties": {
-              "position": { "type": "integer", "minimum": 0 },
-              "candidate": { "type": "string" },
-              "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+              "position": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "candidate": {
+                "type": "string"
+              },
+              "confidence": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
               "alternatives": {
                 "type": "array",
-                "items": { "type": "string" }
+                "items": {
+                  "type": "string"
+                }
               }
             }
           }
         }
       }
     }
-  }
+  },
+  "$comment": "Validates the event data payload only. The CloudEvents envelope (see cloudevents-envelope.json) is validated separately; envelope fields are permitted as additional properties."
 }

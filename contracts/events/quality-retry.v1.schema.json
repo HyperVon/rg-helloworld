@@ -15,7 +15,7 @@
     "transformation",
     "reason"
   ],
-  "additionalProperties": false,
+  "additionalProperties": true,
   "properties": {
     "runId": {
       "type": "string",
@@ -25,27 +25,54 @@
       "type": "string",
       "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
     },
-    "attempt": { "type": "integer", "minimum": 1 },
-    "inputMaturity": { "type": "integer", "const": 70 },
-    "outputMaturity": { "type": "integer", "const": 70 },
+    "attempt": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "inputMaturity": {
+      "type": "integer",
+      "const": 70
+    },
+    "outputMaturity": {
+      "type": "integer",
+      "const": 70
+    },
     "inputArtifacts": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
     "outputArtifacts": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
     "transformation": {
       "type": "object",
-      "required": ["name", "version"],
+      "required": [
+        "name",
+        "version"
+      ],
       "additionalProperties": false,
       "properties": {
-        "name": { "type": "string", "const": "request-quality-retry" },
-        "version": { "type": "string" }
+        "name": {
+          "type": "string",
+          "const": "request-quality-retry"
+        },
+        "version": {
+          "type": "string"
+        }
       }
     },
-    "reason": { "type": "string" },
-    "targetPosition": { "type": "integer", "minimum": 0 }
-  }
+    "reason": {
+      "type": "string"
+    },
+    "targetPosition": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "$comment": "Validates the event data payload only. The CloudEvents envelope (see cloudevents-envelope.json) is validated separately; envelope fields are permitted as additional properties."
 }
