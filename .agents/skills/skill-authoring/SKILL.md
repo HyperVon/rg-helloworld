@@ -92,6 +92,7 @@ description: >-
 
 **Description and routing formula:** draft the frontmatter `description` using this
 3-part structure so routing agents can match and reject correctly:
+
 1. *Action & Scope:* an active verb stating what the skill does.
 2. *Positive Triggers:* explicit user query phrases and situations where it must
    activate.

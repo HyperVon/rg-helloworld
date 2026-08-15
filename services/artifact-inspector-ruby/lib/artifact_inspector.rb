@@ -33,7 +33,7 @@ module ArtifactInspector
       runs = resp['runs'] || []
       runs.sort_by { |r| r['createdAt'] }.reverse
     rescue StandardError => e
-      $stderr.puts "[artifact-inspector] WARN: failed to list runs: #{e.message}"
+      warn "[artifact-inspector] WARN: failed to list runs: #{e.message}"
       []
     end
 
@@ -181,7 +181,7 @@ module ArtifactInspector
       resp = JSON.parse(Net::HTTP.get(uri))
       resp['artifacts'] || []
     rescue StandardError => e
-      $stderr.puts "[artifact-inspector] WARN: failed to fetch artifacts: #{e.message}"
+      warn "[artifact-inspector] WARN: failed to fetch artifacts: #{e.message}"
       []
     end
 
@@ -192,6 +192,7 @@ module ArtifactInspector
     def safe_url(url)
       str = url.to_s
       return '' unless str =~ %r{\A(https?://|/)}i
+
       h(str)
     end
   end

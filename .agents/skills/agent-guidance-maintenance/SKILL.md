@@ -211,11 +211,11 @@ freezing at its first adoption.
     a *collision*, not excluded** — still read its `SKILL.md` and choose
     `KEEP_LOCAL`, `ADAPT`, or `REPLACE`. Never drop a candidate solely because a
     same-named local skill exists.
-4. For each applicable skill the user approves, follow the normal *Workflow*
-   `add` path: choose the smallest useful set, generate and review the plan,
-   obtain explicit approval, then apply with `--approve`. The audit only
-   proposes; adoption still requires the plan/approval gate.
-5. Report the adopted-vs-catalog totals (for example "adopted 8 of 24; 16
+ 4. For each applicable skill the user approves, follow the normal *Workflow*
+    `add` path: choose the smallest useful set, generate and review the plan,
+    obtain explicit approval, then apply with `--approve`. The audit only
+    proposes; adoption still requires the plan/approval gate.
+ 5. Report the adopted-vs-catalog totals (for example "adopted 8 of 24; 16
    candidates reviewed, 6 applicable") so the user sees the gap at a glance.
 
 The audit proposes only; it never writes to the target.

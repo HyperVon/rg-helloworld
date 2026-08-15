@@ -21,17 +21,18 @@ ladder shows a real win and every safety rule holds.
      | sort -n | tail -20
    ```
 
-       Record per-file and per-service totals for the before/after report.
+   Record per-file and per-service totals for the before/after report.
 
-    Before deleting anything, verify dynamic usage so a "dead" symbol is not
-    actually reached by reflection or registration:
+   Before deleting anything, verify dynamic usage so a "dead" symbol is not
+   actually reached by reflection or registration:
 
-    - Check serialization schemas (Pydantic/dataclass/ORM/protobuf/JSON) where
-      fields are accessed dynamically.
-    - Check `**kwargs` forwarding, DI containers, and reflection lookups
-      (`getattr`, `__dict__`).
-    - Check public plugin or event-handler entrypoints registered via string
-      names or decorators.
+   - Check serialization schemas (Pydantic/dataclass/ORM/protobuf/JSON) where
+     fields are accessed dynamically.
+   - Check `**kwargs` forwarding, DI containers, and reflection lookups
+     (`getattr`, `__dict__`).
+   - Check public plugin or event-handler entrypoints registered via string
+     names or decorators.
+
 2. **Read the owner rules** — `AGENTS.md`, `docs/architecture.md` §7, and
    the owning service's conventions. The reduction must preserve every
    integrity rule, wire format, and fail-closed behavior.
@@ -47,10 +48,10 @@ ladder shows a real win and every safety rule holds.
    6. Dependency changes only when the net cost is lower (smaller, pinned,
       verified) — never to silence a warning.
 4. **Large-file splits** — split only by reason-to-change (one cohesive
-   concern per file), with a name that reduces merge overlap. Treat ~800
+    concern per file), with a name that reduces merge overlap. Treat ~800
    lines as an investigation trigger per language; do not split mechanically.
 5. **Refactor in cohesive slices** — each slice compiles and tests green
-   before the next. Run the per-language formatter after each slice.
+    before the next. Run the per-language formatter after each slice.
 6. **Verify** — `STRICT=1 make prerequisites`, `STRICT=1 make format`,
    `STRICT=1 make lint`, `STRICT=1 make unit`, `STRICT=1 make coverage`, and
    `STRICT=1 make build`; plus `make integration`/`make e2e` when

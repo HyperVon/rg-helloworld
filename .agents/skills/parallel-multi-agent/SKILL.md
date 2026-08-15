@@ -100,7 +100,7 @@ reserved for coupled work whose next step depends on the result.
     in one clone — they corrupt each other and fake green
 4. Re-run only tracks affected by an edit; add a cross-track verifier only
    when a fix crosses ownership boundaries
- 5. Update `docs/implementation-status.md` / skills if behavior or workflows
+5. Update `docs/implementation-status.md` / skills if behavior or workflows
     changed
 
 ### Worker failure and partial triage

@@ -178,6 +178,7 @@ against current code/build/tests/CI or an authoritative source — record the
 missing evidence rather than guessing.
 
 **Risk-based approval gate (before editing):**
+
 - **S** — one directly evidenced wording/link/path correction; apply within
   scope and report.
 - **M** — several docs, new section, workflow/compat claim, or broad rewrite;
