@@ -99,6 +99,31 @@ Use the first applicable strategy:
    or unverified, provide a reusable invocation prompt that tells the harness
    exactly what to read.
 
+### Adapter size budget and truncation guardrails
+
+Keep adapter files strictly within harness injection budgets:
+
+- **Size constraint:** Keep root adapter files (`CLAUDE.md`, `GEMINI.md`, `.github/copilot-instructions.md`) under 40 lines and under 2 KB.
+- **Pointer pattern:** Use pointer syntax (e.g. `@AGENTS.md`, `@.agents/AGENTS.md`) rather than copying rules.
+- **No full skills in root adapters:** Never copy full skill bodies into always-loaded entrypoints.
+- **Truncation check:** If a harness imposes a strict character limit, project only the universal invariants and a pointer to the on-demand skill index.
+
+### Multi-adapter consistency
+
+When a repository contains multiple harness entrypoints:
+
+- Every adapter must delegate to the same canonical source (`.agents/AGENTS.md` and `.agents/OPERATING.md`).
+- Never define harness-specific policy overrides that contradict canonical guidance.
+- If an existing adapter has diverged (e.g. contains outdated hardcoded rules), propose replacing its body with a standard thin pointer to `.agents/`.
+
+### Rule vs skill projection strategy
+
+| Harness capability | Guidance type | Recommended projection | In-repo example |
+| :--- | :--- | :--- | :--- |
+| Native skill discovery (e.g. Gemini CLI, Claude Code) | Canonical skills (`.agents/skills/`) | Native directory discovery without file duplication | `GEMINI.md`, `CLAUDE.md` |
+| On-demand rule matching (e.g. Cursor `.mdc` with globs) | File-scoped guidance | Thin `.mdc` pointer with glob triggers pointing to canonical skill | — |
+| Static always-injected prompt (e.g. Copilot instructions) | Invariants & routing | Compact table index of available skills, loaded only on task match | `.github/copilot-instructions.md` |
+
 Prefer one physical skill owner. Use a supported link only when its behavior is
 documented and portable enough for the target; otherwise propose a generated
 projection and a drift check.

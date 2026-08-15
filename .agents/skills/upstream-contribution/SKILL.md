@@ -44,6 +44,12 @@ The proposer runs in the target repository; the maintainer reviews via
    examples. Record source project (anonymized if needed), license for the
    contribution, retrieval date, and the exact behavior worth considering.
    Mark `PROJECT_SPECIFIC` when domain assumptions remain necessary.
+
+   **Run the de-identification and sanitization checklist:**
+   - Scrub all internal corporate domain names (e.g., `.corp`, `.internal`, company hostnames).
+   - Scrub internal ticketing links, Jira/Slack URLs, CI job names, and internal registry paths.
+   - Replace private package names, internal service names, and corporate product nouns with generic placeholders (`my-service`, `example.com`, standard environment variables).
+   - Verify that no credentials, tokens, employee email addresses, or proprietary algorithm logic are included in prompts, examples, or references.
 4. **Propose, do not publish.** Present the evidence table and exact fork/branch
    plan. Stop for explicit approval of the exact scope. Do not create a remote,
    push, or open a pull request unless the user explicitly authorizes that
@@ -52,6 +58,20 @@ The proposer runs in the target repository; the maintainer reviews via
    push the branch with the generalized patch, and open the PR via `gh` using
    `.github/pull_request_template.md`. Include provenance, disposition,
    verification (`make check`), and the matching/neighboring/ambiguous probes.
+
+## Remote safety and upstream PR packaging
+
+Before performing any Git or GitHub operation:
+
+1. **Verify remotes explicitly:** Run `git remote -v`. Ensure that:
+   - `origin` is not accidentally targeted if it points to a private/internal repository;
+   - Upstream Agent Guidance Kit is configured as a dedicated remote (e.g., `upstream-agk`);
+   - Pushes are directed *only* to an explicitly user-owned public fork remote on a dedicated feature branch.
+2. **Verify public author identity:** Inspect `git config user.name` and `git config user.email`. Confirm with the user that this identity is their intended public contributor identity, not an internal corporate email address.
+3. **Upstream PR completeness checklist:**
+   - For `IMPROVE_EXISTING`: Minimal, generalized diff to `.agents/skills/<name>/SKILL.md` + updated `evals/evals.json` if behavior expanded;
+   - For `NEW_SKILL`: New directory `.agents/skills/<new-name>/SKILL.md`, entry in root `.agents/AGENTS.md` skill index, and `evals/evals.json` with matching, neighboring, and ambiguous cases;
+   - Run `python3 scripts/validate_repository.py` and `python3 scripts/public_hygiene_check.py` (or `make check`) locally on the fork before opening the PR.
 
 ## Boundaries and gotchas
 

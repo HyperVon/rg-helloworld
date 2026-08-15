@@ -77,10 +77,41 @@ No mode or a request to inspect means report-only. Words such as “optimize” 
 may authorize only the files and bounded change named by the user; otherwise stop
 after the report and ask which findings to apply.
 
+## Progressive disclosure partitioning
+
+When reducing `SKILL.md` size via progressive disclosure, strictly partition content:
+
+- **Must remain in `SKILL.md` (Always Loaded with Skill):**
+  - Frontmatter name and routeable description with trigger keywords;
+  - Core contract (Input, Output, Owner, Non-goals, Side effects);
+  - All non-negotiable safety rules, approval gates, and authorization boundaries;
+  - Step-by-step sequential workflow and decision tree;
+  - Stop conditions, report shape, and required verification commands.
+
+- **May move to `references/<topic>.md` (Loaded On-Demand):**
+  - Deep domain reference manuals, syntax catalogs, and exhaustive API tables;
+  - Large illustrative examples, sample outputs, and scenario walkthroughs;
+  - Secondary or edge-case troubleshooting runbooks;
+  - External intake and provenance audit procedures.
+
+Every extracted reference file must have an explicit, clickable relative link from `SKILL.md` describing exactly when to load it, and must pass link validation during `make check`.
+
+## Context surface prioritization
+
+Prioritize optimizations based on context lifecycle impact:
+
+1. **Tier 1 (Always-On Entrypoints):** `AGENTS.md`, `OPERATING.md`, `CLAUDE.md`, `.cursorrules`. High impact—loaded into every prompt context.
+2. **Tier 2 (Harness Projections & System Manifests):** Agent tool descriptions, prompt templates. Medium impact—loaded during tool/agent initialization.
+3. **Tier 3 (Conditional Skills):** `.agents/skills/<name>/SKILL.md`. Scoped impact—loaded only when skill triggers.
+4. **Tier 4 (On-Demand References):** `references/*.md`. Zero baseline cost—loaded only upon explicit file read.
+
 ## Anti-patterns
 
 - deleting repeated text solely because it repeats;
-- replacing a portable rule with an unresolvable link;
+- moving safety invariants, approval gates, or core workflow steps out of `SKILL.md` into reference files;
+- applying "telegraphic compression" (stripping syntax and contextual verbs into terse fragments) that increases LLM ambiguity and error rates;
+- optimizing Tier 3/4 conditional guidance while leaving high-cost Tier 1 entrypoints bloated;
+- replacing a portable rule with an unresolvable or orphaned link;
 - treating a frequency report as semantic equivalence;
 - moving a high-risk rule behind an optional reference;
 - applying a broad mechanical rewrite, commit, publication, or external action

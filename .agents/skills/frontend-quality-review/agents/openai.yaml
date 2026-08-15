@@ -1,0 +1,4 @@
+interface:
+  display_name: "Frontend Quality Review"
+  short_description: "Review UI quality, states, and accessibility"
+  default_prompt: "Use $frontend-quality-review to review this UI for product quality and accessibility defects."

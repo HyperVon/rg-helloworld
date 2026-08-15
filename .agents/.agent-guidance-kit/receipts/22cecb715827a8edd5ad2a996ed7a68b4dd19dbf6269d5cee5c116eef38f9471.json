@@ -7,7 +7,6 @@
     "path": ".agents/AGENTS.md",
     "skills": [
       "agent-guidance-maintenance",
-      "catalog-discovery",
       "git-github-workflow",
       "harness-adaptation",
       "security-review",
@@ -21,7 +20,6 @@
     "automatically_added": {},
     "requested": [
       "agent-guidance-maintenance",
-      "catalog-discovery",
       "git-github-workflow",
       "harness-adaptation",
       "security-review",
@@ -61,26 +59,6 @@
       ],
       "name": "agent-guidance-maintenance",
       "source_digest": "34ebaa74da603ae7df4970079ae2504b66d6ae74b8825652b0ac62381e0261e8",
-      "status": "UNCHANGED"
-    },
-    {
-      "destination": ".agents/skills/catalog-discovery",
-      "files": [
-        {
-          "mode": 420,
-          "path": "SKILL.md",
-          "sha256": "c805c4ea7655ce8eef7897709412b54fde278c39c3da77250feae04399efa40a",
-          "size": 4737
-        },
-        {
-          "mode": 420,
-          "path": "agents/openai.yaml",
-          "sha256": "44bb565c590308d7e2e34651acac9c25987ae9751a924fd1d9f86b0e9b68c80b",
-          "size": 215
-        }
-      ],
-      "name": "catalog-discovery",
-      "source_digest": "72a44de304a03fc1478ffc4ced821e66e702e01b17d3134e4fd935f7821100eb",
       "status": "UNCHANGED"
     },
     {

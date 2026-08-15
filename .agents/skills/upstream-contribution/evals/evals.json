@@ -1,0 +1,36 @@
+{
+  "skill_name": "upstream-contribution",
+  "evals": [
+    {
+      "id": 1,
+      "kind": "matching",
+      "prompt": "Scan my local skills and propose which ones could be contributed upstream to the Agent Guidance Kit via a PR.",
+      "expected_output": "The agent inventories local skills and divergences, compares them to the kit catalog, redacts private data, captures provenance, and proposes a fork/branch/PR plan with an approval gate.",
+      "assertions": [
+        "The response inventories local skills and diverged receipts",
+        "The response redacts private paths and captures provenance",
+        "The response proposes a fork/branch/PR only after explicit approval"
+      ]
+    },
+    {
+      "id": 2,
+      "kind": "neighboring",
+      "prompt": "Review this diff for security risks in the new endpoint.",
+      "expected_output": "The agent routes to security-review or code-review rather than treating it as an upstream contribution.",
+      "assertions": [
+        "The response does not treat a security review as a contribution task",
+        "The response routes to the closer review skill"
+      ]
+    },
+    {
+      "id": 3,
+      "kind": "ambiguous",
+      "prompt": "I want to share my skills with the kit.",
+      "expected_output": "The agent asks for scope, which local skills to consider, target fork, and whether push/PR is authorized before acting.",
+      "assertions": [
+        "The response asks for scope and authority before acting",
+        "The response does not auto-push or open a PR from the vague request"
+      ]
+    }
+  ]
+}

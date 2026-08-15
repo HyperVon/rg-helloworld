@@ -1,0 +1,4 @@
+interface:
+  display_name: "Threat Modeling"
+  short_description: "Map assets, boundaries, and abuse paths"
+  default_prompt: "Use $threat-modeling to build a repository-grounded threat model for this system."

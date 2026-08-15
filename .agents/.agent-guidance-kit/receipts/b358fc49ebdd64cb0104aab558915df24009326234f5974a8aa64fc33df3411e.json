@@ -1,0 +1,143 @@
+{
+  "plan_id": "b358fc49ebdd64cb0104aab558915df24009326234f5974a8aa64fc33df3411e",
+  "result": "COMPLETED",
+  "routing": {
+    "after_digest": "2145b296a4a62749d66ed0fed089e719b8e006b17c7464393541560de6e327be",
+    "block_digest": "2017251f4bd4086921e19a93c83026b797e87629124e8ff505b23cf87bdd2e87",
+    "path": ".agents/AGENTS.md",
+    "skills": [
+      "agent-guidance-maintenance",
+      "frontend-quality-review",
+      "git-github-workflow",
+      "harness-adaptation",
+      "security-review",
+      "skill-evaluation",
+      "skill-optimizer",
+      "systematic-debugging",
+      "threat-modeling",
+      "upstream-contribution"
+    ]
+  },
+  "schema_version": 2,
+  "selection": {
+    "automatically_added": {
+      "agent-guidance-maintenance": [
+        "required maintenance entrypoint"
+      ]
+    },
+    "requested": [
+      "frontend-quality-review",
+      "skill-evaluation",
+      "threat-modeling"
+    ]
+  },
+  "skills": [
+    {
+      "destination": ".agents/skills/agent-guidance-maintenance",
+      "files": [
+        {
+          "mode": 420,
+          "path": "SKILL.md",
+          "sha256": "cf367e95ce8c96e62b9cc373294eee0de7c386eaecf8f6ce73e76e9825f0f754",
+          "size": 12994
+        },
+        {
+          "mode": 420,
+          "path": "agents/openai.yaml",
+          "sha256": "d912dd31df704ff4269310a328059420add649aef445d313a9cbccacd3c9a5a3",
+          "size": 219
+        },
+        {
+          "mode": 420,
+          "path": "scripts/adoption_audit.py",
+          "sha256": "4461943c735113328ae829fc0424473fb19c3c35465570e402723d81af6d99e7",
+          "size": 16873
+        },
+        {
+          "mode": 493,
+          "path": "scripts/resolve_source.py",
+          "sha256": "4eac5c828fadc84af724d36094b0554622210593f371c5f7d13b44ff891ff5a4",
+          "size": 9340
+        },
+        {
+          "mode": 493,
+          "path": "scripts/validate_adoption.py",
+          "sha256": "0aeb34a34439217c7992f10701ab7e7ebc9629443ebdc93759092a88f67a8fe0",
+          "size": 6791
+        }
+      ],
+      "name": "agent-guidance-maintenance",
+      "source_digest": "0ef04f26d742c90e5c6051d91426258feca72b3e3605c23da8c00c9d2721d52f",
+      "status": "UPDATE"
+    },
+    {
+      "destination": ".agents/skills/frontend-quality-review",
+      "files": [
+        {
+          "mode": 420,
+          "path": "SKILL.md",
+          "sha256": "13c8cd5614d9c08aec25da0798d5bb997d26523d3ff5f9de89003a53d4910761",
+          "size": 5388
+        },
+        {
+          "mode": 420,
+          "path": "agents/openai.yaml",
+          "sha256": "d49659b459691c737194722280fc1ed560475a2d1bd6a977c749e6773b6e7803",
+          "size": 235
+        }
+      ],
+      "name": "frontend-quality-review",
+      "source_digest": "b7c7260ebf7bbf70ede2d1e1e2580e0012372011aa1ae789994cbaa54ad31ff8",
+      "status": "CREATE"
+    },
+    {
+      "destination": ".agents/skills/skill-evaluation",
+      "files": [
+        {
+          "mode": 420,
+          "path": "SKILL.md",
+          "sha256": "18fd97e78f9a35e8daf37cf8581dc5f5eade81dbc32304ed089b81f2aaa5c089",
+          "size": 17678
+        },
+        {
+          "mode": 420,
+          "path": "agents/openai.yaml",
+          "sha256": "12380342fbc6b678510ab5c57acc52b637d32c794d8dc8e549cf0f9b779fa533",
+          "size": 217
+        }
+      ],
+      "name": "skill-evaluation",
+      "source_digest": "9fbc15b1c1b2468d8cb02feecbff595981ba1a7397be31cd2d65e43db3e91832",
+      "status": "CREATE"
+    },
+    {
+      "destination": ".agents/skills/threat-modeling",
+      "files": [
+        {
+          "mode": 420,
+          "path": "SKILL.md",
+          "sha256": "ab3783b6fc1a2860c13b007f1682c2f0646fd7da4d568766eae64fab76ed857a",
+          "size": 6168
+        },
+        {
+          "mode": 420,
+          "path": "agents/openai.yaml",
+          "sha256": "7136334b1c6629c0f7f8d8b20edec0a6be0e298c1ba56f1d1ba919fd7e9f2f68",
+          "size": 210
+        }
+      ],
+      "name": "threat-modeling",
+      "source_digest": "e1295aad9a43c5cf28ad10cfafcc939129411b65a00c0d86cd4812c2ef8968b0",
+      "status": "CREATE"
+    }
+  ],
+  "source": {
+    "name": "agent-guidance-kit",
+    "revision": "b7fccd028c8b",
+    "selected_digest": "e896d567384657faa00bd752ce0450f71c68c6497b36387ed0cc0ff5dcb3782b"
+  },
+  "source_resolution": {
+    "method": "adjacent sibling",
+    "status": "UNCHANGED"
+  }
+}

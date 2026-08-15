@@ -144,6 +144,12 @@ read and follow that skill before inventing a process. Portable skills live in
 Kilo commands and agents live in `.kilo/command/` and `.kilo/agent/`. The cross-project integration decisions are
 recorded in [the guidance review](docs/agent-guidance-integration-review.md).
 
+Adopted Agent Guidance Kit content is governed proposal-first and approval-gated:
+receipt-owned skill files are refreshed only while their target digest is unchanged,
+new kit content is create-only, and locally divergent adopted files are never
+overwritten. The active harness reconciles guidance; this file and
+`.agents/OPERATING.md` stay authoritative.
+
 | User intent | Skill / command |
 | --- | --- |
 | Implement / resume a milestone | `rghw-milestone` (`.kilo/skills/`) |
@@ -231,12 +237,14 @@ These receipt-managed skills were adopted from Agent Guidance Kit.
 | Task | Skill |
 | :--- | :--- |
 | Adopt, add, audit, refresh, or update Agent Guidance Kit content | [agent-guidance-maintenance](skills/agent-guidance-maintenance/SKILL.md) |
-| Search and triage catalog expansion candidates from public sources | [catalog-discovery](skills/catalog-discovery/SKILL.md) |
+| Review frontend/UI quality, interaction states, accessibility, and responsive behavior | [frontend-quality-review](skills/frontend-quality-review/SKILL.md) |
 | Branch, commit, PR, and release hygiene for Git and GitHub | [git-github-workflow](skills/git-github-workflow/SKILL.md) |
 | Adapt canonical guidance to the active agent harness | [harness-adaptation](skills/harness-adaptation/SKILL.md) |
 | Review security boundaries, authority, secrets, and sensitive data flows | [security-review](skills/security-review/SKILL.md) |
+| Measure whether a skill improves routing or task outcomes | [skill-evaluation](skills/skill-evaluation/SKILL.md) |
 | Reduce guidance context cost without weakening behavior | [skill-optimizer](skills/skill-optimizer/SKILL.md) |
 | Diagnose an observed failure and find its root cause before fixing it | [systematic-debugging](skills/systematic-debugging/SKILL.md) |
+| Build a repository-grounded design-time threat model | [threat-modeling](skills/threat-modeling/SKILL.md) |
 | Propose local skill improvements upstream via fork and PR | [upstream-contribution](skills/upstream-contribution/SKILL.md) |
 <!-- agent-guidance-kit:routes:end -->
 

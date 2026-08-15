@@ -1,0 +1,98 @@
+{
+  "plan_id": "45eb3c81256be0ab07caa55ef0407180a03a02c6774af5513bdaa6efd8919d5d",
+  "result": "COMPLETED",
+  "routing": {
+    "after_digest": "48c6640b3bd55f0ae0594ed3f1f174b4f6230ac3b40fc1106874b2abe60d730e",
+    "block_digest": "08fd5901e4f0ccf33ad89cbfb81ca65df4b6e1cde1f83e843e1fd523757ad429",
+    "path": ".agents/AGENTS.md",
+    "skills": [
+      "agent-guidance-maintenance",
+      "git-github-workflow",
+      "harness-adaptation",
+      "security-review",
+      "skill-optimizer",
+      "systematic-debugging",
+      "upstream-contribution"
+    ]
+  },
+  "schema_version": 2,
+  "selection": {
+    "automatically_added": {
+      "agent-guidance-maintenance": [
+        "required maintenance entrypoint"
+      ]
+    },
+    "requested": [
+      "upstream-contribution"
+    ]
+  },
+  "skills": [
+    {
+      "destination": ".agents/skills/agent-guidance-maintenance",
+      "files": [
+        {
+          "mode": 420,
+          "path": "SKILL.md",
+          "sha256": "e4387f33075471ef044d9aa655d20920072835da37ed7931086beaaa5ac2d5a3",
+          "size": 11674
+        },
+        {
+          "mode": 420,
+          "path": "agents/openai.yaml",
+          "sha256": "d912dd31df704ff4269310a328059420add649aef445d313a9cbccacd3c9a5a3",
+          "size": 219
+        },
+        {
+          "mode": 420,
+          "path": "scripts/adoption_audit.py",
+          "sha256": "353a57ed0c2a3fa39741b5f5353d841945767c6a0554cafe5b5a7a9a2e954ed2",
+          "size": 14099
+        },
+        {
+          "mode": 493,
+          "path": "scripts/resolve_source.py",
+          "sha256": "4eac5c828fadc84af724d36094b0554622210593f371c5f7d13b44ff891ff5a4",
+          "size": 9340
+        },
+        {
+          "mode": 493,
+          "path": "scripts/validate_adoption.py",
+          "sha256": "0aeb34a34439217c7992f10701ab7e7ebc9629443ebdc93759092a88f67a8fe0",
+          "size": 6791
+        }
+      ],
+      "name": "agent-guidance-maintenance",
+      "source_digest": "65ceeef54975a4f541df6470d903c709ac9080ac7c5f0a42903564284e4b3688",
+      "status": "UNCHANGED"
+    },
+    {
+      "destination": ".agents/skills/upstream-contribution",
+      "files": [
+        {
+          "mode": 420,
+          "path": "SKILL.md",
+          "sha256": "0beca994c34b3c06fdc6381e4fff9301003cb2082517372636ba4910d2c97010",
+          "size": 5683
+        },
+        {
+          "mode": 420,
+          "path": "agents/openai.yaml",
+          "sha256": "8394f5737861be2a05bc9d8ad8893c9bc7d75d73e745bc6f4d5f518025c7abec",
+          "size": 232
+        }
+      ],
+      "name": "upstream-contribution",
+      "source_digest": "ddd8385b2acf090457077932917cbfc45fd2ae7b6d5ddfb527ba683b62339500",
+      "status": "UNCHANGED"
+    }
+  ],
+  "source": {
+    "name": "agent-guidance-kit",
+    "revision": "2302987c303e+dirty",
+    "selected_digest": "861ac88e541c3c103f7e5f32527460c9c378721fee757f232beee0ec04dc32fd"
+  },
+  "source_resolution": {
+    "method": "adjacent sibling",
+    "status": "UNCHANGED"
+  }
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Skill Evaluation"
+  short_description: "Measure whether skills improve agent outcomes"
+  default_prompt: "Use $skill-evaluation to design or run a clean-context evaluation for this skill."
