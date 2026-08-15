@@ -276,7 +276,13 @@ class StageMonitor(
 
                     Services.QUALITY_RETRY_TOPIC -> {
                         val reason = data["reason"]?.jsonPrimitive?.contentOrNull ?: "unknown"
-                        System.err.println("quality retry requested for run $runId: $reason")
+                        val payload = data["payload"]
+                        if (Services.eventProducer != null && payload != null) {
+                            Services.eventProducer!!.send(Services.OCR_IMAGES_TOPIC, runId, payload.toString())
+                            System.err.println("quality retry for run $runId (reason=$reason): re-issued OCR trigger")
+                        } else {
+                            System.err.println("quality retry for run $runId (reason=$reason): no upstream payload to re-emit")
+                        }
                     }
 
                     Services.PHRASE_ASSEMBLED_TOPIC -> {

@@ -64,7 +64,7 @@ func TestRunCommandHappyPath(t *testing.T) {
 			_, _ = w.Write([]byte(`{"runId":"run-123","status":"PLANNING","createdAt":"2026-01-01T00:00:00Z","links":{"self":"/api/v1/runs/run-123","events":"/api/v1/runs/run-123/events","stream":"/api/v1/runs/run-123/stream","artifacts":"/api/v1/runs/run-123/artifacts"}}`))
 		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/runs/run-123/stream":
 			w.Header().Set("Content-Type", "text/event-stream")
-			_, _ = w.Write([]byte(": connected\n\ndata: {\"status\":\"PLANNING\"}\n\ndata: {\"status\":\"SUCCEEDED\",\"assembledText\":\"HELLO WORLD\"}\n\n"))
+			_, _ = w.Write([]byte(": connected\n\nid: run-123\nevent: step-status-changed\ndata: {\"status\":\"PLANNING\"}\n\nid: run-123\nevent: run-succeeded\ndata: {\"status\":\"SUCCEEDED\",\"assembledText\":\"HELLO WORLD\"}\n\n"))
 		default:
 			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
 			w.WriteHeader(http.StatusNotFound)
