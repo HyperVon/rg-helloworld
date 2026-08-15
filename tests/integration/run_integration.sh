@@ -636,13 +636,16 @@ if command -v node >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
 
   python3 -c "
 import struct, zlib
-
-def make_png(width, height, fill=(128, 128, 128, 255)):
+def make_png(width, height, fill=(128, 128, 128, 255), glyph=None):
     raw = b''
-    for _ in range(height):
+    for y in range(height):
         raw += b'\x00'
-        for _ in range(width):
-            raw += bytes(fill)
+        for x in range(width):
+            if glyph is not None and (x == 8 or x == width - 9 or (width // 2 - 4 <= x <= width // 2 + 4 and height // 4 <= y <= 3 * height // 4)):
+                raw += bytes((20, 20, 20, 255))
+            else:
+                raw += bytes(fill)
+
     def chunk(ctype, data):
         c = ctype + data
         return struct.pack('>I', len(data)) + c + struct.pack('>I', zlib.crc32(c) & 0xffffffff)
@@ -655,8 +658,12 @@ with open('$M8_FIXTURES/ocr-image.png', 'wb') as f:
     f.write(make_png(200, 100))
 
 for pos in [0, 1, 2, 5]:
-    with open('$M8_FIXTURES/crops/crop-%d.png' % pos, 'wb') as f:
-        f.write(make_png(50, 50))
+    if pos == 5:
+        with open('$M8_FIXTURES/crops/crop-%d.png' % pos, 'wb') as f:
+            f.write(make_png(50, 50))
+    else:
+        with open('$M8_FIXTURES/crops/crop-%d.png' % pos, 'wb') as f:
+            f.write(make_png(50, 50, glyph='H'))
 
 import json
 manifest = {
@@ -706,26 +713,6 @@ print('M8 fixtures created')
   fi
 
   if [ -f "$M8_FIXTURES/observations.json" ]; then
-    # shellcheck disable=SC2034 # LAYOUT retained for debugging artifact lineage
-    LAYOUT=$(cat "$M8_FIXTURES/manifest.json")
-    cat > "$M8_FIXTURES/observations.json" <<'OBS'
-{
-  "fullPhrase": {
-    "symbols": [
-      {"position": 0, "text": "H", "confidence": 0.9},
-      {"position": 1, "text": "H", "confidence": 0.9},
-      {"position": 2, "text": "H", "confidence": 0.9}
-    ]
-  },
-  "positionObservations": [
-    {"position": 0, "candidate": "H", "confidence": 0.95},
-    {"position": 1, "candidate": "H", "confidence": 0.92},
-    {"position": 2, "candidate": "H", "confidence": 0.88}
-  ],
-  "spacingObservations": []
-}
-OBS
-
     if command -v ruby >/dev/null 2>&1; then
       if (cd "$ROOT/services/adjudicator-ruby" && ruby -Ilib -e "require 'json'; require 'adjudicator'; result = Adjudicator::AdjudicatorImpl.run_once('$M8_FIXTURES/observations.json', '$M8_FIXTURES/manifest.json', event_output_path: '$M8_FIXTURES/adjudicator-event.json'); puts JSON.pretty_generate(result)" > "$M8_FIXTURES/adjudicated.json" 2>/tmp/rghw-m8-adjudicator.log); then
         say "[ ok ] adjudicator --once produced adjudicated symbols"
@@ -810,7 +797,7 @@ print('M9 fixtures created')
         say "[FAIL] phrase-assembled text wrong: $(cat "$M9_FIXTURES/event.json" | head -n 5)"
       fi
       for field in message targetText expectedCharacter unicodeCodePoint characterName glyphLabel; do
-        if grep -q "\"\$field\"" "$M9_FIXTURES/event.json"; then
+        if grep -q "\"$field\"" "$M9_FIXTURES/event.json"; then
           FAILED=$((FAILED + 1))
           say "[FAIL] prohibited field '\$field' present in phrase-assembled event"
         fi
