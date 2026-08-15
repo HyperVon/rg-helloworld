@@ -236,6 +236,24 @@ Check the actual owner skill/source instead of inventing a fourth pattern:
 | Documentation | `docs/*`, `README.md` must accurately reflect source behavior, CLI args, and protocol schema |
 | Build & Config | `Makefile` targets exist as documented; `versions.env` matches per-language build files |
 
+#### Slop pattern catalog
+
+Canonical pattern vocabulary to use as investigation prompts during Step 3
+inspection (verify each against source of truth; a common pattern is not by
+itself a defect):
+
+| Pattern | One-line description |
+| :--- | :--- |
+| **Invented References** | Imports, APIs, flags, config, deps, or test claims absent from current source or contracts |
+| **Tautological / Mirror Tests** | Asserts mock calls without validating state, or passes unconditionally (e.g. `is not None` on non-nullable) |
+| **Swallowed Exceptions / Phantom Fallbacks** | Blanket `try/except: pass` or empty return on error, concealing real failures |
+| **Ghost Config / Phantom CLI Flags** | Parsed config keys, env vars, or flags never referenced in execution logic |
+| **Hallucinated Kwargs / Signatures** | Calling stdlib/third-party methods with non-existent kwargs silently absorbed by `**kwargs` |
+| **Circular / Duplicate Type Definitions** | Redundant parallel type declarations instead of consuming the canonical schema |
+| **Dead Code / Phantom Abstractions** | Dead/placeholder branches, duplicate helpers, or abstractions with no demonstrated consumer |
+| **Narrative Documentation** | Comments/docs that narrate obvious code, conceal uncertainty, or state unverified behavior |
+| **Ungrounded UI Changes** | UI with no user intent, missing states, broken a11y/focus, or unverified responsive/reduced-motion behavior |
+
 ### Step 4: Inspect test independence and coverage intent
 
 Tests are slop only when they fail to protect a stated behavior, actively

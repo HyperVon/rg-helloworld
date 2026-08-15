@@ -70,6 +70,10 @@ extend the existing skill instead of creating another one.
    checklist.
 4. Keep `SKILL.md` below roughly 500 lines. Move substantial examples or
    reference material into a sibling file and link it from the skill.
+   When moving detail into sibling references, place them under
+   `.agents/skills/<name>/references/<topic>.md` (or the matching `.kilo/skills`
+   path) and link with a relative path; keep each reference a self-contained
+   deep dive with clear headings, not an orphaned fragment.
 5. Prefer one authoritative rule plus links over repeating the same policy in
    several skills. Repeat a short safety reminder only when omission at that
    boundary would create material risk.
@@ -85,6 +89,17 @@ description: >-
   One concrete capability and its trigger. Mention important boundaries.
 ---
 ```
+
+**Description and routing formula:** draft the frontmatter `description` using this
+3-part structure so routing agents can match and reject correctly:
+1. *Action & Scope:* an active verb stating what the skill does.
+2. *Positive Triggers:* explicit user query phrases and situations where it must
+   activate.
+3. *Negative Boundary:* an explicit tie-breaker that routes adjacent requests to
+   another skill (e.g., "Do not use for general code review — use code-review").
+
+Avoid generic filler ("Helps with tasks", "Manages files") that matches
+indiscriminately; rely on trigger phrases and the tie-breaker, not a long index.
 
 Use this body order unless the workflow has a strong reason not to:
 
@@ -121,6 +136,13 @@ copying them.
 - Keep k3d, Docker, servers, and other long-lived processes out of a
   foreground authoring workflow. If a skill must run one, define readiness and
   cleanup behavior.
+- When a skill ships deterministic companion scripts (under `scripts/`), keep
+  them network-free and deterministic and implement explicit guards so they
+  cannot write files outside the repository root and cannot follow symlinks or
+  path traversal that leave the project tree.
+- Canonical `SKILL.md` must use pure, standard Markdown only. Never include
+  harness-specific inline markup (such as `@`-mentions, XML tool-execution
+  blocks, or proprietary IDE metadata tags) in a portable skill body.
 
 ## Step 4 — Validate the skill and its routing
 

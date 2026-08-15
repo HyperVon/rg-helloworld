@@ -21,7 +21,17 @@ ladder shows a real win and every safety rule holds.
      | sort -n | tail -20
    ```
 
-   Record per-file and per-service totals for the before/after report.
+       Record per-file and per-service totals for the before/after report.
+
+    Before deleting anything, verify dynamic usage so a "dead" symbol is not
+    actually reached by reflection or registration:
+
+    - Check serialization schemas (Pydantic/dataclass/ORM/protobuf/JSON) where
+      fields are accessed dynamically.
+    - Check `**kwargs` forwarding, DI containers, and reflection lookups
+      (`getattr`, `__dict__`).
+    - Check public plugin or event-handler entrypoints registered via string
+      names or decorators.
 2. **Read the owner rules** — `AGENTS.md`, `docs/architecture.md` §7, and
    the owning service's conventions. The reduction must preserve every
    integrity rule, wire format, and fail-closed behavior.
@@ -57,6 +67,16 @@ ladder shows a real win and every safety rule holds.
 - Do not widen coverage exclusions to buy LOC.
 - A "reduction" that changes error handling, retries, or idempotency keys is
   a behavior change — stop and treat it as one.
+- Avoid the cross-domain DRY trap: do not unify superficially similar code
+  across different business domains or reasons to change. Extract a shared
+  helper only for genuinely reusable, cohesive logic with one clear owner.
+- Reject code golfing: never cut LOC at the cost of readability. Specifically
+  reject replacing clean `if/else` with deeply nested ternary or boolean
+  short-circuit hacks, collapsing explicit error checks into a generic handler,
+  or dropping type annotations/comments to deflate the count.
+- Preserve git-blame hygiene: avoid purely cosmetic reordering of functions or
+  moving files across directories unless the split aligns with an established
+  ownership boundary.
 
 ## Report
 

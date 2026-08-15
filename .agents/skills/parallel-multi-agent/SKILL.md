@@ -63,6 +63,20 @@ that consumes its entire iteration budget on reads has not completed its
 track. Split broad work into staged discovery and focused follow-ups; the
 parent retains integration and final verification.
 
+### Required handoff contract
+
+Instruct every worker to return only this compact handoff shape — never full
+file contents, raw logs, or giant tool traces:
+
+```text
+Track: <Track ID/Name>
+Status: SUCCESS | FAILED | PARTIAL
+Modified files: <list of exact repo-relative paths>
+Summary: <2-3 sentence summary of changes made>
+Self-verification: <commands executed and PASS/FAIL status with counts>
+Risks/Blockers: <any residual risk or deferred work, or "none">
+```
+
 Workers must not perform the whole parent task. They should not receive the
 full repository context, run builds or `make` gates, start k3d or servers,
 edit files outside their scope, inspect secrets or runtime data, or load
@@ -86,8 +100,26 @@ reserved for coupled work whose next step depends on the result.
     in one clone — they corrupt each other and fake green
 4. Re-run only tracks affected by an edit; add a cross-track verifier only
    when a fix crosses ownership boundaries
-5. Update `docs/implementation-status.md` / skills if behavior or workflows
-   changed
+ 5. Update `docs/implementation-status.md` / skills if behavior or workflows
+    changed
+
+### Worker failure and partial triage
+
+When a worker hangs, times out, hits a context/iteration limit, or returns a
+broken patch:
+
+1. **Isolate the failure.** Check whether the failed worker's write scope is
+   strictly disjoint from other completed tracks. Never discard independent
+   successful tracks due to an isolated sibling failure.
+2. **Keep partial state clean.** Confirm `PARTIAL`/`FAILED` modifications are
+   fully reverted, stashed, or isolated in a separate branch or worktree before
+   integrating any green sibling; do not integrate on top of uncommitted
+   partial changes.
+3. **Integrate green tracks.** Apply and verify all successful disjoint tracks
+   through the normal serial gates.
+4. **Recover the failed track** with one explicit strategy: re-brief a narrower
+   single worker, fall back to serial parent execution, or roll back cleanly
+   when it is a blocking hard dependency for other tracks.
 
 ## Review-specific fan-out
 

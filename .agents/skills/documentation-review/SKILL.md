@@ -126,6 +126,7 @@ For every in-scope doc, classify findings:
 | **Orphan** | Doc describes removed APIs/packages/flags | Remove or rewrite |
 | **Skill drift** | `.agents` skill/AGENTS contradicts code | Fix skill or AGENTS |
 | **Broken diagram** | Mermaid block fails to render in a viewer | Rewrite to syntax supported by Mermaid 8.x (see below) |
+| **Verify snippets/flags** | Code snippets, config samples, CLI commands in docs | Compare flags vs `--help`/arg-parser; mark missing/changed-default flags `WRONG`/`STALE`; match imports/signatures to source |
 
 High-risk mismatch examples:
 
@@ -149,6 +150,11 @@ every block in `README.md` and `docs/*.md` parseable by 8.x:
 - **Use `participant`, not `actor`** in sequence diagrams (`actor` is newer syntax).
 - `\n` and `<br/>` both work inside quoted labels; either is fine.
 
+**Link & anchor verification:** every relative file link must resolve to a
+tracked repo file from the source doc's directory; every heading anchor
+(e.g. `[text](#section-name)`) must match the exact slugified header text in
+the target doc. Report links to moved/untracked/deleted files as `BROKEN`.
+
 **Always run the validator** after editing any ```mermaid fence (do not rely
 on GitHub preview alone):
 
@@ -166,6 +172,20 @@ declaring the docs review complete. Incremental edits that touch diagrams
 should use the same script via [docs-sync](../docs-sync/SKILL.md).
 
 ### Step 2: Findings report (before editing)
+
+Classify findings with `UNVERIFIED` when a material claim cannot be confirmed
+against current code/build/tests/CI or an authoritative source — record the
+missing evidence rather than guessing.
+
+**Risk-based approval gate (before editing):**
+- **S** — one directly evidenced wording/link/path correction; apply within
+  scope and report.
+- **M** — several docs, new section, workflow/compat claim, or broad rewrite;
+  present files/claims/evidence/revert shape and wait for approval.
+- **High-risk** — Security / privacy / safety / data handling / migrations /
+  compatibility guarantees / operational commands: stop for explicit approval
+  even if the diff is small, and include focused evidence + compensating
+  verification.
 
 Present a short report to the user (or keep as working notes if they asked to
 "just fix docs"):

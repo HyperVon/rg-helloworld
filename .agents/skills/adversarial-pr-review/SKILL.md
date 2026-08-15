@@ -183,6 +183,16 @@ nit: No legitimate findings | <path:line> - <evidence, impact, smallest fix>
 coverage: <checked paths>; <uncovered paths or none>
 ```
 
+## Adversarial lenses
+
+Assign each track a concrete adversarial lens by risk. Use as a per-track review
+checklist:
+
+- **Boundary & Exploit:** unvalidated input, path traversal, injection, unauthorized state mutation, missing rate limits, unauthenticated side-effects.
+- **Failure & Silent Corruption:** swallowed exceptions, fallback defaults masking upstream errors, unlogged catch blocks, missing rollback on partial failure.
+- **State & Concurrency:** shared mutable state, races, TOCTOU, unhandled async cancellation, transaction-isolation leaks.
+- **False-Confidence & Slop:** tests asserting only mocks, tautological assertions, missing-assertion tests, or tests that pass despite broken contract logic.
+
 ## Adaptive convergence loop
 
 Repeat only for affected tracks:

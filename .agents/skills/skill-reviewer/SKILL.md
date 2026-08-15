@@ -148,6 +148,18 @@ Mine ideas from:
 - "Add more best practices."
 - "Consider mentioning Clean Architecture."
 
+#### Agent failure traps
+
+When probing a skill, also ask whether it guards against these agent failure
+modes (from the kit canon) — recommend a checklist bullet when missing:
+
+- Sycophantic agreement (rubber-stamping the user instead of flagging risk)
+- Premature stopping after a single green test (no edge/negative cases)
+- Defensive exception suppression (`try/except: pass`)
+- Speculative trial-and-error editing without a root cause
+- Tool hallucination (citing nonexistent paths, flags, or scripts)
+- Unverified claims (asserting a gap without checking the repo/tests)
+
 ### Step 3: Meta (secondary; required for `meta`/`full`)
 
 Inventory orphans/ghosts; operating-norm drift; weak descriptions; prefer

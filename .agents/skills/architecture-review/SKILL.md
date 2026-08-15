@@ -50,8 +50,31 @@ rules (section 7) are constraints, not review targets.
    - Operability: runbook accuracy, k3d boot/teardown, determinism.
 5. **Alternatives** — for each stress finding, generate Keep / Evolve /
    Replace / Greenfield options. Alternatives must be comparable, including
-   **keep-current** with its costs.
-6. **Filter** — apply three gates: impact (what breaks if we do nothing),
+    **keep-current** with its costs.
+
+    ### Alternatives comparison matrix
+
+    | Dimension | Keep Current | Evolve (Iterative) | Replace (Targeted) | Greenfield (Rewrite) |
+    | :--- | :--- | :--- | :--- | :--- |
+    | **Operational Complexity** | Baseline | Low/Medium increase | Medium/High increase | High (new stack/ops) |
+    | **Migration Risk & Downtime** | None | Low (in-place) | Medium (dual-write/cutover) | High (big-bang/backfill) |
+    | **Reversibility / Rollback** | N/A | High (feature flag) | Medium (strangler fig) | Low / hard escape hatch |
+    | **Blast Radius of Failure** | Known modes | Scoped to module | Service boundary | Entire subsystem |
+    | **State & Data Consistency** | Existing schema | Backward-compatible | Dual-write sync hazards | Complex migration |
+    | **Cognitive Load & Churn** | Familiar | Minimal delta | Moderate onboarding | Full retraining |
+
+    ### Evolve/Replace risk checklist
+
+    - *Dual-write split-brain:* race conditions or partial failure where legacy
+      and new stores diverge during transition (watch Kafka/MinIO consistency)?
+    - *Strangler Fig stall:* can migration finish in bounded phases, or risks a
+      permanent two-system maintenance burden?
+    - *Data-at-rest migration:* lossy schema transformation or offline locking
+      that threatens artifact SHA-256 lineage?
+    - *Network boundary inflation:* converting fast in-process calls into
+      distributed RPCs without latency/circuit-breaker justification?
+
+ 6. **Filter** — apply three gates: impact (what breaks if we do nothing),
    evidence (is the premise proven?), cost (effort vs milestone budget).
 7. **Deliver** — report with P0–P3 severities plus a **decisions file** (one
    markdown file under `docs/adr/` or a dated review file) listing each

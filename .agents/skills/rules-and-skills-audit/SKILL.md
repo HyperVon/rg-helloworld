@@ -30,22 +30,42 @@ merely because they share a topic.
 3. Compare candidates for duplicated instructions or checklists; overlapping
    triggers; broad workflows that subsume narrow ones; contradictory commands,
    versions, thresholds, or policy; stale facts or unreachable references;
-   orphaned skills or index entries; and missing boundaries between central
-   rules and task-specific skills. Treat harness projections and deliberate
-   safety reinforcement as intentional when they name a canonical source and
-   remain aligned. Ignore illustrative placeholders inside fenced examples
-   when checking links.
+    orphaned skills or index entries; and missing boundaries between central
+    rules and task-specific skills. Treat harness projections and deliberate
+    safety reinforcement as intentional when they name a canonical source and
+    remain aligned. Ignore illustrative placeholders inside fenced examples
+    when checking links. Also check for *harness projection drift*: whether
+    harness-specific entrypoints (`CLAUDE.md`, `GEMINI.md`, `.cursorrules`)
+    have accumulated standalone instructions rather than acting as thin adapters
+    pointing to canonical `.agents/` guidance. Projections must not become
+    divergent second sources of truth.
 4. For each finding, cite exact paths and headings (or line numbers), classify
    it as `duplicate`, `merge candidate`, `scope/trigger issue`,
    `stale/inaccurate`, `conflict`, or `improvement`, and state the evidence.
-   Distinguish true duplication from intentional reinforcement.
+    Distinguish true duplication from intentional reinforcement. Do not treat
+    word-frequency similarity as semantic equivalence; ignore illustrative
+    fenced examples when checking links.
 5. Rank proposed changes by impact and risk. Prefer focused skills with
    precise descriptions, shared canonical guidance, and references over
    repeating policy in every skill.
 6. Do not delete, merge, or rewrite existing guidance without explicit
-   approval. If asked to implement approved findings, preserve local
-   conventions, update affected cross-references, and validate each modified
-   skill.
+    approval. If asked to implement approved findings, preserve local
+    conventions, update affected cross-references, and validate each modified
+    skill.
+
+## Always-on vs on-demand separation
+
+Do not classify shared concepts between root rules and skills as duplicates.
+Root guidance (`AGENTS.md`, operating files) must remain thin, universal, and
+always-on, owning invariant boundaries, security guardrails, and routing
+pointers. Skills are loaded on demand and own deep operational procedures,
+domain checklists, and tool workflows. Reject merging on-demand skill bodies
+into root instructions or deleting skill procedures because root rules
+"already mention the topic."
+
+Respect directory scoping: nested guidance files apply to their subdirectory
+tree; do not consolidate stack-specific conventions into the repository root
+if they would pollute context for unrelated tasks.
 
 ## Optional parallel audit
 

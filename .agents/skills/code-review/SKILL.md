@@ -87,6 +87,13 @@ AI-slop audit or claim PR merge readiness from this checklist alone.
 - For user-visible UI changes, require fresh assets, changed interactions, and
   viewport evidence according to `.kilo/operating.md` §11.
 
+### High-risk defect categories
+
+- *Concurrency & atomicity:* unlocked mutexes/locks on early return or exception paths; check-then-act (TOCTOU) races; goroutine/thread/task leaks without lifecycle termination; unhandled promise/async task rejections.
+- *State transitions & persistence:* partial multi-step persistence writes lacking transaction rollback; missing connection/handle release in `finally`/`defer` blocks; idempotency failures during retries.
+- *Input & boundary validation:* missing bounds, size, or type checks on untrusted payloads; unescaped inputs reaching regex/SQL/shell parsers; sensitive data leaked into log lines.
+- *Error propagation:* swallowed exceptions returning synthetic default values that masquerade as success; missing error wrapping that loses operational root cause.
+
 ## Findings format
 
 Report concrete outcomes with evidence and a smallest safe correction:
@@ -116,6 +123,13 @@ material correctness or contract defect; P2 is a localized maintainability or
 coverage issue; P3 is a low-risk improvement. Do not edit code while reviewing
 unless the user explicitly asks to apply selected findings.
 
+### Reviewer anti-patterns
+
+- *Style nitpicking:* do not report formatting or subjective syntax preferences when linters pass and the code matches local conventions.
+- *Speculative vulnerabilities:* do not report security flaws without a concrete untrusted data flow, unverified input, or reachable abuse path.
+- *Scope creep & unsolicited redesign:* do not demand an architectural rewrite when reviewing a localized fix or narrow feature.
+- *Phantom verification:* never claim tests passed or code is verified without running the exact test command and inspecting output.
+
 ## Completion checklist
 
 - [ ] Complete changed surface and relevant source-of-truth documents read
@@ -123,4 +137,5 @@ unless the user explicitly asks to apply selected findings.
 - [ ] Test independence and required gate coverage assessed
 - [ ] UI evidence requested when the change is user-visible
 - [ ] Findings include paths, evidence, impact, and severity
+- [ ] Review coverage checked against the frozen scope; what was NOT inspected is stated
 - [ ] No commit, push, PR, or remote issue was created by the review
