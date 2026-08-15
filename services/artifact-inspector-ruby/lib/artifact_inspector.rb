@@ -129,7 +129,7 @@ module ArtifactInspector
           <div style="font-size:.75rem;color:#475569;margin-top:.35rem">Click to open full size • SHA-256 verified</div>
         </div>
       IMG
-      json_hint = content_type.include?('json') && artifact['proxyUrl'] ? "<p><a href=\"#{h(artifact['proxyUrl'])}\" target=\"_blank\">View raw JSON →</a> — <a href=\"#{h(artifact['proxyUrl'])}\" download>Download</a></p>" : ''
+      json_hint = content_type.include?('json') && artifact['proxyUrl'] ? "<p><a href=\"#{safe_url(artifact['proxyUrl'])}\" target=\"_blank\">View raw JSON →</a> — <a href=\"#{safe_url(artifact['proxyUrl'])}\" download>Download</a></p>" : ''
       <<~HTML
         <!DOCTYPE html>
         <html>
@@ -153,7 +153,7 @@ module ArtifactInspector
               <p><strong>Type:</strong> #{h(content_type)}</p>
               #{preview_block}
               #{json_hint}
-              #{"<p><a href=\"#{h(artifact['proxyUrl'])}\" target=\"_blank\">View artifact proxy →</a></p>" if artifact['proxyUrl'] && !image_type?(content_type)}
+              #{"<p><a href=\"#{safe_url(artifact['proxyUrl'])}\" target=\"_blank\">View artifact proxy →</a></p>" if artifact['proxyUrl'] && !image_type?(content_type)}
               <p><a href="/inspector/runs/#{h(run_id)}">← Back to run</a></p>
             </div>
           </div>
@@ -173,7 +173,7 @@ module ArtifactInspector
       url = a['proxyUrl']
       return '<span style="opacity:.4;font-size:.8rem">—</span>' unless image_type?(ct) && url
 
-      %(<img src="#{h(url)}" alt="#{h(a['stage'])}" class="thumb" loading="lazy" onclick="openLb(this.src)" onerror="this.style.display='none';this.nextElementSibling.style.display='block'" /><span style="display:none;font-size:.75rem;opacity:.6">preview unavailable</span>)
+      %(<img src="#{safe_url(url)}" alt="#{h(a['stage'])}" class="thumb" loading="lazy" onclick="openLb(this.src)" onerror="this.style.display='none';this.nextElementSibling.style.display='block'" /><span style="display:none;font-size:.75rem;opacity:.6">preview unavailable</span>)
     end
 
     def fetch_artifacts(run_id)
@@ -191,7 +191,7 @@ module ArtifactInspector
 
     def safe_url(url)
       str = url.to_s
-      return '' unless str =~ %r{\Ahttps?://}i
+      return '' unless str =~ %r{\A(https?://|/)}i
       h(str)
     end
   end
