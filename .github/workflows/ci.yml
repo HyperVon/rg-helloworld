@@ -422,8 +422,6 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
         working-directory: services/image-pipeline-python
-      - name: Prepare toolchains
-        run: make prerequisites
       - name: Contracts validate
         run: make contracts
       - name: Prohibited-field static scan
