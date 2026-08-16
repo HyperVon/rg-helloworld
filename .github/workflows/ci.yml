@@ -544,6 +544,8 @@ jobs:
           curl -sSL https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc
           chmod +x /usr/local/bin/mc
           sudo apt-get update && sudo apt-get install -y postgresql-client redis-tools
+      - name: Install python test dependencies
+        run: pip install --break-system-packages -r services/image-pipeline-python/requirements.txt
       - name: Verify platform tooling is installed
         # Hard-fail when platform tools are missing so the cluster path can
         # never silently degrade to a skipped PASS (E2E_REQUIRE_PLATFORM=1).
