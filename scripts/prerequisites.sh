@@ -99,11 +99,11 @@ setup_node() {
 
 setup_ruby() {
   local dir="$1"
-  if [ ! -f "$ROOT_DIR/services/$dir/Gemfile.lock" ]; then
+  if (cd "$ROOT_DIR/services/$dir" && ! bundle check >/dev/null 2>&1); then
     echo ">> bundle install ($dir)"
     (cd "$ROOT_DIR/services/$dir" && bundle install)
   else
-    echo ">> bundle dependencies present ($dir)"
+    echo ">> bundle dependencies satisfied ($dir)"
   fi
 }
 

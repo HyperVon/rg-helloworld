@@ -19,6 +19,27 @@ decode_secret() {
 # hardcoded pass count (suites grow over time). Succeeds when at least one
 # test passed and none failed; otherwise prints the captured output so the
 # failure is visible in CI instead of being swallowed by a count grep.
+# Run a ruby test command and report pass/fail without coupling to a
+# hardcoded "0 failures" string that swallows the real error. Succeeds when
+# the run reports zero failures; otherwise prints the captured output.
+ruby_test_pass() {
+    local label="$1"
+    local cmd="$2"
+    local test_out
+    if ! test_out=$(eval "$cmd" 2>&1); then
+        echo "FAIL: ${label}"
+        echo "${test_out}"
+        return 1
+    fi
+    if printf '%s\n' "$test_out" | grep -q "0 failures"; then
+        echo "PASS: ${label}"
+        return 0
+    fi
+    echo "FAIL: ${label}"
+    echo "${test_out}"
+    return 1
+}
+
 node_test_pass() {
     local label="$1"
     local cmd="$2"
@@ -768,12 +789,7 @@ fi
 
 if command -v ruby >/dev/null 2>&1 && [ -d "${PROJECT_ROOT}/services/adjudicator-ruby" ]; then
     cd "${PROJECT_ROOT}/services/adjudicator-ruby"
-    if ruby -S bundle exec rake test 2>&1 | grep -q "0 failures"; then
-        echo "PASS: adjudicator unit tests"
-    else
-        echo "FAIL: adjudicator unit tests"
-        exit 1
-    fi
+    ruby_test_pass "adjudicator unit tests" "ruby -S bundle exec rake test" || exit 1
     cd "${PROJECT_ROOT}"
 else
     echo "SKIP: ruby not found, skipping adjudicator checks"
@@ -845,12 +861,7 @@ fi
 
 if command -v ruby >/dev/null 2>&1 && [ -d "${PROJECT_ROOT}/services/artifact-inspector-ruby" ]; then
     cd "${PROJECT_ROOT}/services/artifact-inspector-ruby"
-    if ruby -Ilib -Itest test/inspector_test.rb 2>&1 | grep -q "0 failures"; then
-        echo "PASS: artifact-inspector unit tests"
-    else
-        echo "FAIL: artifact-inspector unit tests"
-        exit 1
-    fi
+    ruby_test_pass "artifact-inspector unit tests" "ruby -Ilib -Itest test/inspector_test.rb" || exit 1
     cd "${PROJECT_ROOT}"
 else
     echo "SKIP: ruby not found, skipping artifact-inspector checks"
