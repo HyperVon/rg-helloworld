@@ -546,6 +546,10 @@ jobs:
           sudo apt-get update && sudo apt-get install -y postgresql-client redis-tools
       - name: Install python test dependencies
         run: pip install --break-system-packages -r services/image-pipeline-python/requirements.txt
+      - name: Install OCR test dependencies
+        # Mirror the Node services job: ocr-worker unit tests spawn
+        # `python3` (PIL) and `tesseract` to build fixture images.
+        run: sudo apt-get update && sudo apt-get install -y tesseract-ocr python3-pil && pip install pillow --break-system-packages --quiet
       - name: Verify platform tooling is installed
         # Hard-fail when platform tools are missing so the cluster path can
         # never silently degrade to a skipped PASS (E2E_REQUIRE_PLATFORM=1).

@@ -84,7 +84,7 @@ setup_venv() {
 }
 
 setup_node() {
-  for dir in ocr-worker-node event-gateway-node telemetry-element; do
+  for dir in ocr-worker-node event-gateway-node telemetry-element web-shell; do
     if [ ! -f "$ROOT_DIR/services/$dir/package-lock.json" ]; then
       echo ">> npm install (generates package-lock.json) ($dir)"
       (cd "$ROOT_DIR/services/$dir" && npm install --no-audit --no-fund)
