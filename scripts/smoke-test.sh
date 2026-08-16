@@ -729,10 +729,11 @@ fi
 
 if command -v node >/dev/null 2>&1 && [ -d "${PROJECT_ROOT}/services/ocr-worker-node" ]; then
     cd "${PROJECT_ROOT}/services/ocr-worker-node"
-    if npm run lint 2>&1 | grep -q "All matched files"; then
+    if lint_out=$(npm run lint 2>&1); then
         echo "PASS: OCR worker lint"
     else
         echo "FAIL: OCR worker lint"
+        echo "${lint_out}"
         exit 1
     fi
     if npm test 2>&1 | grep -q "pass 35"; then
@@ -795,10 +796,11 @@ echo "--- Test 11: Milestone 10 event gateway + telemetry element ---"
 
 if command -v node >/dev/null 2>&1 && [ -d "${PROJECT_ROOT}/services/event-gateway-node" ]; then
     cd "${PROJECT_ROOT}/services/event-gateway-node"
-    if npm run lint 2>&1 | grep -q "All matched files"; then
+    if lint_out=$(npm run lint 2>&1); then
         echo "PASS: event-gateway lint"
     else
         echo "FAIL: event-gateway lint"
+        echo "${lint_out}"
         exit 1
     fi
     if npm test 2>&1 | grep -q "pass 33"; then
@@ -814,10 +816,11 @@ fi
 
 if command -v node >/dev/null 2>&1 && [ -d "${PROJECT_ROOT}/services/telemetry-element" ]; then
     cd "${PROJECT_ROOT}/services/telemetry-element"
-    if npm run lint 2>&1 | grep -q "All matched files"; then
+    if lint_out=$(npm run lint 2>&1); then
         echo "PASS: telemetry-element lint"
     else
         echo "FAIL: telemetry-element lint"
+        echo "${lint_out}"
         exit 1
     fi
     if npm test 2>&1 | grep -q "pass 32"; then
