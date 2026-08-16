@@ -5,9 +5,9 @@ metadata:
   namespace: rube-goldberg
   labels:
     app: artifact-cleanup
-    milestone: "12"
+    milestone: '12'
 spec:
-  schedule: "0 2 * * *"
+  schedule: 0 2 * * *
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
@@ -19,41 +19,48 @@ spec:
         spec:
           restartPolicy: Never
           containers:
-            - name: cleanup
-              image: alpine:3.21
-              command:
-                - /bin/sh
-                - -c
-                - |
-                  apk add --no-cache mc
-                  mc alias set myminio "${MINIO_ENDPOINT}" "${MINIO_ACCESS_KEY}" "${MINIO_SECRET_KEY}"
-                  mc ls myminio/rube-goldberg-artifacts || true
-                  find_old_objects() {
-                    mc find myminio/rube-goldberg-artifacts \
-                      --name "*.json" \
-                      --older-than 168h \
-                      --exec "mc rm {}" 2>/dev/null || true
-                  }
-                  find_old_objects
-              env:
-                - name: MINIO_ENDPOINT
-                  value: "http://minio.rube-goldberg.svc.cluster.local:9000"
-                - name: MINIO_ACCESS_KEY
-                  valueFrom:
-                    secretKeyRef:
-                      name: minio-credentials
-                      key: root-user
-                - name: MINIO_SECRET_KEY
-                  valueFrom:
-                    secretKeyRef:
-                      name: minio-credentials
-                      key: root-password
-              resources:
-                requests:
-                  cpu: 50m
-                  memory: 64Mi
-                limits:
-                  memory: 128Mi
+          - name: cleanup
+            image: alpine:3.21
+            command:
+            - /bin/sh
+            - -c
+            - "apk add --no-cache mc\nmc alias set myminio \"${MINIO_ENDPOINT}\" \"${MINIO_ACCESS_KEY}\" \"${MINIO_SECRET_KEY}\"\nmc ls myminio/rube-goldberg-artifacts || true\nfind_old_objects() {\n  mc find myminio/rube-goldberg-artifacts \\\n    --name \"*.json\" \\\n    --older-than 168h \\\n    --exec \"mc rm {}\" 2>/dev/null || true\n}\nfind_old_objects\n"
+            env:
+            - name: MINIO_ENDPOINT
+              value: http://minio.rube-goldberg.svc.cluster.local:9000
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: root-user
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: root-password
+            resources:
+              requests:
+                cpu: 100m
+                memory: 64Mi
+              limits:
+                memory: 192Mi
+                cpu: 250m
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                - ALL
+            imagePullPolicy: IfNotPresent
+            volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          serviceAccountName: artifact-cleanup
+          securityContext:
+            seccompProfile:
+              type: RuntimeDefault
+          volumes:
+          - name: tmp
+            emptyDir: {}
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -62,4 +69,4 @@ metadata:
   namespace: rube-goldberg
   labels:
     app: artifact-cleanup
-    milestone: "12"
+    milestone: '12'

@@ -90,6 +90,20 @@ data:
     compactor:
       compaction:
         block_retention: 24h
+    metrics_generator:
+      storage:
+        path: /tmp/tempo/generator/wal
+      processor:
+        service_graph:
+          enabled: true
+        span_metrics:
+          enabled: true
+      prometheus_remote_write:
+        - endpoint: http://prometheus:9090/api/v1/write
+          insecure: true
+      registry:
+        external_labels:
+          source: tempo
     storage:
       trace:
         backend: local

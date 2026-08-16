@@ -9,6 +9,7 @@ COPY services/rasterizer-dotnet /src/services/rasterizer-dotnet
 WORKDIR /src/services/rasterizer-dotnet/cli
 RUN dotnet publish -c Release -o /app --nologo
 
+# The aspnet runtime image ships a built-in non-root `app` user.
 FROM mcr.microsoft.com/dotnet/aspnet:10.0.9
 
 WORKDIR /app

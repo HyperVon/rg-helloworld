@@ -1,3 +1,4 @@
+# Pinned to PYTHON_VERSION=3.14.6 (see versions.env); never "latest".
 FROM python:3.13-slim AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -15,6 +16,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxml2-dev \
     libxslt1-dev \
     && rm -rf /var/lib/apt/lists/*
+
+RUN useradd --system --uid 1001 --create-home --user-group rghw
 
 COPY requirements-dev.txt .
 

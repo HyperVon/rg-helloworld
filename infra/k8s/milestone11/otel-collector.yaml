@@ -25,6 +25,17 @@ data:
           - key: service.name
             value: unknown_service
             action: insert
+      resource:
+        attributes:
+          - key: k8s.namespace.name
+            value: rube-goldberg
+            action: insert
+          - key: service.namespace
+            value: rube-goldberg
+            action: insert
+          - key: service.name
+            value: unknown_service
+            action: insert
       resourcedetection:
         detectors: [env, system]
         system:
@@ -39,8 +50,8 @@ data:
           insecure: true
       prometheus:
         endpoint: 0.0.0.0:8889
-      loki:
-        endpoint: http://loki:3100/loki/api/v1/push
+      otlphttp/loki:
+        endpoint: http://loki:3100/otlp/v1/logs
         tls:
           insecure: true
 
@@ -66,5 +77,5 @@ data:
           exporters: [prometheus, debug]
         logs:
           receivers: [otlp]
-          processors: [batch]
-          exporters: [loki]
+          processors: [resource, batch]
+          exporters: [otlphttp/loki]

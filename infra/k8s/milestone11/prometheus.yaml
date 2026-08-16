@@ -10,7 +10,7 @@ metadata:
   name: prometheus-cluster-role
 rules:
   - apiGroups: ['']
-    resources: ['pods', 'nodes', 'services']
+    resources: ['pods', 'nodes', 'services', 'nodes/proxy', 'nodes/metrics']
     verbs: ['get', 'list', 'watch']
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -55,12 +55,15 @@ spec:
             - '--web.console.templates=/etc/prometheus/consoles'
             - '--web.enable-lifecycle'
             - '--web.enable-admin-api'
+            - '--web.enable-remote-write-receiver'
           ports:
             - containerPort: 9090
               name: http
           volumeMounts:
             - name: config
               mountPath: /etc/prometheus
+            - name: rules
+              mountPath: /etc/prometheus/rules
             - name: data
               mountPath: /prometheus
           resources:
@@ -73,6 +76,9 @@ spec:
         - name: config
           configMap:
             name: prometheus-config
+        - name: rules
+          configMap:
+            name: prometheus-rules
         - name: data
           emptyDir: {}
 ---
@@ -102,6 +108,8 @@ data:
     global:
       scrape_interval: 15s
       evaluation_interval: 15s
+    rule_files:
+      - /etc/prometheus/rules/*.yml
     scrape_configs:
       - job_name: 'otel-collector-self'
         static_configs:
@@ -138,3 +146,89 @@ data:
           - source_labels: [__meta_kubernetes_pod_name]
             action: replace
             target_label: kubernetes_pod_name
+      - job_name: 'kubernetes-cadvisor'
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        kubernetes_sd_configs:
+          - role: node
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+          - target_label: __address__
+            replacement: kubernetes.default.svc:443
+          - source_labels: [__meta_kubernetes_node_name]
+            regex: (.+)
+            target_label: __metrics_path__
+            replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
+          - source_labels: [__meta_kubernetes_node_name]
+            target_label: node
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-rules
+  namespace: rube-goldberg
+data:
+  rg-alerts.yml: |
+    groups:
+      - name: rube-goldberg-local
+        rules:
+          - alert: RunDurationTooLong
+            expr: rg_run_end_to_end_seconds > 120
+            for: 2m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Run exceeding two minutes"
+              description: "End-to-end run duration is above 120s (threshold per arch §20.5)."
+
+          - alert: KafkaConsumerLagHigh
+            expr: rg_kafka_consumer_lag > 50
+            for: 2m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Kafka consumer lag above local threshold"
+              description: "rg_kafka_consumer_lag is above 50 (small local threshold per arch §20.5)."
+
+          - alert: PodRestarting
+            expr: increase(kube_pod_container_status_restarts_total{namespace="rube-goldberg"}[1h]) > 2
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Pod restarted more than twice"
+              description: "A pod in rube-goldberg restarted more than twice in the last hour."
+
+          - alert: OcrQualityAttemptThree
+            expr: sum(rg_ocr_quality_rejections_total) > 0
+            for: 1m
+            labels:
+              severity: warning
+            annotations:
+              summary: "OCR quality rejection recorded"
+              description: "rg_ocr_quality_rejections_total is increasing (OCR quality attempt reached)."
+
+          - alert: OtelExportFailures
+            expr: |
+              sum(rate(otelcol_exporter_send_failed_spans_total[5m])) > 0
+              or sum(rate(otelcol_exporter_enqueue_failed_spans_total[5m])) > 0
+              or sum(rate(otelcol_exporter_send_failed_log_records_total[5m])) > 0
+              or sum(rate(otelcol_exporter_send_failed_metric_points_total[5m])) > 0
+            for: 2m
+            labels:
+              severity: warning
+            annotations:
+              summary: "OpenTelemetry export failures"
+              description: "Collector is reporting dropped/failed OTLP exports."
+
+          - alert: ArtifactStorageHigh
+            expr: sum(rg_artifact_bytes) > 1073741824
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Artifact storage above configured size"
+              description: "Sum of rg_artifact_bytes exceeds 1GiB (configurable size per arch §20.5)."

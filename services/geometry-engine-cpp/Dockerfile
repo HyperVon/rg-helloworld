@@ -20,6 +20,8 @@ ARG LIBRDKAFKA_DEBIAN_VERSION=2.0.2-1
 RUN apt-get update && apt-get install -y --no-install-recommends librdkafka1=${LIBRDKAFKA_DEBIAN_VERSION} ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+RUN adduser --system --uid 1001 --group --home /nonexistent rghw
+
 WORKDIR /app
 COPY --from=builder /app/services/geometry-engine-cpp/build/geometry_engine ./
 

@@ -6,7 +6,10 @@ COPY services/run-orchestrator-kotlin /app/services/run-orchestrator-kotlin
 WORKDIR /app/services/run-orchestrator-kotlin
 RUN ./gradlew --no-daemon --console=plain installDist
 
+# JAVA_VERSION=25 pins the Temurin major line (see versions.env).
 FROM eclipse-temurin:25-jre
+
+RUN adduser --system --uid 1001 --group --home /nonexistent rghw
 
 WORKDIR /app
 COPY --from=builder /app/services/run-orchestrator-kotlin/build/install/run-orchestrator ./
