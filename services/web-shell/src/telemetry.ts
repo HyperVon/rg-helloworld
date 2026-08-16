@@ -43,11 +43,21 @@ export async function initTelemetry(
   try {
     const endpoint = (proc.env.OTEL_EXPORTER_OTLP_ENDPOINT || OTEL_ENDPOINT_DEFAULT).trim();
 
-    const { NodeSDK } = (await import(otel('sdk-node'))) as typeof import('@opentelemetry/sdk-node');
-    const { SimpleLogRecordProcessor } = (await import(otel('sdk-logs'))) as typeof import('@opentelemetry/sdk-logs');
-    const { OTLPTraceExporter } = (await import(otel('exporter-trace-otlp-grpc'))) as typeof import('@opentelemetry/exporter-trace-otlp-grpc');
-    const { OTLPLogExporter } = (await import(otel('exporter-logs-otlp-grpc'))) as typeof import('@opentelemetry/exporter-logs-otlp-grpc');
-    const { getNodeAutoInstrumentations } = (await import(otel('auto-instrumentations-node'))) as typeof import('@opentelemetry/auto-instrumentations-node');
+    const { NodeSDK } = (await import(
+      otel('sdk-node')
+    )) as typeof import('@opentelemetry/sdk-node');
+    const { SimpleLogRecordProcessor } = (await import(
+      otel('sdk-logs')
+    )) as typeof import('@opentelemetry/sdk-logs');
+    const { OTLPTraceExporter } = (await import(
+      otel('exporter-trace-otlp-grpc')
+    )) as typeof import('@opentelemetry/exporter-trace-otlp-grpc');
+    const { OTLPLogExporter } = (await import(
+      otel('exporter-logs-otlp-grpc')
+    )) as typeof import('@opentelemetry/exporter-logs-otlp-grpc');
+    const { getNodeAutoInstrumentations } = (await import(
+      otel('auto-instrumentations-node')
+    )) as typeof import('@opentelemetry/auto-instrumentations-node');
 
     const sdk = new NodeSDK({
       serviceName,

@@ -14,6 +14,11 @@ interface ProcessGraphProps {
 export function ProcessGraph({ currentStage, terminal, runStatus, glyphCount }: ProcessGraphProps) {
   const nodes = getGraphNodes(currentStage, terminal, runStatus, glyphCount);
 
+  const reduceMotion =
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
   const nodeComponents = nodes.map((n) => ({
     id: n.id,
     type: 'default',
@@ -42,7 +47,7 @@ export function ProcessGraph({ currentStage, terminal, runStatus, glyphCount }: 
     id: `e-${e.source}-${e.target}`,
     source: e.source,
     target: e.target,
-    animated: true,
+    animated: !reduceMotion,
     type: 'smoothstep',
     style: { stroke: '#94a3b8', strokeWidth: 1.25 },
     pathOptions: { borderRadius: 14, offset: 12 },

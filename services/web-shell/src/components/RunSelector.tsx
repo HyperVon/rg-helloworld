@@ -9,11 +9,17 @@ interface RunListItem {
 
 interface RunSelectorProps {
   onSelectRun: (runId: string) => void;
+  onClear?: () => void;
   currentRunId: string | null;
   availableRuns?: RunListItem[];
 }
 
-export function RunSelector({ onSelectRun, currentRunId, availableRuns = [] }: RunSelectorProps) {
+export function RunSelector({
+  onSelectRun,
+  onClear,
+  currentRunId,
+  availableRuns = [],
+}: RunSelectorProps) {
   const [inputValue, setInputValue] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -34,9 +40,7 @@ export function RunSelector({ onSelectRun, currentRunId, availableRuns = [] }: R
     try {
       localStorage.removeItem('rghw:lastRunId');
     } catch {}
-    // reload to clear selection; parent will clear runId on next render if we force
-    // for now, just reload page to reset
-    window.location.reload();
+    onClear?.();
   };
 
   const selectedExists = currentRunId ? availableRuns.some((r) => r.runId === currentRunId) : false;
