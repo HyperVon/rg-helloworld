@@ -539,6 +539,11 @@ jobs:
           curl -LO "https://dl.k8s.io/release/v${{ env.KUBECTL_VERSION }}/bin/linux/amd64/kubectl"
           chmod +x kubectl
           sudo mv kubectl /usr/local/bin/
+      - name: Install platform test clients (mc, psql, redis-cli)
+        run: |
+          curl -sSL https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc
+          chmod +x /usr/local/bin/mc
+          sudo apt-get update && sudo apt-get install -y postgresql-client redis-tools
       - name: Verify platform tooling is installed
         # Hard-fail when platform tools are missing so the cluster path can
         # never silently degrade to a skipped PASS (E2E_REQUIRE_PLATFORM=1).
