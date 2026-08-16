@@ -68,3 +68,8 @@ services/temp-worker-node/
 # Retain the removed router's credential-file guards during migration
 .kilo/model-router/env.local
 .kilo/model-router/manifest.local
+
+# Keep the Ruby adjudicator entrypoint: it is source (not a .NET build artifact)
+# and is copied into the image by services/adjudicator-ruby/Dockerfile.
+!services/adjudicator-ruby/bin/
+!services/adjudicator-ruby/bin/adjudicator
