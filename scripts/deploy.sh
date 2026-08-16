@@ -2,6 +2,8 @@
 set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=scripts/infra-selectors.sh
+source "$PROJECT_ROOT/scripts/infra-selectors.sh"
 NAMESPACE="rube-goldberg"
 
 retry() {
@@ -133,13 +135,34 @@ if kubectl describe node k3d-rube-goldberg-server-0 2>/dev/null | grep -q "DiskP
     echo "If DiskPressure persists, run: docker restart k3d-rube-goldberg-server-0 && sleep 30 && kubectl wait --for=condition=Ready node k3d-rube-goldberg-server-0 --timeout=60s"
 fi
 
+# Apply a manifest, tolerating only benign "not found" errors (best-effort
+# fallback manifests for old clusters) without swallowing a real failure.
+# PIPESTATUS-aware: the exit status of `kubectl apply` is what decides success,
+# not the downstream grep's.
+apply_best_effort() {
+  local f="$1"
+  local out rc
+  out=$(kubectl apply -f "$f" 2>&1); rc=$?
+  if [ "$rc" -eq 0 ]; then
+    echo "$out" | grep -v "not found" || true
+    return 0
+  fi
+  if echo "$out" | grep -qi "not found"; then
+    echo "$out" | grep -v "not found" || true
+    echo "warn: $f apply reported 'not found' (best-effort, tolerated)"
+    return 0
+  fi
+  echo "$out"
+  return "$rc"
+}
+
 # Milestone 5 base (catalog + geometry only — orchestrator/vector are milestone6; milestone5 tags are aliased in build-images.sh)
 echo "Applying Milestone 5 manifests"
 retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone5/glyph-catalog.yaml"
 retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone5/geometry-engine.yaml"
 # Keep milestone5 orchestrator/vector as best-effort fallback for old clusters; milestone6 will overlay
-retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone5/orchestrator.yaml" 2>&1 | grep -v "not found" || true
-retry kubectl apply -f "$PROJECT_ROOT/infra/k8s/milestone5/vector-normalizer.yaml" 2>&1 | grep -v "not found" || true
+retry apply_best_effort "$PROJECT_ROOT/infra/k8s/milestone5/orchestrator.yaml"
+retry apply_best_effort "$PROJECT_ROOT/infra/k8s/milestone5/vector-normalizer.yaml"
 
 # Milestone 6 overlays (updated orchestrator/vector + rasterizer)
 echo "Applying Milestone 6 manifests"
@@ -177,7 +200,12 @@ done
 
 # Milestone 11 observability
 echo "Ensuring Grafana credentials secret"
-kubectl create secret generic grafana-credentials -n "$NAMESPACE" --from-literal=admin-password=admin --dry-run=client -o yaml | kubectl apply -f - >/dev/null 2>&1 || true
+# Generate a random admin password instead of the previously hardcoded "admin".
+GRAFANA_ADMIN_PASSWORD="$(head -c 18 /dev/urandom | base64 | tr -d '/+=' | head -c 24)"
+kubectl create secret generic grafana-credentials -n "$NAMESPACE" \
+  --from-literal=admin-password="$GRAFANA_ADMIN_PASSWORD" \
+  --dry-run=client -o yaml | kubectl apply -f - >/dev/null 2>&1 || true
+echo "  (Grafana admin password generated randomly at deploy time; recover it from the grafana-credentials secret if needed)"
 
 echo "Applying Milestone 11 manifests"
 for f in "$PROJECT_ROOT"/infra/k8s/milestone11/*.yaml; do
@@ -185,14 +213,14 @@ for f in "$PROJECT_ROOT"/infra/k8s/milestone11/*.yaml; do
 done
 
 echo "Checking infra dependencies (Kafka/Redis/Postgres/MinIO) if present..."
-for infra in kafka-controller postgres-postgresql redis-master minio; do
-    if kubectl get pods -n "$NAMESPACE" -l "app=$infra" --no-headers 2>/dev/null | grep -q .; then
-        echo "  infra $infra exists, waiting 60s for at least one ready..."
+for infra in "${INFRA_SELECTORS[@]}"; do
+    sel_pod=$(resolve_infra_pod "$infra" "$NAMESPACE")
+    if [ -n "$sel_pod" ]; then
+        echo "  infra $infra exists ($sel_pod), waiting 60s for at least one ready..."
         kubectl wait --for=condition=Ready pod -n "$NAMESPACE" -l "app=$infra" --timeout=60s 2>&1 || echo "  warn: $infra not Ready yet (may still be starting)"
-    fi
-    # also check helm-generated labels
-    if kubectl get pods -n "$NAMESPACE" -l "app.kubernetes.io/name=$infra" --no-headers 2>/dev/null | grep -q .; then
         kubectl wait --for=condition=Ready pod -n "$NAMESPACE" -l "app.kubernetes.io/name=$infra" --timeout=60s 2>&1 || true
+    else
+        echo "  warn: infra $infra not found (may not be installed yet)"
     fi
 done
 

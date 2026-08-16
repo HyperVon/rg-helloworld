@@ -1,7 +1,7 @@
 terraform {
   backend "local" {}
 
-  required_version = ">= 1.15.8"
+  required_version = "1.15.8"
   required_providers {
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -37,6 +37,28 @@ locals {
   chart_dir = "${path.module}/../../../helm-charts"
 }
 
+# Generated, never-committed credentials. Terraform stores these in state only.
+resource "random_password" "postgres" {
+  length  = 32
+  special = false
+}
+
+resource "random_password" "redis" {
+  length  = 32
+  special = false
+}
+
+resource "random_password" "minio" {
+  length  = 32
+  special = false
+}
+
+resource "random_password" "minio_user" {
+  length  = 16
+  special = false
+  upper   = false
+}
+
 # Namespace for all Rube Goldberg resources
 resource "kubernetes_namespace" "rube_goldberg" {
   metadata {
@@ -47,39 +69,40 @@ resource "kubernetes_namespace" "rube_goldberg" {
   }
 }
 
-# PostgreSQL credentials
+# PostgreSQL credentials (password sourced from random_password)
 resource "kubernetes_secret" "postgres_credentials" {
   metadata {
     name      = "postgres-credentials"
     namespace = local.namespace
   }
   data = {
-    username = "postgres"
-    password = "PostgresPassw0rd!"
-    database = "postgres"
+    username          = "postgres"
+    password          = random_password.postgres.result
+    postgres-password = random_password.postgres.result
+    database          = "postgres"
   }
 }
 
-# Redis credentials
+# Redis credentials (password sourced from random_password)
 resource "kubernetes_secret" "redis_credentials" {
   metadata {
     name      = "redis-credentials"
     namespace = local.namespace
   }
   data = {
-    redis-password = "RedisPassw0rd!"
+    redis-password = random_password.redis.result
   }
 }
 
-# MinIO credentials
+# MinIO credentials (password sourced from random_password; root-user is the default username)
 resource "kubernetes_secret" "minio_credentials" {
   metadata {
     name      = "minio-credentials"
     namespace = local.namespace
   }
   data = {
-    root-user     = "minioadmin"
-    root-password = "minioadmin"
+    root-user     = random_password.minio_user.result
+    root-password = random_password.minio.result
   }
 }
 
@@ -96,8 +119,8 @@ resource "helm_release" "postgresql" {
       value = "postgres"
     },
     {
-      name  = "auth.password"
-      value = "PostgresPassw0rd!"
+      name  = "auth.existingSecret"
+      value = "postgres-credentials"
     },
     {
       name  = "auth.database"
@@ -120,20 +143,20 @@ resource "helm_release" "postgresql" {
       value = "ClusterIP"
     },
     {
-      name  = "resources.limits.memory"
+      name  = "primary.resources.limits.memory"
       value = "512Mi"
     },
     {
-      name  = "resources.limits.cpu"
+      name  = "primary.resources.limits.cpu"
       value = "500m"
     },
     {
-      name  = "resources.requests.memory"
+      name  = "primary.resources.requests.memory"
       value = "256Mi"
     },
     {
-      name  = "resources.requests.cpu"
-      value = "256Mi"
+      name  = "primary.resources.requests.cpu"
+      value = "250m"
     },
   ]
 }
@@ -207,20 +230,20 @@ resource "helm_release" "kafka" {
       value = "9092"
     },
     {
-      name  = "resources.limits.memory"
-      value = "512Mi"
+      name  = "controller.resources.limits.memory"
+      value = "1Gi"
     },
     {
-      name  = "resources.limits.cpu"
+      name  = "controller.resources.limits.cpu"
       value = "500m"
     },
     {
-      name  = "resources.requests.memory"
-      value = "256Mi"
+      name  = "controller.resources.requests.memory"
+      value = "512Mi"
     },
     {
-      name  = "resources.requests.cpu"
-      value = "256Mi"
+      name  = "controller.resources.requests.cpu"
+      value = "250m"
     },
     {
       name  = "probeStartupFailureThreshold"
@@ -238,8 +261,8 @@ resource "helm_release" "redis" {
 
   set = [
     {
-      name  = "auth.password"
-      value = "RedisPassw0rd!"
+      name  = "auth.existingSecret"
+      value = "redis-credentials"
     },
     {
       name  = "architecture"
@@ -258,20 +281,20 @@ resource "helm_release" "redis" {
       value = "ClusterIP"
     },
     {
-      name  = "resources.limits.memory"
-      value = "512Mi"
+      name  = "master.resources.limits.memory"
+      value = "192Mi"
     },
     {
-      name  = "resources.limits.cpu"
-      value = "500m"
+      name  = "master.resources.limits.cpu"
+      value = "250m"
     },
     {
-      name  = "resources.requests.memory"
-      value = "256Mi"
+      name  = "master.resources.requests.memory"
+      value = "64Mi"
     },
     {
-      name  = "resources.requests.cpu"
-      value = "256Mi"
+      name  = "master.resources.requests.cpu"
+      value = "100m"
     },
   ]
 }
@@ -326,15 +349,36 @@ resource "helm_release" "minio" {
     },
     {
       name  = "resources.limits.memory"
-      value = "512Mi"
+      value = "384Mi"
     },
     {
       name  = "resources.limits.cpu"
       value = "500m"
     },
     {
+      name  = "resources.requests.memory"
+      value = "128Mi"
+    },
+    {
+      name  = "resources.requests.cpu"
+      value = "250m"
+    },
+    {
       name  = "defaultBuckets"
       value = "rube-goldberg-artifacts:none"
     },
   ]
+}
+
+# Egress-restricted NetworkPolicies (managed here so they track the namespace
+# lifecycle). The manifest file lives under infra/k8s/network-policies.yaml.
+data "kubectl_path_documents" "network_policies" {
+  pattern = "${path.module}/../../../infra/k8s/network-policies.yaml"
+}
+
+resource "kubectl_manifest" "network_policies" {
+  for_each  = toset(data.kubectl_path_documents.network_policies.documents)
+  yaml_body = each.value
+
+  depends_on = [kubernetes_namespace.rube_goldberg]
 }

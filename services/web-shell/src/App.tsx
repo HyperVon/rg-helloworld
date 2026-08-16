@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { createElement, useEffect, useState } from 'react';
 import { ArtifactModal } from './components/ArtifactModal';
 import { ProcessGraph } from './components/ProcessGraph';
 import { RunSelector } from './components/RunSelector';
@@ -10,7 +10,10 @@ import { sanitizeRunId } from './lib/runId';
 declare global {
   namespace JSX {
     interface IntrinsicElements {
-      'rg-telemetry-panel': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement> & { 'run-id'?: string }, HTMLElement>;
+      'rg-telemetry-panel': React.DetailedHTMLProps<
+        React.HTMLAttributes<HTMLElement> & { 'run-id'?: string },
+        HTMLElement
+      >;
     }
   }
 }
@@ -61,14 +64,16 @@ export function App() {
         const list = data.runs || [];
         setAvailableRuns(list);
         if (list.length > 0) {
-          const latest = list[0].runId;
+          const latest = sanitizeRunId(list[0].runId);
           const current = runId;
           const exists = current ? list.some((x) => x.runId === current) : false;
           if (!current) {
-            setRunId(latest);
-            try {
-              localStorage.setItem('rghw:lastRunId', latest);
-            } catch {}
+            if (latest) {
+              setRunId(latest);
+              try {
+                localStorage.setItem('rghw:lastRunId', latest);
+              } catch {}
+            }
           } else if (!exists) {
             let shouldCorrect = true;
             try {
@@ -80,7 +85,7 @@ export function App() {
                 }
               }
             } catch {}
-            if (shouldCorrect) {
+            if (shouldCorrect && latest) {
               setRunId(latest);
               try {
                 localStorage.setItem('rghw:lastRunId', latest);
@@ -147,6 +152,13 @@ export function App() {
     } catch {}
   };
 
+  const handleClearRun = () => {
+    setRunId(null);
+    try {
+      localStorage.removeItem('rghw:lastRunId');
+    } catch {}
+  };
+
   const currentStage = summary?.currentStage ?? 'CREATED';
   const terminal = summary?.terminal ?? false;
   const runStatus = summary?.status ?? 'CREATED';
@@ -163,6 +175,7 @@ export function App() {
 
       <RunSelector
         onSelectRun={handleSelectRun}
+        onClear={handleClearRun}
         currentRunId={runId}
         availableRuns={availableRuns}
       />
@@ -179,10 +192,20 @@ export function App() {
                 <div>
                   Events received: {Object.values(eventTypeCount).reduce((a, b) => a + b, 0)}
                 </div>
-                <button onClick={() => setShowArtifacts(true)} disabled={artifacts.length === 0} title={artifacts.length === 0 ? 'No artifacts yet' : `${artifacts.length} artifacts`}>
+                <button
+                  onClick={() => setShowArtifacts(true)}
+                  disabled={artifacts.length === 0}
+                  title={
+                    artifacts.length === 0 ? 'No artifacts yet' : `${artifacts.length} artifacts`
+                  }
+                >
                   View Artifacts {artifacts.length > 0 ? `(${artifacts.length})` : ''}
                 </button>
-                {artifacts.length > 0 && <span className="artifact-count-hint">{artifacts.filter((a) => a.contentType?.startsWith('image/')).length} images</span>}
+                {artifacts.length > 0 && (
+                  <span className="artifact-count-hint">
+                    {artifacts.filter((a) => a.contentType?.startsWith('image/')).length} images
+                  </span>
+                )}
               </div>
             </section>
 
@@ -199,17 +222,29 @@ export function App() {
             <section className="telemetry-element-section">
               <h2>Run Ledger — Angular Telemetry</h2>
               <div className="telemetry-element-wrap">
-                {/* Spec §19.1: Angular Elements telemetry panel; React supplies run-id, element fetches independently */}
-                {/* @ts-ignore custom element */}
-                {React.createElement('rg-telemetry-panel', { 'run-id': runId || '' } as any)}
+                {/* Spec §19.1: Angular-style telemetry custom element; React supplies run-id, element fetches independently */}
+                {createElement('rg-telemetry-panel', { 'run-id': runId || '' } as any)}
                 <div className="telemetry-fallback">
                   <div className="telemetry-fallback-grid">
-                    <div><strong>Run:</strong> {runId?.slice(0, 8)}…</div>
-                    <div><strong>Status:</strong> {runStatus}</div>
-                    <div><strong>Stage:</strong> {currentStage}</div>
-                    <div><strong>Artifacts:</strong> {artifacts.length}</div>
-                    <div><strong>Images:</strong> {artifacts.filter((a) => a.contentType?.startsWith('image/')).length}</div>
-                    <div><strong>SSE:</strong> {connected ? 'connected' : 'disconnected'}</div>
+                    <div>
+                      <strong>Run:</strong> {runId?.slice(0, 8)}…
+                    </div>
+                    <div>
+                      <strong>Status:</strong> {runStatus}
+                    </div>
+                    <div>
+                      <strong>Stage:</strong> {currentStage}
+                    </div>
+                    <div>
+                      <strong>Artifacts:</strong> {artifacts.length}
+                    </div>
+                    <div>
+                      <strong>Images:</strong>{' '}
+                      {artifacts.filter((a) => a.contentType?.startsWith('image/')).length}
+                    </div>
+                    <div>
+                      <strong>SSE:</strong> {connected ? 'connected' : 'disconnected'}
+                    </div>
                   </div>
                   <div className="artifact-thumbs">
                     {artifacts
@@ -226,33 +261,101 @@ export function App() {
                         />
                       ))}
                     {artifacts.filter((a) => a.contentType?.startsWith('image/')).length === 0 && (
-                      <span style={{ opacity: 0.6, fontSize: '0.85rem' }}>No images yet — artifacts appear as pipeline progresses (polling every 1.5 s).</span>
+                      <span style={{ opacity: 0.6, fontSize: '0.85rem' }}>
+                        No images yet — artifacts appear as pipeline progresses (polling every 1.5
+                        s).
+                      </span>
                     )}
                   </div>
                 </div>
               </div>
               <div className="telemetry-links">
-                <a href={`${base}/api/v1/runs/${encodeURIComponent(runId)}/artifacts`} target="_blank" rel="noopener noreferrer">Artifacts JSON</a>
+                <a
+                  href={`${base}/api/v1/runs/${encodeURIComponent(runId)}/artifacts`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Artifacts JSON
+                </a>
                 <span> · </span>
-                <a href={`${base}/api/v1/runs/${encodeURIComponent(runId)}/stream`} target="_blank" rel="noopener noreferrer">SSE stream</a>
+                <a
+                  href={`${base}/api/v1/runs/${encodeURIComponent(runId)}/stream`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  SSE stream
+                </a>
                 <span> · </span>
-                <a href={`${base}/metrics`} target="_blank" rel="noopener noreferrer">Orchestrator metrics</a>
+                <a href={`${base}/metrics`} target="_blank" rel="noopener noreferrer">
+                  Orchestrator metrics
+                </a>
                 <span> · </span>
-                <a href="http://localhost:3001/health" target="_blank" rel="noopener noreferrer">Event gateway</a>
+                <a href="http://localhost:3001/health" target="_blank" rel="noopener noreferrer">
+                  Event gateway
+                </a>
               </div>
             </section>
 
             <section className="observability-section">
               <h2>Observability</h2>
               <div className="observability-grid">
-                <a href="/" className="obs-card" target="_blank" rel="noopener noreferrer"><strong>Web Shell</strong><span>React Flow graph + artifacts</span></a>
-                <a href="http://localhost:4568" className="obs-card" target="_blank" rel="noopener noreferrer"><strong>Artifact Inspector</strong><span>Ruby/HTMX gallery with image previews</span></a>
-                <a href="http://localhost:9090" className="obs-card" target="_blank" rel="noopener noreferrer"><strong>Prometheus</strong><span>rg_* metrics</span></a>
-                <a href="http://localhost:3001" className="obs-card" target="_blank" rel="noopener noreferrer"><strong>Grafana</strong><span>Overview / Deep Dive / OCR Lab / Infra (via ingress grafana.rghw.localhost)</span></a>
-                <a href="http://localhost:3100/ready" className="obs-card" target="_blank" rel="noopener noreferrer"><strong>Loki</strong><span>Logs via OTLP</span></a>
-                <a href="http://localhost:3200/status" className="obs-card" target="_blank" rel="noopener noreferrer"><strong>Tempo</strong><span>Traces + service graph</span></a>
+                <a href="/" className="obs-card" target="_blank" rel="noopener noreferrer">
+                  <strong>Web Shell</strong>
+                  <span>React Flow graph + artifacts</span>
+                </a>
+                <a
+                  href="http://artifact-inspector-ruby:4568"
+                  className="obs-card"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <strong>Artifact Inspector</strong>
+                  <span>Ruby/HTMX gallery with image previews</span>
+                </a>
+                <a
+                  href="http://prometheus:9090"
+                  className="obs-card"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <strong>Prometheus</strong>
+                  <span>rg_* metrics</span>
+                </a>
+                <a
+                  href="http://grafana:3000"
+                  className="obs-card"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <strong>Grafana</strong>
+                  <span>Overview / Deep Dive / OCR Lab / Infra</span>
+                </a>
+                <a
+                  href="http://loki:3100/ready"
+                  className="obs-card"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <strong>Loki</strong>
+                  <span>Logs via OTLP</span>
+                </a>
+                <a
+                  href="http://tempo:3200/status"
+                  className="obs-card"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <strong>Tempo</strong>
+                  <span>Traces + service graph</span>
+                </a>
               </div>
-              <div className="observability-hint">If Grafana shows “No data”, check <code>rg_runs_total</code> in Prometheus — orchestrator now exposes <code>/metrics</code> and OTLP metrics via <code>otel-collector:8889</code>. In k8s: <code>http://grafana.rghw.localhost</code>, <code>http://prometheus.rghw.localhost</code>, <code>http://tempo.rghw.localhost:3200</code>.</div>
+              <div className="observability-hint">
+                If Grafana shows “No data”, check <code>rg_runs_total</code> in Prometheus —
+                orchestrator now exposes <code>/metrics</code> and OTLP metrics via{' '}
+                <code>otel-collector:8889</code>. In k8s: <code>http://grafana.rghw.localhost</code>
+                , <code>http://prometheus.rghw.localhost</code>,{' '}
+                <code>http://tempo.rghw.localhost:3200</code>.
+              </div>
             </section>
           </main>
 

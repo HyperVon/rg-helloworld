@@ -21,9 +21,22 @@ jobs:
         module: [cmd/rghw, services/vector-normalizer-go]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Load toolchain pins from versions.env
+        run: |
+          set -a
+          . versions.env
+          set +a
+          while IFS='=' read -r k v; do
+            [ -z "$k" ] && continue
+            case "$k" in \#*) continue;; esac
+            case "$k" in [A-Za-z_]*) ;; *) continue;; esac
+            v="${v%%[[:space:]]#*}"
+            v="${v%%#*}"
+            echo "$k=$v" >> "$GITHUB_ENV"
+          done < versions.env
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: 1.26.5
+          go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: ${{ matrix.module }}/go.sum
       - name: Format check
         run: test -z "$(gofmt -l .)"
@@ -50,10 +63,23 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Load toolchain pins from versions.env
+        run: |
+          set -a
+          . versions.env
+          set +a
+          while IFS='=' read -r k v; do
+            [ -z "$k" ] && continue
+            case "$k" in \#*) continue;; esac
+            case "$k" in [A-Za-z_]*) ;; *) continue;; esac
+            v="${v%%[[:space:]]#*}"
+            v="${v%%#*}"
+            echo "$k=$v" >> "$GITHUB_ENV"
+          done < versions.env
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: temurin
-          java-version: "25"
+          java-version: ${{ env.JAVA_VERSION }}
           cache: maven
       - name: Verify (spotless + tests + JaCoCo 90%)
         run: mvn -B -ntp verify
@@ -64,10 +90,23 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Load toolchain pins from versions.env
+        run: |
+          set -a
+          . versions.env
+          set +a
+          while IFS='=' read -r k v; do
+            [ -z "$k" ] && continue
+            case "$k" in \#*) continue;; esac
+            case "$k" in [A-Za-z_]*) ;; *) continue;; esac
+            v="${v%%[[:space:]]#*}"
+            v="${v%%#*}"
+            echo "$k=$v" >> "$GITHUB_ENV"
+          done < versions.env
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: temurin
-          java-version: "25"
+          java-version: ${{ env.JAVA_VERSION }}
       - name: Grant wrapper execute permission
         run: chmod +x gradlew
         working-directory: services/run-orchestrator-kotlin
@@ -80,10 +119,23 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Load toolchain pins from versions.env
+        run: |
+          set -a
+          . versions.env
+          set +a
+          while IFS='=' read -r k v; do
+            [ -z "$k" ] && continue
+            case "$k" in \#*) continue;; esac
+            case "$k" in [A-Za-z_]*) ;; *) continue;; esac
+            v="${v%%[[:space:]]#*}"
+            v="${v%%#*}"
+            echo "$k=$v" >> "$GITHUB_ENV"
+          done < versions.env
       - name: Install tools
-        run: sudo apt-get update && sudo apt-get install -y clang-format-18 gcovr librdkafka-dev=2.3.0-1build2
+        run: sudo apt-get update && sudo apt-get install -y clang-format-${{ env.CLANG_FORMAT_VERSION }} gcovr librdkafka-dev=${{ env.LIBRDKAFKA_UBUNTU_VERSION }}
       - name: Format check
-        run: clang-format-18 --dry-run --Werror src/*.cpp include/geometry_engine/*.hpp tests/*.cpp
+        run: clang-format-${{ env.CLANG_FORMAT_VERSION }} --dry-run --Werror src/*.cpp include/geometry_engine/*.hpp tests/*.cpp
         working-directory: services/geometry-engine-cpp
       - name: Configure and build
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DENABLE_COVERAGE=ON -DCMAKE_CXX_COMPILER=g++
@@ -95,7 +147,8 @@ jobs:
         run: ctest --test-dir build --output-on-failure
         working-directory: services/geometry-engine-cpp
       - name: Coverage gate (90% lines)
-        run: gcovr --root . --object-directory build --filter 'src/.*' --filter 'include/.*' --exclude 'src/kafka.cpp' --exclude 'src/main.cpp' --fail-under-line 90
+        # Excludes mirror the Makefile `coverage-cpp` target exactly.
+        run: gcovr --root . --object-directory build --filter 'src/.*' --filter 'include/.*' --exclude 'src/kafka.cpp' --fail-under-line 90
         working-directory: services/geometry-engine-cpp
 
   dotnet:
@@ -103,9 +156,22 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Load toolchain pins from versions.env
+        run: |
+          set -a
+          . versions.env
+          set +a
+          while IFS='=' read -r k v; do
+            [ -z "$k" ] && continue
+            case "$k" in \#*) continue;; esac
+            case "$k" in [A-Za-z_]*) ;; *) continue;; esac
+            v="${v%%[[:space:]]#*}"
+            v="${v%%#*}"
+            echo "$k=$v" >> "$GITHUB_ENV"
+          done < versions.env
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          dotnet-version: 10.0.302
+          dotnet-version: ${{ env.DOTNET_SDK_VERSION }}
       - name: Format check
         # --nologo is parsed as a workspace path by dotnet format on SDK
         # 10.0.302, so it must be omitted here.
@@ -130,9 +196,22 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Load toolchain pins from versions.env
+        run: |
+          set -a
+          . versions.env
+          set +a
+          while IFS='=' read -r k v; do
+            [ -z "$k" ] && continue
+            case "$k" in \#*) continue;; esac
+            case "$k" in [A-Za-z_]*) ;; *) continue;; esac
+            v="${v%%[[:space:]]#*}"
+            v="${v%%#*}"
+            echo "$k=$v" >> "$GITHUB_ENV"
+          done < versions.env
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: 3.14.6
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
           cache-dependency-path: services/image-pipeline-python/requirements-dev.txt
       - name: Install dependencies
@@ -152,16 +231,29 @@ jobs:
         working-directory: services/image-pipeline-python
 
   node:
-    name: Node.js/TypeScript (OCR worker + event gateway + telemetry-element)
+    name: Node.js/TypeScript (services)
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        service: [ocr-worker-node, event-gateway-node, telemetry-element]
+        service: [ocr-worker-node, event-gateway-node, telemetry-element, web-shell]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Load toolchain pins from versions.env
+        run: |
+          set -a
+          . versions.env
+          set +a
+          while IFS='=' read -r k v; do
+            [ -z "$k" ] && continue
+            case "$k" in \#*) continue;; esac
+            case "$k" in [A-Za-z_]*) ;; *) continue;; esac
+            v="${v%%[[:space:]]#*}"
+            v="${v%%#*}"
+            echo "$k=$v" >> "$GITHUB_ENV"
+          done < versions.env
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 26.6.0
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: services/${{ matrix.service }}/package-lock.json
       - name: Install dependencies
@@ -176,8 +268,13 @@ jobs:
       - name: Test
         run: npm test
         working-directory: services/${{ matrix.service }}
-      - name: Coverage gate (90%)
+      - name: Coverage gate (90%, c8)
+        if: matrix.service != 'web-shell'
         run: npm run coverage
+        working-directory: services/${{ matrix.service }}
+      - name: Coverage gate (web-shell, c8 90% lines/functions)
+        if: matrix.service == 'web-shell'
+        run: npx --yes c8 --lines 90 --functions 90 --reporter=text node --test tests/*.test.ts
         working-directory: services/${{ matrix.service }}
 
   ruby:
@@ -188,9 +285,22 @@ jobs:
         service: [adjudicator-ruby, artifact-inspector-ruby]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Load toolchain pins from versions.env
+        run: |
+          set -a
+          . versions.env
+          set +a
+          while IFS='=' read -r k v; do
+            [ -z "$k" ] && continue
+            case "$k" in \#*) continue;; esac
+            case "$k" in [A-Za-z_]*) ;; *) continue;; esac
+            v="${v%%[[:space:]]#*}"
+            v="${v%%#*}"
+            echo "$k=$v" >> "$GITHUB_ENV"
+          done < versions.env
       - uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
         with:
-          ruby-version: 4.0.6
+          ruby-version: ${{ env.RUBY_VERSION }}
           bundler-cache: true
           working-directory: services/${{ matrix.service }}
       - name: Lint (rubocop)
@@ -208,13 +318,26 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Load toolchain pins from versions.env
+        run: |
+          set -a
+          . versions.env
+          set +a
+          while IFS='=' read -r k v; do
+            [ -z "$k" ] && continue
+            case "$k" in \#*) continue;; esac
+            case "$k" in [A-Za-z_]*) ;; *) continue;; esac
+            v="${v%%[[:space:]]#*}"
+            v="${v%%#*}"
+            echo "$k=$v" >> "$GITHUB_ENV"
+          done < versions.env
       # Work around a GitHub ubuntu-24.04 runner flake (pre-installed
       # clippy-preview/rustfmt-preview conflict with cargo-clippy).
       - name: Remove conflicting rust preview components
         run: rustup component remove clippy-preview rustfmt-preview 2>/dev/null || true
       - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
         with:
-          toolchain: 1.97.1
+          toolchain: ${{ env.RUST_VERSION }}
           components: clippy, rustfmt
       - name: Format check
         run: cargo fmt --check
@@ -251,41 +374,103 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Load toolchain pins from versions.env
+        run: |
+          set -a
+          . versions.env
+          set +a
+          while IFS='=' read -r k v; do
+            [ -z "$k" ] && continue
+            case "$k" in \#*) continue;; esac
+            case "$k" in [A-Za-z_]*) ;; *) continue;; esac
+            v="${v%%[[:space:]]#*}"
+            v="${v%%#*}"
+            echo "$k=$v" >> "$GITHUB_ENV"
+          done < versions.env
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 26.6.0
+          node-version: ${{ env.NODE_VERSION }}
       - name: Lint markdown
         run: npx --yes markdownlint-cli2@0.23.2 "**/*.md"
 
-  integration-e2e:
-    name: Integration + E2E (full toolchain)
+  contracts:
+    name: Contracts + prohibited-field validation
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Load toolchain pins from versions.env
+        run: |
+          set -a
+          . versions.env
+          set +a
+          while IFS='=' read -r k v; do
+            [ -z "$k" ] && continue
+            case "$k" in \#*) continue;; esac
+            case "$k" in [A-Za-z_]*) ;; *) continue;; esac
+            v="${v%%[[:space:]]#*}"
+            v="${v%%#*}"
+            echo "$k=$v" >> "$GITHUB_ENV"
+          done < versions.env
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: services/image-pipeline-python/requirements-dev.txt
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+        working-directory: services/image-pipeline-python
+      - name: Prepare toolchains
+        run: make prerequisites
+      - name: Contracts validate
+        run: make contracts
+      - name: Prohibited-field static scan
+        run: make contract-test
+
+  language-integration:
+    name: Language integration (no platform)
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Load toolchain pins from versions.env
+        run: |
+          set -a
+          . versions.env
+          set +a
+          while IFS='=' read -r k v; do
+            [ -z "$k" ] && continue
+            case "$k" in \#*) continue;; esac
+            case "$k" in [A-Za-z_]*) ;; *) continue;; esac
+            v="${v%%[[:space:]]#*}"
+            v="${v%%#*}"
+            echo "$k=$v" >> "$GITHUB_ENV"
+          done < versions.env
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: 1.26.5
+          go-version: ${{ env.GO_VERSION }}
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: temurin
-          java-version: "25"
+          java-version: ${{ env.JAVA_VERSION }}
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 26.6.0
+          node-version: ${{ env.NODE_VERSION }}
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: 3.14.6
+          python-version: ${{ env.PYTHON_VERSION }}
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          dotnet-version: 10.0.302
+          dotnet-version: ${{ env.DOTNET_SDK_VERSION }}
       - uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
         with:
-          ruby-version: 4.0.6
+          ruby-version: ${{ env.RUBY_VERSION }}
           bundler-cache: true
       - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
         with:
-          toolchain: 1.97.1
+          toolchain: ${{ env.RUST_VERSION }}
       # Work around a GitHub ubuntu-24.04 runner flake: the image ships a
       # pre-installed `clippy-preview`/`rustfmt-preview` rustup component that
       # conflicts with the `cargo-clippy` binary when rustup tries to add clippy.
@@ -293,18 +478,82 @@ jobs:
       - name: Remove conflicting rust preview components
         run: rustup component remove clippy-preview rustfmt-preview 2>/dev/null || true
       - name: Install C++ tools
-        run: sudo apt-get update && sudo apt-get install -y cmake g++ librdkafka-dev=2.3.0-1build2
+        run: sudo apt-get update && sudo apt-get install -y cmake g++ librdkafka-dev=${{ env.LIBRDKAFKA_UBUNTU_VERSION }}
       - name: Prepare dependencies
         run: make prerequisites
-      - name: Integration tests
+      - name: Integration tests (language cross-build, no cluster)
         run: make integration
-      - name: E2E acceptance (gates run by matrix jobs)
-        run: E2E_SKIP_GATES=1 make e2e
+
+  platform-e2e:
+    name: Platform E2E (k3d + terraform real cluster path)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Load toolchain pins from versions.env
+        run: |
+          set -a
+          . versions.env
+          set +a
+          while IFS='=' read -r k v; do
+            [ -z "$k" ] && continue
+            case "$k" in \#*) continue;; esac
+            case "$k" in [A-Za-z_]*) ;; *) continue;; esac
+            v="${v%%[[:space:]]#*}"
+            v="${v%%#*}"
+            echo "$k=$v" >> "$GITHUB_ENV"
+          done < versions.env
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ env.DOTNET_SDK_VERSION }}
+      - uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          bundler-cache: true
+      - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - name: Remove conflicting rust preview components
+        run: rustup component remove clippy-preview rustfmt-preview 2>/dev/null || true
+      - name: Install C++ tools
+        run: sudo apt-get update && sudo apt-get install -y cmake g++ librdkafka-dev=${{ env.LIBRDKAFKA_UBUNTU_VERSION }}
+      - name: Install k3d
+        run: curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG="v${{ env.K3D_VERSION }}" bash
+      - name: Install terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+      - name: Install kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/v${{ env.KUBECTL_VERSION }}/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+      - name: Verify platform tooling is installed
+        # Hard-fail when platform tools are missing so the cluster path can
+        # never silently degrade to a skipped PASS (E2E_REQUIRE_PLATFORM=1).
+        run: command -v k3d && command -v terraform && command -v kubectl || { echo "platform tools missing"; exit 1; }
+      - name: Prepare dependencies
+        run: make prerequisites
+      - name: E2E acceptance (real cluster path; platform required)
+        run: E2E_SKIP_GATES=1 E2E_REQUIRE_PLATFORM=1 make e2e
 
   summary:
     name: CI summary
     runs-on: ubuntu-24.04
-    needs: [go, java, kotlin, cpp, dotnet, python, node, ruby, rust, shell, docs, integration-e2e]
+    needs: [go, java, kotlin, cpp, dotnet, python, node, ruby, rust, shell, docs, contracts, language-integration, platform-e2e]
     steps:
       - name: All jobs passed
         run: echo "All CI jobs passed"

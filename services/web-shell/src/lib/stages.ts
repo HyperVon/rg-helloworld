@@ -105,11 +105,9 @@ const _ORDERED_IDS = [
   'terminal',
 ] as const;
 
-export const PROCESS_NODE_POSITIONS: Record<string, { x: number; y: number }> =
-  Object.fromEntries(_ORDERED_IDS.map((id, i) => [id, feederPos(i)])) as Record<
-    string,
-    { x: number; y: number }
-  >;
+export const PROCESS_NODE_POSITIONS: Record<string, { x: number; y: number }> = Object.fromEntries(
+  _ORDERED_IDS.map((id, i) => [id, feederPos(i)]),
+) as Record<string, { x: number; y: number }>;
 
 export function nodeStatusForStage(
   targetStage: string,

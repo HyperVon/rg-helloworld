@@ -1,5 +1,6 @@
 # Adjudicator: Ruby service for OCR consensus and quality decisions.
 # Base image is tag-pinned (never "latest").
+# Pinned to RUBY_VERSION=4.0.6 (see versions.env).
 FROM ruby:3.4.4-bookworm AS base
 
 WORKDIR /app
@@ -9,6 +10,7 @@ RUN gem install bundler -v 4.0.16 \
     && bundle config set --local deployment 'true' \
     && bundle install
 
+# Pinned to RUBY_VERSION=4.0.6 (see versions.env).
 FROM ruby:3.4.4-bookworm
 
 RUN apt-get update && \
@@ -16,6 +18,8 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 RUN gem install bundler -v 4.0.16
+
+RUN adduser --system --uid 1001 --group --home /nonexistent rghw
 
 WORKDIR /app
 COPY --from=base /usr/local/bundle /usr/local/bundle

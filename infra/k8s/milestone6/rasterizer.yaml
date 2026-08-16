@@ -5,7 +5,7 @@ metadata:
   namespace: rube-goldberg
   labels:
     app: rasterizer
-    milestone: "6"
+    milestone: '6'
 spec:
   replicas: 1
   selector:
@@ -17,46 +17,67 @@ spec:
         app: rasterizer
     spec:
       containers:
-        - name: rasterizer
-          image: rghello-registry:5001/rasterizer:milestone6
-          imagePullPolicy: Always
-          ports:
-            - containerPort: 50051
-          env:
-            - name: RASTERIZER_PORT
-              value: "50051"
-            - name: RASTERIZER_STORE
-              value: s3
-            - name: RASTERIZER_BUCKET
-              value: rube-goldberg-artifacts
-            - name: MINIO_ENDPOINT
-              value: http://minio.rube-goldberg.svc.cluster.local:9000
-            - name: MINIO_ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: minio-credentials
-                  key: root-user
-            - name: MINIO_SECRET_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: minio-credentials
-                  key: root-password
-          readinessProbe:
-            tcpSocket:
-              port: 50051
-            initialDelaySeconds: 5
-            periodSeconds: 10
-          livenessProbe:
-            tcpSocket:
-              port: 50051
-            initialDelaySeconds: 10
-            periodSeconds: 15
-          resources:
-            requests:
-              cpu: 50m
-              memory: 128Mi
-            limits:
-              memory: 256Mi
+      - name: rasterizer
+        image: rghello-registry:5001/rasterizer:milestone6
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 50051
+        env:
+        - name: RASTERIZER_PORT
+          value: '50051'
+        - name: RASTERIZER_STORE
+          value: s3
+        - name: RASTERIZER_BUCKET
+          value: rube-goldberg-artifacts
+        - name: MINIO_ENDPOINT
+          value: http://minio.rube-goldberg.svc.cluster.local:9000
+        - name: MINIO_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: root-user
+        - name: MINIO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: root-password
+        readinessProbe:
+          tcpSocket:
+            port: 50051
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: 50051
+          initialDelaySeconds: 10
+          periodSeconds: 15
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            memory: 384Mi
+            cpu: 500m
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: var-run
+          mountPath: /var/run
+      serviceAccountName: rasterizer
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: var-run
+        emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
@@ -65,11 +86,20 @@ metadata:
   namespace: rube-goldberg
   labels:
     app: rasterizer
-    milestone: "6"
+    milestone: '6'
 spec:
   selector:
     app: rasterizer
   ports:
-    - name: grpc
-      port: 50051
-      targetPort: 50051
+  - name: grpc
+    port: 50051
+    targetPort: 50051
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: rasterizer
+  namespace: rube-goldberg
+  labels:
+    app: rasterizer
+    milestone: '6'

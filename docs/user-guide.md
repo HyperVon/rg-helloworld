@@ -75,7 +75,7 @@ make run             # rghw run --api-url http://localhost:8080
 | **Event Gateway** | `event-gateway` | Node | Redis Stream → SSE `/api/v1/runs/{id}/stream` | Web Shell live, `curl -N` stream |
 | **Telemetry** | `telemetry-element` | TypeScript Web Component | `<rg-telemetry-panel>` step ledger | Embedded in Web Shell |
 
-Supporting: Kafka (11 topics `rg.*.v1`), Redis Streams (`rg:run:{id}:events`), MinIO (`rube-goldberg-artifacts`), PostgreSQL, OpenTelemetry Collector → Prometheus/Loki/Tempo → Grafana.
+Supporting: Kafka (13 topics `rg.*.v1`: 11 application topics + 2 infrastructure — `rg.run-events.v1`, `rg.dead-letter.v1`), Redis Streams (`rg:run:{id}:events`), MinIO (`rube-goldberg-artifacts`), PostgreSQL, OpenTelemetry Collector → Prometheus/Loki/Tempo → Grafana.
 
 ## 4. CLI — `rghw run` and friends
 
@@ -226,7 +226,7 @@ mc alias set local http://localhost:9000 minioadmin minioadmin
 mc ls -r local/rube-goldberg-artifacts
 ```
 
-**Kafka** `localhost:9092` (KRaft, 3 controllers `kafka-controller-0/1/2`) — 11 topics `rg.glyph-blueprints.v1` (10→20) … `rg.phrase-assembled.v1` (80→90). No plaintext leaks: downstream events never contain `targetText`, `expectedCharacter` etc. (checked by unit + integration).
+**Kafka** `localhost:9092` (KRaft, 3 controllers `kafka-controller-0/1/2`) — 13 topics `rg.*.v1` (11 application topics + 2 infrastructure: `rg.run-events.v1`, `rg.dead-letter.v1`); the application topics span `rg.glyph-blueprints.v1` (10→20) … `rg.phrase-assembled.v1` (80→90). No plaintext leaks: downstream events never contain `targetText`, `expectedCharacter` etc. (checked by unit + integration).
 
 **Redis** `localhost:6379` (`redis-master`, streams `rg:run:{id}:events` backing SSE) — `redis-cli XLEN rg:run:<id>:events`.
 
@@ -318,6 +318,6 @@ mc find local/rube-goldberg-artifacts --name "*.png" | head
 - **Architecture** for contracts, maturity ranks, and sequence diagrams: [architecture.md](architecture.md) (§4 CLI, §20 observability, §25 orchestration)
 - **Implementation status** for what is done and what was verified when: [implementation-status.md](implementation-status.md)
 - **Troubleshooting** for ports, DiskPressure, Kafka rebalancing, MinIO: [troubleshooting.md](troubleshooting.md)
-- **Screenshots** (all Playwright 1280×800 at `SUCCEEDED`): [screenshots/](screenshots/)
+- **Screenshots** (all Playwright 1280×800 at `SUCCEEDED`): [screenshots/](screenshots/). _Note: screenshots were captured 2026-08-08; refresh them after the current UI stabilizes._
 
 If a UI shows `PREPROCESSING` stuck with `Progress: 0%`, it is a real pipeline delay (Kafka rebalancing or OCR) — wait 30s and refresh, or check `kubectl logs deploy/ocr-worker -n rube-goldberg` and `kubectl get pods`.

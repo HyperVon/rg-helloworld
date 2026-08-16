@@ -1,15 +1,16 @@
 # Agent operating norms
 
 Portable, harness-agnostic operating rules for any coding agent working in this
-repository. `AGENTS.md` owns the invariants and task-to-skill index; this file
-is the canonical source for always-on norms. Deep how-to lives in the registered
-skills under `.agents/skills/` and `.kilo/skills/` — prefer a skill over
-inventing a parallel workflow.
+repository. `AGENTS.md` owns the invariants and task-to-skill index. This file
+is a thin Kilo-specific projection of the canonical always-on norms defined in
+`.agents/OPERATING.md`; that file remains the source of truth, and this file
+should stay aligned with it rather than duplicating it. Deep how-to lives in the
+registered skills under `.agents/skills/` and `.kilo/skills/` — prefer a skill
+over inventing a parallel workflow.
 
 Harness-specific entrypoints and projections (`CLAUDE.md`, Copilot, Cursor,
-Windsurf, and Kilo files) should point to or summarize these rules. Keep any
-duplicated summary aligned with this file rather than creating a second source
-of truth.
+Windsurf, and Kilo files) should point to or summarize the canonical rules in
+`.agents/OPERATING.md`.
 
 ## 1. Prefer project skills
 

@@ -64,9 +64,8 @@ export function ArtifactModal({ artifacts, onClose }: ArtifactModalProps) {
         <h3>Artifacts {artifacts.length > 0 ? `(${artifacts.length})` : ''}</h3>
         {artifacts.length === 0 ? (
           <div className="artifact-empty">
-            No artifacts returned — orchestrator may still be finalizing or the run has no
-            stored artifacts. Try the Artifact Inspector or check that the run reached
-            SUCCEEDED.
+            No artifacts returned — orchestrator may still be finalizing or the run has no stored
+            artifacts. Try the Artifact Inspector or check that the run reached SUCCEEDED.
           </div>
         ) : (
           <div className="artifact-list">
@@ -103,7 +102,11 @@ export function ArtifactModal({ artifacts, onClose }: ArtifactModalProps) {
                 </p>
                 {selected.proxyUrl && (
                   <p className="artifact-actions">
-                    <a href={resolvedUrl(selected.proxyUrl) || selected.proxyUrl} target="_blank" rel="noopener noreferrer">
+                    <a
+                      href={resolvedUrl(selected.proxyUrl) || selected.proxyUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       Open original ↗
                     </a>
                     {isImageType(selected.contentType) && (
@@ -127,7 +130,11 @@ export function ArtifactModal({ artifacts, onClose }: ArtifactModalProps) {
                   <img
                     src={resolvedUrl(selected.proxyUrl) || selected.proxyUrl}
                     alt={`${selected.stage} preview`}
-                    className={isSvgType(selected.contentType, selected.proxyUrl) ? 'preview-svg' : 'preview-img'}
+                    className={
+                      isSvgType(selected.contentType, selected.proxyUrl)
+                        ? 'preview-svg'
+                        : 'preview-img'
+                    }
                     loading="lazy"
                     onClick={() => {
                       setZoom(1);
@@ -136,26 +143,46 @@ export function ArtifactModal({ artifacts, onClose }: ArtifactModalProps) {
                     }}
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display = 'none';
-                      const fallback = (e.target as HTMLImageElement).nextElementSibling as HTMLElement | null;
+                      const fallback = (e.target as HTMLImageElement)
+                        .nextElementSibling as HTMLElement | null;
                       if (fallback) fallback.style.display = 'block';
                     }}
                   />
                   <div className="preview-error" style={{ display: 'none' }}>
-                    Preview unavailable — <a href={resolvedUrl(selected.proxyUrl) || selected.proxyUrl} target="_blank" rel="noopener noreferrer">open original</a>
+                    Preview unavailable —{' '}
+                    <a
+                      href={resolvedUrl(selected.proxyUrl) || selected.proxyUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      open original
+                    </a>
                   </div>
                   <div className="preview-hint">Click image to enlarge</div>
                 </div>
               )}
-              {!isImageType(selected.contentType) && selected.contentType?.includes('json') && selected.proxyUrl && (
-                <div className="artifact-preview artifact-json-hint">
-                  JSON artifact — <a href={resolvedUrl(selected.proxyUrl) || selected.proxyUrl} target="_blank" rel="noopener noreferrer">view raw</a>
-                </div>
-              )}
+              {!isImageType(selected.contentType) &&
+                selected.contentType?.includes('json') &&
+                selected.proxyUrl && (
+                  <div className="artifact-preview artifact-json-hint">
+                    JSON artifact —{' '}
+                    <a
+                      href={resolvedUrl(selected.proxyUrl) || selected.proxyUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      view raw
+                    </a>
+                  </div>
+                )}
             </div>
           </div>
         )}
         <div className="artifact-modal-actions">
-          <span className="artifact-hint">{artifacts.length} artifact{artifacts.length === 1 ? '' : 's'} • click list to inspect • images open in lightbox with zoom/pan</span>
+          <span className="artifact-hint">
+            {artifacts.length} artifact{artifacts.length === 1 ? '' : 's'} • click list to inspect •
+            images open in lightbox with zoom/pan
+          </span>
           <button onClick={onClose}>Close</button>
         </div>
         {lightbox && (
@@ -170,7 +197,9 @@ export function ArtifactModal({ artifacts, onClose }: ArtifactModalProps) {
             >
               <div className="lightbox-bar">
                 <span>Zoom: {zoom.toFixed(1)}× • scroll to zoom • drag to pan • Esc to close</span>
-                <button type="button" onClick={() => setLightbox(null)}>×</button>
+                <button type="button" onClick={() => setLightbox(null)}>
+                  ×
+                </button>
               </div>
               <div
                 className="lightbox-stage"
@@ -188,15 +217,43 @@ export function ArtifactModal({ artifacts, onClose }: ArtifactModalProps) {
                 <img
                   src={lightbox}
                   alt="lightbox"
-                  style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`, cursor: dragging ? 'grabbing' : 'grab' }}
+                  style={{
+                    transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`,
+                    cursor: dragging ? 'grabbing' : 'grab',
+                  }}
                   draggable={false}
                 />
               </div>
               <div className="lightbox-controls">
-                <button type="button" onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.2).toFixed(1)))}>−</button>
-                <button type="button" onClick={() => { setZoom(1); setOffset({ x: 0, y: 0 }); }}>Reset</button>
-                <button type="button" onClick={() => setZoom((z) => Math.min(4, +(z + 0.2).toFixed(1)))}>+</button>
-                <a href={lightbox} target="_blank" rel="noopener noreferrer" className="lightbox-open">Open original ↗</a>
+                <button
+                  type="button"
+                  onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.2).toFixed(1)))}
+                >
+                  −
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setZoom(1);
+                    setOffset({ x: 0, y: 0 });
+                  }}
+                >
+                  Reset
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setZoom((z) => Math.min(4, +(z + 0.2).toFixed(1)))}
+                >
+                  +
+                </button>
+                <a
+                  href={lightbox}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="lightbox-open"
+                >
+                  Open original ↗
+                </a>
               </div>
             </div>
           </div>

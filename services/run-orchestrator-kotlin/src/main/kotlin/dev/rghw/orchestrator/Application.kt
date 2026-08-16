@@ -56,6 +56,7 @@ import java.util.Properties
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicLong
 
 @Serializable
 data class CreateRunRequest(
@@ -287,7 +288,13 @@ object Services {
 
     fun kafkaBootstrap(): String = System.getenv("KAFKA_BOOTSTRAP") ?: "localhost:9092"
 
-    fun redisUrl(): String = System.getenv("REDIS_URL") ?: "redis://localhost:6379"
+    fun redisUrl(): String {
+        val base = System.getenv("REDIS_URL") ?: "redis://localhost:6379"
+        val password = System.getenv("REDIS_PASSWORD")
+        if (password.isNullOrBlank()) return base
+        if (!base.startsWith("redis://")) return base
+        return "redis://:$password@${base.removePrefix("redis://")}"
+    }
 
     fun glyphCatalogUrl(): String = System.getenv("GLYPH_CATALOG_URL") ?: "http://localhost:8082/ws/glyph-catalog"
 
@@ -310,7 +317,9 @@ object Services {
 
     fun initRedis(
         storeFactory: (String) -> RunStateStore = { redisUrl ->
-            RedisRunStateStore(RedisClient.create(redisUrl).connect().sync())
+            val sync = RedisClient.create(redisUrl).connect().sync()
+            redisSync = sync
+            RedisRunStateStore(sync)
         },
     ) {
         runStateStore = storeFactory(redisUrl())
@@ -332,6 +341,9 @@ val sseClients: ConcurrentHashMap<String, CopyOnWriteArrayList<SseClient>> = Con
 val lastRunEvents: ConcurrentHashMap<String, String> = ConcurrentHashMap()
 val runArtifacts: ConcurrentHashMap<String, MutableList<Map<String, String>>> = ConcurrentHashMap()
 val artifactObjectKeys: ConcurrentHashMap<String, ConcurrentHashMap<String, String>> = ConcurrentHashMap()
+val runEventLog: ConcurrentHashMap<String, MutableList<Pair<Long, String>>> = ConcurrentHashMap()
+val runSequences: ConcurrentHashMap<String, AtomicLong> = ConcurrentHashMap()
+var redisSync: RedisCommands<String, String>? = null
 
 data class SseClient(
     val channel: Channel<String>,
@@ -877,9 +889,10 @@ suspend fun handleSseStream(call: ApplicationCall) {
     sseClients.getOrPut(runId) { CopyOnWriteArrayList() }.add(client)
     RgMetrics.setSseConnections(sseClients.values.sumOf { it.size }.toLong())
 
+    val lastEventId = call.request.queryParameters["lastEventId"]
     try {
         call.respondBytesWriter(ContentType.Text.EventStream, HttpStatusCode.OK) {
-            writeSseLoop(channel, lastRunEvents[runId])
+            writeSseLoop(channel, runId, lastEventId)
         }
     } finally {
         sseClients[runId]?.remove(client)
@@ -890,22 +903,80 @@ suspend fun handleSseStream(call: ApplicationCall) {
 
 suspend fun ByteWriteChannel.writeSseLoop(
     channel: Channel<String>,
-    replayEvent: String? = null,
+    runId: String? = null,
+    lastEventId: String? = null,
 ) {
     writeStringUtf8(": connected\n\n")
     flush()
-    if (replayEvent != null) {
-        writeStringUtf8("data: $replayEvent\n\n")
+    if (runId != null) {
+        buildRunSnapshot(runId)?.let { snapshot ->
+            writeStringUtf8("event: snapshot\nid: 0\ndata: $snapshot\n\n")
+            flush()
+        }
+        val from = lastEventId?.toLongOrNull() ?: 0L
+        val entries =
+            runEventLog[runId]?.let { log ->
+                synchronized(log) { log.filter { (seq, _) -> seq > from } }
+            } ?: emptyList()
+        for ((seq, ev) in entries) writeEventFrame(runId, ev, seq)
         flush()
     }
     while (true) {
-        val msg = channel.receiveCatching().getOrNull() ?: break
-        writeStringUtf8("data: $msg\n\n")
-        flush()
-        if (msg.contains("\"SUCCEEDED\"") || msg.contains("\"FAILED\"")) {
-            break
+        val msg =
+            kotlinx.coroutines.withTimeoutOrNull(15_000) { channel.receiveCatching().getOrNull() }
+        if (msg == null) {
+            if (channel.isClosedForReceive) break
+            writeStringUtf8(": heartbeat\n\n")
+            flush()
+            continue
         }
+        val terminal = msg.contains("\"SUCCEEDED\"") || msg.contains("\"FAILED\"")
+        val seq = if (runId != null) runSequences[runId]?.incrementAndGet() ?: 1L else 1L
+        writeEventFrame(runId, msg, seq)
+        if (terminal) break
     }
+}
+
+suspend fun ByteWriteChannel.writeEventFrame(
+    runId: String?,
+    ev: String,
+    id: Long?,
+) {
+    val status =
+        try {
+            Json
+                .parseToJsonElement(ev)
+                .jsonObject["status"]
+                ?.jsonPrimitive
+                ?.contentOrNull
+        } catch (_: Exception) {
+            null
+        }
+    val name =
+        when (status) {
+            "SUCCEEDED" -> "run-succeeded"
+            "FAILED" -> "run-failed"
+            else -> "step-status-changed"
+        }
+    val seq = id ?: runId?.let { runSequences[it]?.get() } ?: 0L
+    writeStringUtf8("event: $name\n")
+    writeStringUtf8("id: $seq\n")
+    writeStringUtf8("data: $ev\n\n")
+}
+
+fun buildRunSnapshot(runId: String): String? {
+    val st = runs[runId] ?: return null
+    val status = st.status.name
+    val terminal = status == "SUCCEEDED" || status == "FAILED" || status == "CANCELLED"
+    return buildJsonObject {
+        put("status", JsonPrimitive(status))
+        put("currentStage", JsonPrimitive(stageLabel(st.status)))
+        put("percentage", JsonPrimitive(percentageForStatus(st.status)))
+        put("attempt", JsonPrimitive(1))
+        put("startedAt", JsonPrimitive(st.createdAt.toEpochMilli()))
+        put("lastEventSequence", JsonPrimitive(runSequences[runId]?.get() ?: 0L))
+        put("terminal", JsonPrimitive(terminal))
+    }.toString()
 }
 
 fun stageLabel(status: RunStatus): String =
@@ -1265,7 +1336,21 @@ fun broadcastEvent(
                 }
             }
         }.toString()
+    val seq = runSequences.getOrPut(runId) { AtomicLong(0) }.incrementAndGet()
+    val log = runEventLog.getOrPut(runId) { java.util.Collections.synchronizedList(mutableListOf()) }
+    synchronized(log) {
+        log.add(seq to eventData)
+        if (log.size > 1000) log.removeAt(0)
+    }
     lastRunEvents[runId] = eventData
+    try {
+        redisSync?.xadd(
+            "run-events:$runId",
+            mapOf("seq" to seq.toString(), "status" to (data["status"] ?: ""), "data" to eventData),
+        )
+        redisSync?.hset("run-summary:$runId", mapOf("latest" to eventData))
+    } catch (_: Exception) {
+    }
     val clients = sseClients[runId]?.toList() ?: return
     for (client in clients) {
         client.channel.trySend(eventData)

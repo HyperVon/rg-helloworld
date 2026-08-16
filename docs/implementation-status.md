@@ -34,6 +34,23 @@ section 24 (Repository Structure) of that document.
 
 ---
 
+## Known deferred / not-yet-wired contracts
+
+> These contracts, topics, and run states are **defined in `docs/architecture.md`
+> but are NOT yet implemented or wired** in the completed milestone pipeline. Do
+> not assume they are operational.
+
+- Topic `rg.phrase-composition.v1` (architecture §13.2) — defined in the topic
+  table but not produced or consumed by a worker; composition is driven by
+  `rg.phrase-composed.v1`.
+- Run states `RETRYING` and `VALIDATING` (architecture §17.1) — present in the
+  state-machine diagram but not yet entered by the orchestrator.
+- Topic `rg.dead-letter.v1` (architecture §13.2, §13.6) — schema and dead-letter
+  design exist, but the retry-wrapper publisher and diagnostic UI are not yet
+  wired.
+
+---
+
 ## Milestone 0 — Repository skeleton
 
 ### Scope
@@ -363,32 +380,32 @@ follows once Milestone 2 acceptance passes.
 
 ### Scope
 
-- [ ] Implement the Java glyph catalog (`services/glyph-catalog-java`) as a
+- [x] Implement the Java glyph catalog (`services/glyph-catalog-java`) as a
       WSDL-first SOAP server (Spring Boot + Spring Web Services):
-  - [ ] Serve the contract WSDL at `/ws/glyph-catalog`
-  - [ ] `PlanPhrase` operation: decode the phrase, assign opaque
+  - [x] Serve the contract WSDL at `/ws/glyph-catalog`
+  - [x] `PlanPhrase` operation: decode the phrase, assign opaque
         `glyphInstanceId`s, map every character to a `RUBE_SIMPLEX_V1` glyph
         (H e l o W r d + SPACE), emit a gap blueprint for whitespace
-  - [ ] `GetAlternateBlueprint` operation: return an alternate geometric
+  - [x] `GetAlternateBlueprint` operation: return an alternate geometric
         representation for a glyph of a stored plan
-  - [ ] Persist plans (embedded H2, file-backed) so alternates survive restarts
-  - [ ] SOAP fault for unsupported characters
-- [ ] Generate the Kotlin SOAP client from `contracts/soap/glyph-catalog.wsdl`
+  - [x] Persist plans (embedded H2, file-backed) so alternates survive restarts
+  - [x] SOAP fault for unsupported characters
+- [x] Generate the Kotlin SOAP client from `contracts/soap/glyph-catalog.wsdl`
       (wsimport at build time) and wrap it in the orchestrator
-- [ ] Orchestrator planning path:
-  - [ ] Call `PlanPhrase` on run creation
-  - [ ] Store the expected code points privately (never downstream)
-  - [ ] Emit one `glyph-blueprint-produced.v1` event per phrase position to
+- [x] Orchestrator planning path:
+  - [x] Call `PlanPhrase` on run creation
+  - [x] Store the expected code points privately (never downstream)
+  - [x] Emit one `glyph-blueprint-produced.v1` event per phrase position to
         `rg.glyph-blueprints.v1` with partition key `runId:glyphInstanceId`
-  - [ ] Remove the temp-worker echo path from the run state machine
+  - [x] Remove the temp-worker echo path from the run state machine
 - [x] Remove the temporary worker (`services/temp-worker-node`), its
       deployment manifest, and Makefile references (orphaned service removed 2026-08-14)
-- [ ] Deploy the glyph catalog to Kubernetes and update smoke tests:
-  - [ ] Eleven ordered blueprint records for `"HELLO WORLD"` on
+- [x] Deploy the glyph catalog to Kubernetes and update smoke tests:
+  - [x] Eleven ordered blueprint records for `"HELLO WORLD"` on
         `rg.glyph-blueprints.v1`
-  - [ ] Gap position exists at index 5
-  - [ ] Downstream blueprint events contain no plaintext or code points
-- [ ] Add the section 7.4 static prohibited-field scan on event schemas
+  - [x] Gap position exists at index 5
+  - [x] Downstream blueprint events contain no plaintext or code points
+- [x] Add the section 7.4 static prohibited-field scan on event schemas
 
 ### Acceptance conditions
 
@@ -775,27 +792,24 @@ generated code + container-based codegen approach (ADR-0008).
       - [x] Handles gap positions (layout metadata only, no raster)
       - [x] Generates deterministic composition manifest (position → pixel bounding box)
       - [x] `--once` mode for integration harness (CLI accepts JSON glyph inputs)
-      - [ ] aiokafka consumer for `rg.glyph-rasterized.v1` (deferred - core logic complete)
-      - [ ] Retrieve glyph PNGs from MinIO (deferred - `--once` mode reads from files/JSON)
-      - [ ] Store phrase image and manifest in MinIO (deferred)
-      - [ ] Publish `PhraseComposed` event (deferred - Kafka consumer integration)
+      - Kafka consumer / MinIO / event-publish integration is deferred (see
+        Milestone 7 limitations)
 - [x] Implement Python preprocessing service:
       - [x] `preprocess_phrase_image` produces OCR images, position crops, and preprocessing report
       - [x] Grayscale conversion, contrast enhancement, deterministic threshold, noise removal
       - [x] Clean border, integer scaling, position crops from manifest
       - [x] Preprocessing report (threshold, scale, foreground ratio, connected-component count)
       - [x] `--once` mode for integration harness
-      - [ ] aiokafka consumer for `rg.phrase-composed.v1` (deferred - core logic complete)
-      - [ ] Retrieve raw phrase image from MinIO (deferred)
-      - [ ] Store all outputs in MinIO (deferred)
-      - [ ] Publish `OcrImagePrepared` event (deferred - Kafka consumer integration)
+      - Kafka consumer / MinIO / event-publish integration is deferred (see
+        Milestone 7 limitations)
 - [x] Extend Kotlin orchestrator:
       - [x] Add COMPOSING, PREPROCESSING, OCR_RUNNING, ADJUDICATING, ASSEMBLING states
       - [x] Fan-in logic for composition and preprocessing (run-level events)
       - [x] Kafka consumers for phrase-composed and ocr-images with maturity
         validation (40→50, 50→60) and prohibited-field scan
       - [x] Update HttpApiTest to the new state flow
-      - [ ] Database proof for composition trigger (deferred - in-memory tracker used)
+      - Database proof for composition trigger is deferred (in-memory tracker
+        used; see Milestone 7 limitations)
 - [x] Dockerfile for image pipeline; `infra/k8s/milestone7/` manifests
 - [x] Extend `scripts/build-images.sh` (milestone7 tag) and
       `scripts/smoke-test.sh` (composition + preprocessing checks)
@@ -875,6 +889,22 @@ and deployment scaffolding are complete.
 
 M7 stability update (2026-08-07): Uppercase acceptance required redrawing all glyphs (H/E/L/O/W/R/D) with OCR-legible geometry, fixing composition `phrase_width`/`phrase_height` to account for scaled glyph bitmap widths and max glyph height, fixing preprocessing crop isolation to clamp to neighbor glyph bounds (prevent overlap), narrowing OCR `ALLOWED_ALPHABET` to uppercase, improving `parseTsvLines` to split multi-character rows and fall back to word-level rows, running per-crop OCR with both PSM 8 and 10, and fixing CLI SSE to stream incrementally with first-line integrity check.
 
+### Milestone 7 limitations
+
+The Python image pipeline core transformation logic, state machine, contracts,
+tests, and deployment scaffolding are complete, but the following integration
+pieces were deferred (the `--once` mode covers them in the integration harness):
+
+- `aiokafka` consumers for `rg.glyph-rasterized.v1` and `rg.phrase-composed.v1`
+  (the Python service runs in `--once` mode, not yet as a live Kafka consumer).
+- Reading glyph PNGs from, and writing phrase/ocr images and manifests to, MinIO
+  (the `--once` mode reads/writes files/JSON instead).
+- Publishing `PhraseComposed` and `OcrImagePrepared` events (deferred with the
+  Kafka consumer integration).
+- Database proof for the composition trigger (the orchestrator still uses its
+  in-memory fan-in tracker — see also the deferred PostgreSQL/outbox note in
+  architecture §17.5).
+
 ---
 
 ## Milestone 8 — OCR and adjudication
@@ -889,7 +919,8 @@ M7 stability update (2026-08-07): Uppercase acceptance required redrawing all gl
   - [x] Estimate gap positions from image spacing, not from stored space characters
   - [x] Publish `OcrObservationsProduced` to `rg.ocr-observations.v1` (maturity 60 → 70)
   - [x] `--once` mode for integration harness (input: OCR image + crops, output: observations JSON)
-  - [ ] Raw OCR artifacts persisted to MinIO (deferred to production runner; `--once` writes to disk)
+  - Raw OCR artifacts persisted to MinIO: deferred (see Milestone 8 limitations;
+    `--once` writes to disk)
 - Implement the Ruby adjudicator (`services/adjudicator-ruby`):
   - [x] Consume `rg.ocr-observations.v1` from Kafka
   - [x] For each drawable position: compare full-phrase vs crop observation; accept
@@ -900,10 +931,9 @@ M7 stability update (2026-08-07): Uppercase acceptance required redrawing all gl
   - [x] Publish quality-retry events to `rg.quality-retry.v1` for ambiguous positions
   - [x] Never receive the expected phrase or expected character
   - [x] `--once` mode for integration harness
-  - [ ] Host the HTMX artifact-inspection UI (deferred to Milestone 10)
-- Extend the Kotlin orchestrator:
-  - OCR_RUNNING → ADJUDICATING transition on `rg.symbols-adjudicated.v1`
-  - [x] Extend the Kotlin orchestrator:
+  - [x] Host the server-rendered artifact-inspection UI (delivered in Milestone 10;
+        Ruby/Sinatra, no HTMX; see `services/artifact-inspector-ruby`)
+- [x] Extend the Kotlin orchestrator:
   - [x] OCR_RUNNING → ADJUDICATING transition on `rg.symbols-adjudicated.v1`
   - [x] Kafka consumer with maturity validation (60 → 70, 70 → 80) and
     prohibited-field scan
@@ -968,6 +998,12 @@ M7 stability update (2026-08-07): Uppercase acceptance required redrawing all gl
 | 2026-08-06 | M8 images pushed to registry | PASS (ocr-worker:milestone8, adjudicator:milestone8) |
 | 2026-08-06 | k3d smoke test | PASS (all M8 pods running; ocr-worker, adjudicator, run-orchestrator ready) |
 | 2026-08-06 | `make integration` | PASS (M5–M8 blocks all pass; failures=0, skipped=0) |
+
+### Milestone 8 limitations
+
+- Raw OCR artifact persistence to MinIO is deferred (the OCR worker's
+  `--once` mode writes observations to disk; the production runner's MinIO
+  persistence is not yet wired).
 
 ---
 
@@ -1038,6 +1074,13 @@ M7 stability update (2026-08-07): Uppercase acceptance required redrawing all gl
 | 2026-08-06 | versions.env updated | PASS |
 | 2026-08-07 | Integration M9 block added (phrase-assembler --once 11 tokens HELLO WORLD, maturity 80→90, deterministic) | PASS (failures=0, manifest + event + no prohibited fields) |
 | 2026-08-07 | Uppercase architecture/doc sweep + chaos.sh HELLO WORLD fix | PASS (grep Hello World clean except project title) |
+
+### Milestone 9 limitations
+
+- PostgreSQL persistence of the requested text and the transactional outbox
+  (architecture §17.4/§17.5) remain deferred; final validation still compares
+  against the orchestrator's in-memory private expected-text store. This is the
+  same deferred item noted in the Milestone 5 limitations.
 
 ---
 
@@ -1117,6 +1160,13 @@ M7 stability update (2026-08-07): Uppercase acceptance required redrawing all gl
 | 2026-08-07 | make integration M5-M9 all PASS (11 banners, HELLO WORLD gap at 5, 80→90) | PASS |
 | 2026-08-08 | Kotlin artifact catalog/proxy focused tests: key validation, idempotent recording, safe listing, and byte streaming | PASS |
 
+### Milestone 10 limitations
+
+- The shipped UI code lives in `services/web-shell` (React Flow) and
+  `services/telemetry-element` (framework-free TypeScript Web Component); the
+  legacy `web/{shell-react,telemetry-angular,shared-contracts}` scaffolding is
+  not used by the running stack.
+
 ---
 
 ## Milestone 11 — Observability
@@ -1174,6 +1224,13 @@ M7 stability update (2026-08-07): Uppercase acceptance required redrawing all gl
 | 2026-08-07 | Observability manifests present (otel-collector, prometheus, loki, tempo, grafana) | PASS (infra/observability pre-scaffold; dashboard scaffolding deferred to demo) |
 | 2026-08-08 | Runtime exporter dependencies classified for pruned Node images; Ruby, Java, and .NET telemetry packaging validated | PASS (event gateway and telemetry element images built with production dependency trees; Ruby image built with locked rackup/puma; Java/.NET tests pass) |
 
+### Milestone 11 limitations
+
+- Grafana dashboard JSON scaffolding in `observability/dashboards/` was deferred
+  to the demo; the four dashboards are provisioned via
+  `infra/k8s/milestone11/grafana-dashboards.yaml`, and the `observability/`
+  subdirectories remain empty placeholders.
+
 ---
 
 ## Milestone 12 — Hardening and demonstration
@@ -1197,7 +1254,7 @@ M7 stability update (2026-08-07): Uppercase acceptance required redrawing all gl
 - [x] Runbook: document startup, shutdown, log access, and common operations
 - [x] Troubleshooting guide: document known issues and fixes
 - [x] Final README: update with current architecture, setup, and usage
-- [x] Example screenshots/GIFs: capture acceptance test run and UI screenshots — deferred (UI runs locally; `make integration` + `make e2e E2E_SKIP_PLATFORM=1` provide headless acceptance)
+- [ ] Example screenshots/GIFs: capture acceptance test run and UI screenshots — deferred (UI runs locally; `make integration` + `make e2e E2E_SKIP_PLATFORM=1` provide headless acceptance)
 - [x] Full acceptance test: `make e2e` passes (gates + integration + platform smoke; `E2E_SKIP_PLATFORM=1` when k3d not present)
 
 ### Acceptance conditions
@@ -1241,6 +1298,25 @@ M7 stability update (2026-08-07): Uppercase acceptance required redrawing all gl
 | 2026-08-08 | Deployment readiness hardening: terminal pod filtering, immutable-tag rollout restarts, POSIX disk guard, and runtime image smoke builds | PASS (`bash -n` deploy/readiness scripts; event gateway, telemetry element, and artifact inspector Docker images built successfully) |
 | 2026-08-09 | OCR worker KafkaJS rebalance storm fix | PASS (patched RequestQueue.scheduleCheckPendingRequests negative setTimeout; removed restartOnFailure:false; added sessionTimeout/heartbeatInterval; 42/42 tests pass; `rghw run` produces HELLO WORLD with stable consumer) |
 | 2026-08-09 | C++ coverage margin hardening (shore up json.cpp/s3.cpp) | PASS (added json.cpp parser-error/escape/type/infinity/pretty-edge tests -> 99%; added s3.cpp uriEncode/reserved-key/no-port/unresolvable-host/closed-port/non-HTTP/ETag-whitespace tests -> 86% local, constructor counted on CI; overall TOTAL 90%->95%; clang-format + 8/8 ctest green) |
+
+### Milestone 12 limitations (explicitly deferred)
+
+Milestone 2's limitations promised the following “arrive with the production
+hardening milestone (Milestone 12)”. They were **not** delivered by Milestone 12
+and are deferred to the post-Milestone-12 backlog (see `docs/backlog.md`):
+
+- **High availability** — platform services remain single-replica (no HA
+  topologies).
+- **Stable Kafka cluster ID** — fresh clusters still get a new KRaft cluster ID
+  each time; a persistent cluster-ID secret is not configured.
+- **MinIO distributed mode** — still standalone/non-distributed.
+- **Kubernetes NetworkPolicies** — still not enforced.
+- **Vault / sealed secrets** — credentials remain pinned as plain strings in
+  Terraform `data` blocks for local development.
+
+These are tracked as deferred backlog items, not completed work. The example
+screenshots/GIFs acceptance item is also deferred (headless `make integration` /
+`make e2e` provide acceptance instead).
 
 ## Acknowledgments
 

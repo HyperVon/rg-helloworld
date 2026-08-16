@@ -8,7 +8,10 @@ COPY src ./src/
 
 RUN cargo build --release
 
-FROM debian:bookworm-slim
+# Pinned to DEBIAN_IMAGE_VERSION=12.11 (see versions.env).
+FROM debian:12.11-slim
+
+RUN adduser --system --uid 1001 --group --home /nonexistent rghw
 
 WORKDIR /app
 COPY --from=builder /app/target/release/phrase-assembler ./

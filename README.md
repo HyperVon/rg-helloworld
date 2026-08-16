@@ -161,7 +161,7 @@ Other dashboards (same EXTRA dark theme) include **Ridiculous Infrastructure**, 
 
 Full port-forward table (`svc:80` for web-shell, inspector, grafana, event-gateway; 9090, 3100, 3200, 9000/9001 for observability) and SSE replay (`Last-Event-ID`): **→ [docs/user-guide.md](docs/user-guide.md)** (usage) and **[docs/runbook.md §6](docs/runbook.md#6-web-uis-and-observability) §6.1.1** (ops).
 
-> **Why EXTRA?** The whole joke is the gap. You open `http://localhost:3000` and it looks like a real production control plane — live graph, metrics, traces, dark glass — then you `go -C cmd/rghw run . run` and it prints `HELLO WORLD` in 8 seconds on one laptop. That’s Milestone 12’s requirement: the docs and UIs must provoke “WOW that looks amazing” followed by “Wait, it just does `HELLO WORLD`? WTF LOL.” See `docs/architecture.md` Milestone 12 EXTRA.
+> **Why EXTRA?** The whole joke is the gap. You open `http://localhost:3000` and it looks like a real production control plane — live graph, metrics, traces, dark glass — then you `rghw run` (the canonical command; the raw `go -C cmd/rghw run . run` form is only a development shortcut) and it prints `HELLO WORLD` in 8 seconds on one laptop. That’s Milestone 12’s requirement: the docs and UIs must provoke “WOW that looks amazing” followed by “Wait, it just does `HELLO WORLD`? WTF LOL.” See `docs/architecture.md` Milestone 12 EXTRA.
 
 ## Language ownership
 
@@ -173,8 +173,8 @@ Full port-forward table (`svc:80` for web-shell, inspector, grafana, event-gatew
 | C++ | geometry expansion | `services/geometry-engine-cpp` |
 | C#/.NET | gRPC rasterizer | `services/rasterizer-dotnet` |
 | Python | phrase composition, OCR preprocessing | `services/image-pipeline-python` |
-| TypeScript/Node.js | OCR worker, event gateway | `services/ocr-worker-node`, `services/event-gateway-node` |
-| Ruby | OCR adjudicator, artifact inspector | `services/adjudicator-ruby` |
+| TypeScript/Node.js | OCR worker, event gateway, Web Shell (React/Vite), Telemetry element | `services/ocr-worker-node`, `services/event-gateway-node`, `services/web-shell`, `services/telemetry-element` |
+| Ruby | OCR adjudicator, artifact inspector | `services/adjudicator-ruby`, `services/artifact-inspector-ruby` |
 | Rust | final phrase assembler | `services/phrase-assembler-rust` |
 
 ## Repository layout
@@ -239,8 +239,8 @@ coding agents:
 - Hardening and operationalization: **Muse Code powered by Meta Muse Spark** — `muse-spark-1.2-contributor` (xhigh) — runbook expansion, web UI documentation, CI restoration (Go/Docs/C++/Python/Shell/Node/Rust coverage), adjudicator threshold alignment, and low-memory profile hardening (2026-08-08)
 
 Agent guidance is split by purpose: `AGENTS.md` is canonical for invariants and
-skill routing, while `.kilo/operating.md` is canonical for portable always-on
-norms. Harness-specific copies live in `CLAUDE.md`,
+skill routing, while `.agents/OPERATING.md` is canonical for portable always-on
+norms and `.kilo/operating.md` is a thin projection of it. Harness-specific copies live in `CLAUDE.md`,
 `.github/copilot-instructions.md`, `.cursor/rules/`, `.windsurfrules`, and
 `.kilo/` (commands, agents, skills).
 

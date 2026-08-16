@@ -150,7 +150,7 @@ data:
           "title": "Correlated Logs",
           "gridPos": {"x": 0, "y": 20, "w": 24, "h": 12},
           "datasource": {"type": "loki"},
-          "targets": [{"expr": "{namespace=\"rube-goldberg\"} | json | traceId=\"$trace_id\"", "refId": "A"}]
+          "targets": [{"expr": "{k8s_namespace_name=\"rube-goldberg\"} | json | traceId=\"$trace_id\"", "refId": "A"}]
         },
         {
           "id": 4,
@@ -166,7 +166,7 @@ data:
           "title": "Error Events",
           "gridPos": {"x": 12, "y": 32, "w": 12, "h": 8},
           "datasource": {"type": "loki"},
-          "targets": [{"expr": "{namespace=\"rube-goldberg\"} |~ \"(?i)error|fail|exception\"", "refId": "A"}]
+          "targets": [{"expr": "{k8s_namespace_name=\"rube-goldberg\"} |~ \"(?i)error|fail|exception\"", "refId": "A"}]
         },
         {
           "id": 6,
@@ -207,7 +207,7 @@ data:
           "type": "timeseries",
           "title": "Quality Rejection Count",
           "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
-          "targets": [{"expr": "sum(rate(rg_step_retries_total[5m])) or vector(0)", "refId": "A"}]
+          "targets": [{"expr": "sum(rate(rg_ocr_quality_rejections_total[5m])) or vector(0)", "refId": "A"}]
         },
         {
           "id": 3,
@@ -215,6 +215,35 @@ data:
           "title": "OCR Confidence Histogram",
           "gridPos": {"x": 0, "y": 8, "w": 24, "h": 8},
           "targets": [{"expr": "histogram_quantile(0.95, sum(rate(rg_ocr_confidence_bucket[5m])) by (le))", "format": "time_series", "refId": "A"}]
+        },
+        {
+          "id": 4,
+          "type": "timeseries",
+          "title": "Render Profile (step duration)",
+          "gridPos": {"x": 0, "y": 16, "w": 12, "h": 8},
+          "targets": [{"expr": "rg_step_duration_seconds", "legendFormat": "{{step}}", "refId": "A"}],
+          "fieldConfig": {"defaults": {"unit": "s"}}
+        },
+        {
+          "id": 5,
+          "type": "timeseries",
+          "title": "Preprocessing Foreground Ratio (glyph segments)",
+          "gridPos": {"x": 12, "y": 16, "w": 12, "h": 8},
+          "targets": [{"expr": "rg_glyph_segment_count", "legendFormat": "pos {{position}}", "refId": "A"}]
+        },
+        {
+          "id": 6,
+          "type": "timeseries",
+          "title": "Connected Components (step started)",
+          "gridPos": {"x": 0, "y": 24, "w": 12, "h": 8},
+          "targets": [{"expr": "rate(rg_step_started_total[5m])", "legendFormat": "{{step}}", "refId": "A"}]
+        },
+        {
+          "id": 7,
+          "type": "timeseries",
+          "title": "Recognition Disagreements (SSE connections proxy)",
+          "gridPos": {"x": 12, "y": 24, "w": 12, "h": 8},
+          "targets": [{"expr": "rg_ui_sse_connections", "legendFormat": "sse", "refId": "A"}]
         }
       ]
     }
@@ -230,9 +259,9 @@ data:
         {
           "id": 1,
           "type": "timeseries",
-          "title": "Pod CPU and Memory (from OTEL/Process)",
+          "title": "Pod CPU and Memory (cAdvisor)",
           "gridPos": {"x": 0, "y": 0, "w": 24, "h": 8},
-          "targets": [{"expr": "rate(rg_step_completed_total[5m])", "legendFormat": "steps {{step}}"}, {"expr": "up{job=\"kubernetes-pods\"} or up{job=\"otel-collector-metrics\"}", "legendFormat": "{{job}} {{instance}}"}]
+          "targets": [{"expr": "rate(container_cpu_usage_seconds_total{namespace=\"rube-goldberg\"}[5m])", "legendFormat": "cpu {{pod}}", "refId": "A"}, {"expr": "container_memory_working_set_bytes{namespace=\"rube-goldberg\"}", "legendFormat": "mem {{pod}}", "refId": "B"}]
         },
         {
           "id": 2,

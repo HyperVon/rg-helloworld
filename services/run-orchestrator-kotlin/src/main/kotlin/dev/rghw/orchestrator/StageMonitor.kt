@@ -180,15 +180,42 @@ class StageMonitor(
     ) {
         val expected =
             when (topic) {
-                Services.GEOMETRY_TOPIC -> MaturityPair(10, 20)
-                Services.NORMALIZED_TOPIC -> MaturityPair(20, 30)
-                Services.RASTERIZED_TOPIC -> MaturityPair(30, 40)
-                Services.PHRASE_COMPOSED_TOPIC -> MaturityPair(40, 50)
-                Services.OCR_IMAGES_TOPIC -> MaturityPair(50, 60)
-                Services.OCR_OBSERVATIONS_TOPIC -> MaturityPair(60, 70)
-                Services.SYMBOLS_ADJUDICATED_TOPIC -> MaturityPair(70, 80)
-                Services.PHRASE_ASSEMBLED_TOPIC -> MaturityPair(80, 90)
-                else -> return
+                Services.GEOMETRY_TOPIC -> {
+                    MaturityPair(10, 20)
+                }
+
+                Services.NORMALIZED_TOPIC -> {
+                    MaturityPair(20, 30)
+                }
+
+                Services.RASTERIZED_TOPIC -> {
+                    MaturityPair(30, 40)
+                }
+
+                Services.PHRASE_COMPOSED_TOPIC -> {
+                    MaturityPair(40, 50)
+                }
+
+                Services.OCR_IMAGES_TOPIC -> {
+                    MaturityPair(50, 60)
+                }
+
+                Services.OCR_OBSERVATIONS_TOPIC -> {
+                    MaturityPair(60, 70)
+                }
+
+                Services.SYMBOLS_ADJUDICATED_TOPIC -> {
+                    MaturityPair(70, 80)
+                }
+
+                Services.PHRASE_ASSEMBLED_TOPIC -> {
+                    MaturityPair(80, 90)
+                }
+
+                else -> {
+                    System.err.println("stage event rejected: unrecognized topic '$topic'")
+                    return
+                }
             }
         val parsed =
             try {

@@ -5,7 +5,7 @@ metadata:
   namespace: rube-goldberg
   labels:
     app: telemetry-element
-    milestone: "10"
+    milestone: '10'
 spec:
   replicas: 1
   selector:
@@ -17,33 +17,54 @@ spec:
         app: telemetry-element
     spec:
       containers:
-        - name: telemetry-element
-          image: rghello-registry:5001/telemetry-element:milestone11
-          imagePullPolicy: Always
-          env:
-            - name: EVENT_GATEWAY_URL
-              value: "http://event-gateway.rube-goldberg.svc.cluster.local"
-          ports:
-            - containerPort: 3002
-              name: http
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: 3002
-            initialDelaySeconds: 5
-            periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 3002
-            initialDelaySeconds: 10
-            periodSeconds: 15
-          resources:
-            requests:
-              cpu: 50m
-              memory: 128Mi
-            limits:
-              memory: 256Mi
+      - name: telemetry-element
+        image: rghello-registry:5001/telemetry-element:milestone11
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: EVENT_GATEWAY_URL
+          value: http://event-gateway.rube-goldberg.svc.cluster.local
+        ports:
+        - containerPort: 3002
+          name: http
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3002
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3002
+          initialDelaySeconds: 10
+          periodSeconds: 15
+        resources:
+          requests:
+            cpu: 100m
+            memory: 64Mi
+          limits:
+            memory: 192Mi
+            cpu: 250m
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: var-run
+          mountPath: /var/run
+      serviceAccountName: telemetry-element
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: var-run
+        emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
@@ -52,11 +73,20 @@ metadata:
   namespace: rube-goldberg
   labels:
     app: telemetry-element
-    milestone: "10"
+    milestone: '10'
 spec:
   selector:
     app: telemetry-element
   ports:
-    - name: http
-      port: 80
-      targetPort: 3002
+  - name: http
+    port: 80
+    targetPort: 3002
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: telemetry-element
+  namespace: rube-goldberg
+  labels:
+    app: telemetry-element
+    milestone: '10'

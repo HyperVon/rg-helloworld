@@ -5,7 +5,7 @@ metadata:
   namespace: rube-goldberg
   labels:
     app: geometry-engine
-    milestone: "5"
+    milestone: '5'
 spec:
   replicas: 1
   selector:
@@ -17,35 +17,65 @@ spec:
         app: geometry-engine
     spec:
       containers:
-        - name: geometry-engine
-          image: rghello-registry:5001/geometry-engine:milestone5
-          imagePullPolicy: Always
-          env:
-            - name: KAFKA_BOOTSTRAP
-              value: kafka.rube-goldberg.svc.cluster.local:9092
-            - name: KAFKA_GROUP_ID
-              value: geometry-engine
-            - name: GEOMETRY_INPUT_TOPIC
-              value: rg.glyph-blueprints.v1
-            - name: GEOMETRY_OUTPUT_TOPIC
-              value: rg.geometry-expanded.v1
-            - name: MINIO_ENDPOINT
-              value: http://minio.rube-goldberg.svc.cluster.local:9000
-            - name: MINIO_ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: minio-credentials
-                  key: root-user
-            - name: MINIO_SECRET_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: minio-credentials
-                  key: root-password
-            - name: MINIO_BUCKET
-              value: rube-goldberg-artifacts
-          resources:
-            requests:
-              cpu: 50m
-              memory: 64Mi
-            limits:
-              memory: 128Mi
+      - name: geometry-engine
+        image: rghello-registry:5001/geometry-engine:milestone5
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: KAFKA_BOOTSTRAP
+          value: kafka.rube-goldberg.svc.cluster.local:9092
+        - name: KAFKA_GROUP_ID
+          value: geometry-engine
+        - name: GEOMETRY_INPUT_TOPIC
+          value: rg.glyph-blueprints.v1
+        - name: GEOMETRY_OUTPUT_TOPIC
+          value: rg.geometry-expanded.v1
+        - name: MINIO_ENDPOINT
+          value: http://minio.rube-goldberg.svc.cluster.local:9000
+        - name: MINIO_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: root-user
+        - name: MINIO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: root-password
+        - name: MINIO_BUCKET
+          value: rube-goldberg-artifacts
+        resources:
+          requests:
+            cpu: 100m
+            memory: 64Mi
+          limits:
+            memory: 192Mi
+            cpu: 250m
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: var-run
+          mountPath: /var/run
+      serviceAccountName: geometry-engine
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: var-run
+        emptyDir: {}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: geometry-engine
+  namespace: rube-goldberg
+  labels:
+    app: geometry-engine
+    milestone: '5'

@@ -1,0 +1,68 @@
+# Egress-restricted NetworkPolicies for the rube-goldberg namespace.
+# Applied by Terraform (kubectl_manifest) so they track the namespace lifecycle.
+# Designed for local k3d (Flannel + kube-router, which enforces NetworkPolicy).
+#
+# Policy model:
+#   * Deny all ingress and egress by default.
+#   * Allow DNS egress to the cluster DNS in kube-system.
+#   * Allow all pod-to-pod traffic (ingress + egress) inside the namespace so
+#     app services can reach Redis/Kafka/PostgreSQL/MinIO and each other.
+#   * All other egress (internet, image registry after pull) is denied, per
+#     architecture.md §2131.
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: rube-goldberg
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-egress
+  namespace: rube-goldberg
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  namespace: rube-goldberg
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-intra-namespace
+  namespace: rube-goldberg
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector: {}
+  egress:
+    - to:
+        - podSelector: {}

@@ -145,9 +145,9 @@ export function useSseStream(streamUrl: string, reconnectMs = 5000): SseState {
         void data;
       });
 
-      source.addEventListener('run-failed', () => {
+      source.addEventListener('run-failed', (ev) => {
         if (cancelled) return;
-        const id = (event as unknown as MessageEvent)?.lastEventId || eventIdRef.current;
+        const id = (ev as MessageEvent).lastEventId || eventIdRef.current;
         if (id) eventIdRef.current = id as string;
         setState((prev) => ({
           ...prev,

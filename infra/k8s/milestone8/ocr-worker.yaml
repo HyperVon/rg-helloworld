@@ -5,7 +5,7 @@ metadata:
   namespace: rube-goldberg
   labels:
     app: ocr-worker
-    milestone: "8"
+    milestone: '8'
 spec:
   replicas: 1
   selector:
@@ -17,48 +17,75 @@ spec:
         app: ocr-worker
     spec:
       containers:
-        - name: ocr-worker
-          image: rghello-registry:5001/ocr-worker:milestone8
-          imagePullPolicy: Always
-          env:
-            - name: KAFKA_BOOTSTRAP
-              value: "kafka.rube-goldberg.svc.cluster.local:9092"
-            - name: KAFKA_GROUP_ID
-              value: ocr-worker-v1
-            - name: OCR_INPUT_TOPIC
-              value: "rg.ocr-images.v1"
-            - name: OCR_OUTPUT_TOPIC
-              value: "rg.ocr-observations.v1"
-            - name: MINIO_ENDPOINT
-              value: "http://minio.rube-goldberg.svc.cluster.local:9000"
-            - name: MINIO_ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: minio-credentials
-                  key: root-user
-            - name: MINIO_SECRET_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: minio-credentials
-                  key: root-password
-            - name: TRACEPARENT_HEADER
-              value: "00-00000000000000000000000000000000-0000000000000000-00"
-          readinessProbe:
-            exec:
-              command: ["node", "-e", "process.exit(0)"]
-            initialDelaySeconds: 5
-            periodSeconds: 10
-          livenessProbe:
-            exec:
-              command: ["node", "-e", "process.exit(0)"]
-            initialDelaySeconds: 10
-            periodSeconds: 15
-          resources:
-            requests:
-              cpu: 100m
-              memory: 256Mi
-            limits:
-              memory: 768Mi
+      - name: ocr-worker
+        image: rghello-registry:5001/ocr-worker:milestone8
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: KAFKA_BOOTSTRAP
+          value: kafka.rube-goldberg.svc.cluster.local:9092
+        - name: KAFKA_GROUP_ID
+          value: ocr-worker-v1
+        - name: OCR_INPUT_TOPIC
+          value: rg.ocr-images.v1
+        - name: OCR_OUTPUT_TOPIC
+          value: rg.ocr-observations.v1
+        - name: MINIO_ENDPOINT
+          value: http://minio.rube-goldberg.svc.cluster.local:9000
+        - name: MINIO_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: root-user
+        - name: MINIO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: root-password
+        - name: TRACEPARENT_HEADER
+          value: 00-00000000000000000000000000000000-0000000000000000-00
+        readinessProbe:
+          exec:
+            command:
+            - node
+            - -e
+            - process.exit(0)
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          exec:
+            command:
+            - node
+            - -e
+            - process.exit(0)
+          initialDelaySeconds: 10
+          periodSeconds: 15
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            memory: 768Mi
+            cpu: 500m
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: var-run
+          mountPath: /var/run
+      serviceAccountName: ocr-worker
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: var-run
+        emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
@@ -67,11 +94,20 @@ metadata:
   namespace: rube-goldberg
   labels:
     app: ocr-worker
-    milestone: "8"
+    milestone: '8'
 spec:
   selector:
     app: ocr-worker
   ports:
-    - name: http
-      port: 8080
-      targetPort: 8080
+  - name: http
+    port: 8080
+    targetPort: 8080
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ocr-worker
+  namespace: rube-goldberg
+  labels:
+    app: ocr-worker
+    milestone: '8'

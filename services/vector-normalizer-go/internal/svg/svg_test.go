@@ -54,6 +54,24 @@ func TestBuildDeterministic(t *testing.T) {
 	}
 }
 
+func TestBuildPerSegmentPolyline(t *testing.T) {
+	segments := []geom.Segment{
+		{X1: 32, Y1: 800, X2: 352, Y2: 32},
+		{X1: 700, Y1: 900, X2: 950, Y2: 100},
+	}
+	content := Build(segments)
+	expected := `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">` +
+		`<polyline points="32.000,800.000 352.000,32.000" fill="none" stroke="#000000" stroke-width="8"/>` +
+		`<polyline points="700.000,900.000 950.000,100.000" fill="none" stroke="#000000" stroke-width="8"/>` +
+		`</svg>`
+	if content != expected {
+		t.Fatalf("multi-contour SVG mismatch:\n got: %q\nwant: %q", content, expected)
+	}
+	if strings.Count(content, "<polyline") != 2 {
+		t.Fatalf("expected one polyline per segment, got %q", content)
+	}
+}
+
 func TestSha256HexKnownValue(t *testing.T) {
 	// sha256 of the empty string.
 	if got := Sha256Hex(""); got != "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" {

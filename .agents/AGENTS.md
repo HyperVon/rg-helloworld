@@ -106,8 +106,8 @@ protocol the architecture requires:
 | C++ | `services/geometry-engine-cpp` |
 | C#/.NET | `services/rasterizer-dotnet` (gRPC rasterizer) |
 | Python | `services/image-pipeline-python` |
-| TypeScript/Node.js | `services/ocr-worker-node`, `services/event-gateway-node` |
-| Ruby | `services/adjudicator-ruby` |
+| TypeScript/Node.js | `services/ocr-worker-node`, `services/event-gateway-node`, `services/web-shell`, `services/telemetry-element` |
+| Ruby | `services/adjudicator-ruby`, `services/artifact-inspector-ruby` |
 | Rust | `services/phrase-assembler-rust` |
 
 Kafka and Redis are both required and are not interchangeable. Kubernetes
