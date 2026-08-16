@@ -43,6 +43,8 @@ class ApplicationTest {
         expectedTexts.clear()
         sseClients.clear()
         lastRunEvents.clear()
+        runEventLog.clear()
+        runSequences.clear()
         runArtifacts.clear()
         artifactObjectKeys.clear()
         Services.eventProducer = null
@@ -428,14 +430,21 @@ class ApplicationTest {
     }
 
     @Test
-    fun writeSseLoopEmitsHeartbeatThenReplayThenEvents() =
+    fun writeSseLoopEmitsSnapshotReplayAndLiveEvents() =
         runBlocking {
+            runEventLog["run-1"] =
+                java.util.Collections.synchronizedList(
+                    mutableListOf(1L to """{"status":"SUCCEEDED","assembledText":"Hello World"}"""),
+                )
+            runSequences["run-1"] =
+                java.util.concurrent.atomic
+                    .AtomicLong(1)
             val out = ByteChannel()
             val events = Channel<String>(Channel.BUFFERED)
             val job =
                 launch {
                     try {
-                        out.writeSseLoop(events, replayEvent = """{"status":"SUCCEEDED","assembledText":"Hello World"}""")
+                        out.writeSseLoop(events, "run-1", null)
                     } catch (_: CancellationException) {
                     } finally {
                         out.close()
@@ -454,6 +463,7 @@ class ApplicationTest {
                     }
                 }
             assertTrue(text.contains(": connected"), "text: $text")
+            assertTrue(text.contains("event: run-succeeded"), "text: $text")
             assertEquals(2, Regex("data: ").findAll(text).count(), "text: $text")
         }
 
@@ -612,6 +622,8 @@ class ArtifactCoverageTest {
         expectedTexts.clear()
         sseClients.clear()
         lastRunEvents.clear()
+        runEventLog.clear()
+        runSequences.clear()
         runArtifacts.clear()
         artifactObjectKeys.clear()
         Services.artifactStore = null

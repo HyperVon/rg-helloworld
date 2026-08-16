@@ -139,9 +139,7 @@ module Adjudicator
             stepId: step_id,
             attempt: attempt,
             reason: reason,
-            position: position,
-            inputMaturity: 70,
-            outputMaturity: 70
+            position: position
           }
         }
       end

@@ -139,8 +139,8 @@ class AdjudicatorLogicTest < Minitest::Test
       'run-1', 'step-1', 2, 0, 'ambiguous'
     )
     assert_equal('rg.quality-retry.v1', event[:type])
-    assert_equal(70, event[:data][:inputMaturity])
-    assert_equal(70, event[:data][:outputMaturity])
+    assert_nil(event[:data][:inputMaturity])
+    assert_nil(event[:data][:outputMaturity])
     assert_equal('run-1', event[:correlationid])
   end
 
