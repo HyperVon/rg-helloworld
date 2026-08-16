@@ -63,8 +63,8 @@ spec:
           mountPath: /var/run
       serviceAccountName: vector-normalizer
       securityContext:
-        runAsUser: 0
-        runAsGroup: 0
+        runAsUser: 1001
+        runAsGroup: 1001
         seccompProfile:
           type: RuntimeDefault
       volumes:
