@@ -156,13 +156,13 @@ rghw run
 Equivalent explicit command:
 
 ```bash
-rghw run --message "HELLO WORLD"
+rghw run --message "HELLO WORLD"   # NOT SUPPORTED: the CLI has no --message flag (M0 limitation); the default phrase is "HELLO WORLD"
 ```
 
 Useful options:
 
 ```text
---message TEXT           Input phrase; defaults to "HELLO WORLD"
+--message TEXT           (NOT IMPLEMENTED) Input phrase; the CLI currently ignores this and defaults to "HELLO WORLD"
 --api-url URL            Orchestrator base URL
 --timeout DURATION       Maximum wait; defaults to 3m
 --quiet                  Suppress progress on stderr
@@ -251,8 +251,8 @@ flowchart LR
 
     REDIS --> GATEWAY[TypeScript Event Gateway]
     GATEWAY --> REACT[React Flow UI]
-    GATEWAY --> ANGULAR[TypeScript Telemetry Element]
-    RUBY --> HTMX[Ruby Artifact Inspector]
+    GATEWAY --> TELEMETRY[framework-free TypeScript Web Component]
+    RUBY --> ARTINSPECT[artifact-inspector-ruby]
 
     SERVICES[All services] --> OTEL[OpenTelemetry Collector]
     OTEL --> PROM[Prometheus]
@@ -263,9 +263,10 @@ flowchart LR
     LOKI --> GRAFANA
 ```
 
-![High-Level Architecture](diagrams/high-level-architecture.png)
+![High-Level Architecture](diagrams/high-level-architecture.mmd)
 
-> **Note:** If you update the diagram above, regenerate the image with:
+> **Note:** The committed diagram source is `diagrams/high-level-architecture.mmd`.
+> No PNG is committed, so render one locally to view the image:
 > `mmdc -i docs/diagrams/high-level-architecture.mmd -o docs/diagrams/high-level-architecture.png`
 
 ---
@@ -802,7 +803,7 @@ The only successful print path must use the terminal response’s `assembledText
 | `event-gateway` | TypeScript, NestJS | Convert Redis run streams into browser SSE | Redis | SSE |
 | `web-shell` | React, Vite, React Flow | Primary visualization | SSE, REST | Browser UI |
 | `telemetry-element` | TypeScript Web Components | Run ledger and numeric telemetry | SSE, REST | Web Component |
-| `artifact-inspector` | Ruby (Sinatra) templates | Show intermediate images and metadata | REST/HTML | HTML fragments |
+| `artifact-inspector-ruby` | Ruby (Sinatra) templates | Show intermediate images and metadata | REST/HTML | HTML fragments |
 | `otel-collector` | OpenTelemetry Collector | Telemetry intake and routing | OTLP | Prometheus, Tempo |
 | `grafana` | Grafana | Metrics, logs, and trace dashboards | Prometheus, Loki, Tempo | Browser UI |
 
@@ -2309,9 +2310,25 @@ rube-goldberg-hello-world/
 │   ├── wait-ready.sh
 │   ├── smoke-test.sh
 │   └── collect-diagnostics.sh
-└── .github/
-    └── workflows/
+    └── .github/
+        └── workflows/
 ```
+
+> **Directory layout note (accuracy):** This tree is the design intent from
+> section 24. Some listed directories are scaffolding/legacy placeholders and do
+> **not** currently hold the real configuration or code:
+> - Real observability configuration (OTel Collector, Prometheus, Loki, Tempo,
+>   Grafana dashboards/alerts) lives in `infra/k8s/milestone11/*.yaml`; the
+>   `observability/{dashboards,alerts,otel,prometheus,loki,tempo}` directories
+>   are currently empty placeholders.
+> - `infra/helm-values` and `infra/kubernetes` are empty scaffolding; Helm values
+>   and Kubernetes manifests are committed under `infra/k8s/milestone*/`.
+> - `infra/terraform/modules` holds module scaffolding; root Terraform config is
+>   under `infra/terraform/environments/local`.
+> - `web/{shell-react,telemetry-angular,shared-contracts}` is legacy React/Angular
+>   scaffolding; the real, shipped UI code is `services/web-shell` (React Flow)
+>   and `services/telemetry-element` (framework-free TypeScript Web Component).
+> - `tests/anti-cheating/` holds the anti-cheating suite (it is populated, not empty).
 
 ---
 

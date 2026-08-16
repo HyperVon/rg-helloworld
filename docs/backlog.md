@@ -44,6 +44,24 @@ section 30 and should be considered only after the primary pipeline is
 working, unless a later milestone gives it a concrete integrity-preserving
 role.
 
+### Post-Milestone-12 hardening backlog
+
+These items were promised in the Milestone 2 limitations as “arrive with the
+production hardening milestone (Milestone 12)” but were **not** delivered by
+Milestone 12. They are explicitly deferred here rather than marked complete:
+
+- **High availability** — move platform services (Kafka, PostgreSQL, Redis,
+  MinIO, Prometheus/Loki/Tempo, Grafana, OTel Collector) off single-replica to
+  HA topologies with replica counts and quorum where applicable.
+- **Stable Kafka cluster ID** — configure a persistent KRaft cluster ID secret
+  so a recreated cluster keeps the same ID.
+- **MinIO distributed mode** — replace standalone MinIO with distributed mode
+  for local redundancy.
+- **Kubernetes NetworkPolicies** — author and enforce default-deny / scoped
+  NetworkPolicies for the `rube-goldberg` namespace.
+- **Vault / sealed secrets** — replace plain pinned Terraform `data`-block
+  credentials with Vault or sealed secrets for local development.
+
 ### Artifact viewer renders JSON instead of intermediate artifacts (resolved)
 
 The Web Shell previously showed JSON for each artifact rather than the rendered
