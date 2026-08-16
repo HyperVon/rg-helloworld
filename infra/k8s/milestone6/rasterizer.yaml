@@ -71,6 +71,8 @@ spec:
           mountPath: /var/run
       serviceAccountName: rasterizer
       securityContext:
+        runAsUser: 0
+        runAsGroup: 0
         seccompProfile:
           type: RuntimeDefault
       volumes:
