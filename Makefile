@@ -290,6 +290,34 @@ lint-rust:
 	@echo ">> cargo clippy -D warnings ($(RUST_DIR))"
 	(cd $(RUST_DIR) && $(CARGO) clippy --all-targets -- -D warnings)
 
+# Fast pre-push gates — catch the quick CI failures (markdownlint, prettier,
+# ktlint, shellcheck, terraform) in seconds without a full build or e2e.
+# Run this locally before pushing; reserve the full platform-e2e (make e2e)
+# for changes that touch infra/Dockerfiles/manifests.
+pre-push: lint-markdown lint-node lint-kotlin shellcheck terraform-validate
+	@echo ">> pre-push: fast static gates passed"
+
+lint-markdown:
+	@if command -v markdownlint-cli2 >/dev/null 2>&1; then \
+		echo ">> markdownlint-cli2"; \
+		markdownlint-cli2 "**/*.md" "#.github" || exit 1; \
+	elif command -v npx >/dev/null 2>&1; then \
+		echo ">> npx markdownlint-cli2 (skip if not cached)"; \
+		npx --no-install markdownlint-cli2 "**/*.md" "#.github" || echo "SKIP: markdownlint-cli2 not installed"; \
+	else \
+		echo "SKIP: markdownlint-cli2 not available"; \
+	fi
+
+shellcheck:
+	$(call guard_tool,shellcheck,ShellCheck)
+	@echo ">> shellcheck (scripts + test scripts)"
+	shellcheck scripts/*.sh tests/integration/run_integration.sh tests/end-to-end/run_e2e.sh tests/chaos/chaos.sh || exit 1
+
+terraform-validate:
+	$(call guard_tool,terraform,Terraform)
+	@echo ">> terraform validate (local environment)"
+	cd infra/terraform/environments/local && terraform validate || exit 1
+
 coverage: contract-test coverage-go coverage-java coverage-kotlin coverage-cpp coverage-dotnet coverage-python coverage-node coverage-ruby coverage-rust
 
 coverage-go:

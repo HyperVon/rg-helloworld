@@ -422,8 +422,6 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
         working-directory: services/image-pipeline-python
-      - name: Prepare toolchains
-        run: make prerequisites
       - name: Contracts validate
         run: make contracts
       - name: Prohibited-field static scan
@@ -541,6 +539,20 @@ jobs:
           curl -LO "https://dl.k8s.io/release/v${{ env.KUBECTL_VERSION }}/bin/linux/amd64/kubectl"
           chmod +x kubectl
           sudo mv kubectl /usr/local/bin/
+      - name: Install platform test clients (mc, psql, redis-cli)
+        run: |
+          curl -sSL https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc
+          chmod +x /usr/local/bin/mc
+          sudo apt-get update && sudo apt-get install -y postgresql-client redis-tools
+      - name: Install python test dependencies
+        run: pip install --break-system-packages -r services/image-pipeline-python/requirements.txt
+      - name: Install OCR test dependencies
+        # Mirror the Node services job: ocr-worker unit tests spawn
+        # `python3` (PIL) and `tesseract` to build fixture images. The
+        # setup-python interpreter owns `python3`/`pip` here, so install
+        # pillow into it WITHOUT --break-system-packages (that flag targets
+        # the system interpreter, which the test's `python3` is not).
+        run: sudo apt-get update && sudo apt-get install -y tesseract-ocr python3-pil && pip install pillow --quiet
       - name: Verify platform tooling is installed
         # Hard-fail when platform tools are missing so the cluster path can
         # never silently degrade to a skipped PASS (E2E_REQUIRE_PLATFORM=1).

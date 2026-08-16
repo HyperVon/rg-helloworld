@@ -318,6 +318,6 @@ mc find local/rube-goldberg-artifacts --name "*.png" | head
 - **Architecture** for contracts, maturity ranks, and sequence diagrams: [architecture.md](architecture.md) (§4 CLI, §20 observability, §25 orchestration)
 - **Implementation status** for what is done and what was verified when: [implementation-status.md](implementation-status.md)
 - **Troubleshooting** for ports, DiskPressure, Kafka rebalancing, MinIO: [troubleshooting.md](troubleshooting.md)
-- **Screenshots** (all Playwright 1280×800 at `SUCCEEDED`): [screenshots/](screenshots/). _Note: screenshots were captured 2026-08-08; refresh them after the current UI stabilizes._
+- **Screenshots** (all Playwright 1280×800 at `SUCCEEDED`): [screenshots/](screenshots/). *Note: screenshots were captured 2026-08-08; refresh them after the current UI stabilizes.*
 
 If a UI shows `PREPROCESSING` stuck with `Progress: 0%`, it is a real pipeline delay (Kafka rebalancing or OCR) — wait 30s and refresh, or check `kubectl logs deploy/ocr-worker -n rube-goldberg` and `kubectl get pods`.

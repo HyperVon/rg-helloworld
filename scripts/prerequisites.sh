@@ -84,7 +84,7 @@ setup_venv() {
 }
 
 setup_node() {
-  for dir in ocr-worker-node event-gateway-node telemetry-element; do
+  for dir in ocr-worker-node event-gateway-node telemetry-element web-shell; do
     if [ ! -f "$ROOT_DIR/services/$dir/package-lock.json" ]; then
       echo ">> npm install (generates package-lock.json) ($dir)"
       (cd "$ROOT_DIR/services/$dir" && npm install --no-audit --no-fund)
@@ -99,11 +99,11 @@ setup_node() {
 
 setup_ruby() {
   local dir="$1"
-  if [ ! -f "$ROOT_DIR/services/$dir/Gemfile.lock" ]; then
+  if (cd "$ROOT_DIR/services/$dir" && ! bundle check >/dev/null 2>&1); then
     echo ">> bundle install ($dir)"
     (cd "$ROOT_DIR/services/$dir" && bundle install)
   else
-    echo ">> bundle dependencies present ($dir)"
+    echo ">> bundle dependencies satisfied ($dir)"
   fi
 }
 

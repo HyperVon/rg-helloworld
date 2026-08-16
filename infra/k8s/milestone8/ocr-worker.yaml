@@ -79,6 +79,8 @@ spec:
           mountPath: /var/run
       serviceAccountName: ocr-worker
       securityContext:
+        runAsUser: 1001
+        runAsGroup: 1001
         seccompProfile:
           type: RuntimeDefault
       volumes:

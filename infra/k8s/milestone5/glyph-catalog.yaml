@@ -73,6 +73,8 @@ spec:
           mountPath: /var/run
       serviceAccountName: glyph-catalog
       securityContext:
+        runAsUser: 1001
+        runAsGroup: 1001
         seccompProfile:
           type: RuntimeDefault
       volumes:

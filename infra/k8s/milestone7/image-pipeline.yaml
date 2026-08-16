@@ -85,6 +85,8 @@ spec:
           mountPath: /var/run
       serviceAccountName: image-pipeline
       securityContext:
+        runAsUser: 1001
+        runAsGroup: 1001
         seccompProfile:
           type: RuntimeDefault
       volumes:

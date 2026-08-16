@@ -15,6 +15,51 @@ decode_secret() {
     fi
 }
 
+# Run a node test command and report pass/fail without coupling to a
+# hardcoded pass count (suites grow over time). Succeeds when at least one
+# test passed and none failed; otherwise prints the captured output so the
+# failure is visible in CI instead of being swallowed by a count grep.
+# Run a ruby test command and report pass/fail without coupling to a
+# hardcoded "0 failures" string that swallows the real error. Succeeds when
+# the run reports zero failures; otherwise prints the captured output.
+ruby_test_pass() {
+    local label="$1"
+    local cmd="$2"
+    local test_out
+    if ! test_out=$(eval "$cmd" 2>&1); then
+        echo "FAIL: ${label}"
+        echo "${test_out}"
+        return 1
+    fi
+    if printf '%s\n' "$test_out" | grep -q "0 failures"; then
+        echo "PASS: ${label}"
+        return 0
+    fi
+    echo "FAIL: ${label}"
+    echo "${test_out}"
+    return 1
+}
+
+node_test_pass() {
+    local label="$1"
+    local cmd="$2"
+    local test_out pass_count fail_count
+    if ! test_out=$(eval "$cmd" 2>&1); then
+        echo "FAIL: ${label}"
+        echo "${test_out}"
+        return 1
+    fi
+    pass_count=$(printf '%s\n' "$test_out" | grep -oE 'pass [0-9]+' | grep -oE '[0-9]+' | head -1)
+    fail_count=$(printf '%s\n' "$test_out" | grep -oE 'fail [0-9]+' | grep -oE '[0-9]+' | head -1)
+    if [ "${fail_count:-0}" -eq 0 ] && [ "${pass_count:-0}" -gt 0 ]; then
+        echo "PASS: ${label}"
+        return 0
+    fi
+    echo "FAIL: ${label}"
+    echo "${test_out}"
+    return 1
+}
+
 secret_value() {
     local secret="$1"
     local key="$2"
@@ -729,18 +774,14 @@ fi
 
 if command -v node >/dev/null 2>&1 && [ -d "${PROJECT_ROOT}/services/ocr-worker-node" ]; then
     cd "${PROJECT_ROOT}/services/ocr-worker-node"
-    if npm run lint 2>&1 | grep -q "All matched files"; then
+    if lint_out=$(npm run lint 2>&1); then
         echo "PASS: OCR worker lint"
     else
         echo "FAIL: OCR worker lint"
+        echo "${lint_out}"
         exit 1
     fi
-    if npm test 2>&1 | grep -q "pass 35"; then
-        echo "PASS: OCR worker unit tests"
-    else
-        echo "FAIL: OCR worker unit tests"
-        exit 1
-    fi
+    node_test_pass "OCR worker unit tests" "npm test" || exit 1
     cd "${PROJECT_ROOT}"
 else
     echo "SKIP: node not found, skipping OCR worker checks"
@@ -748,12 +789,7 @@ fi
 
 if command -v ruby >/dev/null 2>&1 && [ -d "${PROJECT_ROOT}/services/adjudicator-ruby" ]; then
     cd "${PROJECT_ROOT}/services/adjudicator-ruby"
-    if ruby -S bundle exec rake test 2>&1 | grep -q "0 failures"; then
-        echo "PASS: adjudicator unit tests"
-    else
-        echo "FAIL: adjudicator unit tests"
-        exit 1
-    fi
+    ruby_test_pass "adjudicator unit tests" "ruby -S bundle exec rake test" || exit 1
     cd "${PROJECT_ROOT}"
 else
     echo "SKIP: ruby not found, skipping adjudicator checks"
@@ -795,18 +831,14 @@ echo "--- Test 11: Milestone 10 event gateway + telemetry element ---"
 
 if command -v node >/dev/null 2>&1 && [ -d "${PROJECT_ROOT}/services/event-gateway-node" ]; then
     cd "${PROJECT_ROOT}/services/event-gateway-node"
-    if npm run lint 2>&1 | grep -q "All matched files"; then
+    if lint_out=$(npm run lint 2>&1); then
         echo "PASS: event-gateway lint"
     else
         echo "FAIL: event-gateway lint"
+        echo "${lint_out}"
         exit 1
     fi
-    if npm test 2>&1 | grep -q "pass 33"; then
-        echo "PASS: event-gateway unit tests"
-    else
-        echo "FAIL: event-gateway unit tests"
-        exit 1
-    fi
+    node_test_pass "event-gateway unit tests" "npm test" || exit 1
     cd "${PROJECT_ROOT}"
 else
     echo "SKIP: node not found, skipping event-gateway checks"
@@ -814,18 +846,14 @@ fi
 
 if command -v node >/dev/null 2>&1 && [ -d "${PROJECT_ROOT}/services/telemetry-element" ]; then
     cd "${PROJECT_ROOT}/services/telemetry-element"
-    if npm run lint 2>&1 | grep -q "All matched files"; then
+    if lint_out=$(npm run lint 2>&1); then
         echo "PASS: telemetry-element lint"
     else
         echo "FAIL: telemetry-element lint"
+        echo "${lint_out}"
         exit 1
     fi
-    if npm test 2>&1 | grep -q "pass 32"; then
-        echo "PASS: telemetry-element unit tests"
-    else
-        echo "FAIL: telemetry-element unit tests"
-        exit 1
-    fi
+    node_test_pass "telemetry-element unit tests" "npm test" || exit 1
     cd "${PROJECT_ROOT}"
 else
     echo "SKIP: node not found, skipping telemetry-element checks"
@@ -833,12 +861,7 @@ fi
 
 if command -v ruby >/dev/null 2>&1 && [ -d "${PROJECT_ROOT}/services/artifact-inspector-ruby" ]; then
     cd "${PROJECT_ROOT}/services/artifact-inspector-ruby"
-    if ruby -Ilib -Itest test/inspector_test.rb 2>&1 | grep -q "0 failures"; then
-        echo "PASS: artifact-inspector unit tests"
-    else
-        echo "FAIL: artifact-inspector unit tests"
-        exit 1
-    fi
+    ruby_test_pass "artifact-inspector unit tests" "ruby -Ilib -Itest test/inspector_test.rb" || exit 1
     cd "${PROJECT_ROOT}"
 else
     echo "SKIP: ruby not found, skipping artifact-inspector checks"
@@ -860,12 +883,7 @@ if command -v node >/dev/null 2>&1 && [ -d "${PROJECT_ROOT}/services/web-shell" 
         echo "FAIL: web-shell typecheck"
         exit 1
     fi
-    if node --test tests/*.test.ts 2>&1 | grep -q "pass 10"; then
-        echo "PASS: web-shell unit tests"
-    else
-        echo "FAIL: web-shell unit tests"
-        exit 1
-    fi
+    node_test_pass "web-shell unit tests" "node --test tests/*.test.ts" || exit 1
     cd "${PROJECT_ROOT}"
 else
     echo "SKIP: node not found, skipping web-shell checks"

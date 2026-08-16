@@ -82,6 +82,8 @@ spec:
           mountPath: /var/run
       serviceAccountName: run-orchestrator
       securityContext:
+        runAsUser: 1001
+        runAsGroup: 1001
         seccompProfile:
           type: RuntimeDefault
       volumes:

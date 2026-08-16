@@ -58,6 +58,8 @@ spec:
           mountPath: /var/run
       serviceAccountName: web-shell
       securityContext:
+        runAsUser: 1001
+        runAsGroup: 1001
         seccompProfile:
           type: RuntimeDefault
       volumes:

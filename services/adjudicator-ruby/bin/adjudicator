@@ -1,0 +1,32 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'bundler/setup'
+require '/app/lib/adjudicator'
+require '/app/lib/adjudicator/consumer'
+require '/app/lib/rghello/telemetry'
+require 'json'
+
+Rghello::Telemetry.configure
+
+cmd = ARGV[0]
+
+if cmd == 'run'
+  puts Adjudicator.banner
+  AdjudicatorConsumer.run
+elsif cmd == 'once'
+  input_path = ARGV[1]
+  layout_path = ARGV[2]
+  output_path = ARGV[3]
+  event_output_path = ARGV[4]
+  if input_path.nil? || layout_path.nil?
+    puts 'Usage: adjudicator once <input.json> <layout.json> [output.json] [event-output.json]'
+    exit 1
+  end
+  result = Adjudicator::AdjudicatorImpl.run_once(
+    input_path, layout_path, output_path: output_path, event_output_path: event_output_path
+  )
+  puts JSON.pretty_generate(result)
+else
+  puts Adjudicator.banner
+end

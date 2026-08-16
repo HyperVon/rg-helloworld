@@ -2317,6 +2317,7 @@ rube-goldberg-hello-world/
 > **Directory layout note (accuracy):** This tree is the design intent from
 > section 24. Some listed directories are scaffolding/legacy placeholders and do
 > **not** currently hold the real configuration or code:
+>
 > - Real observability configuration (OTel Collector, Prometheus, Loki, Tempo,
 >   Grafana dashboards/alerts) lives in `infra/k8s/milestone11/*.yaml`; the
 >   `observability/{dashboards,alerts,otel,prometheus,loki,tempo}` directories

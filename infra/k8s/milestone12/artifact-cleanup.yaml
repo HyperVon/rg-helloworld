@@ -56,6 +56,8 @@ spec:
               mountPath: /tmp
           serviceAccountName: artifact-cleanup
           securityContext:
+            runAsUser: 1001
+            runAsGroup: 1001
             seccompProfile:
               type: RuntimeDefault
           volumes:

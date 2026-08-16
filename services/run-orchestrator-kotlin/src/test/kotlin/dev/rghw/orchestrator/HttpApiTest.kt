@@ -328,7 +328,10 @@ class HttpApiTest {
                         assertEquals("", channel.readUTF8Line())
 
                         var eventLine: String? = null
-                        while (eventLine == null || !eventLine.contains("SUCCEEDED")) {
+                        // The stream opens with a `snapshot` frame whose data line also
+                        // contains "SUCCEEDED"; the real run event carries the assembled
+                        // text, so require both to land on the actual run-succeeded event.
+                        while (eventLine == null || !(eventLine.contains("SUCCEEDED") && eventLine.contains("Hello World"))) {
                             eventLine = channel.readUTF8Line()
                             if (eventLine == null) break
                         }

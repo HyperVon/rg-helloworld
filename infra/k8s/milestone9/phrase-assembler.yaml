@@ -77,6 +77,8 @@ spec:
           mountPath: /var/run
       serviceAccountName: phrase-assembler
       securityContext:
+        runAsUser: 1001
+        runAsGroup: 1001
         seccompProfile:
           type: RuntimeDefault
       volumes:
