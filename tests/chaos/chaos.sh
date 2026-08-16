@@ -9,7 +9,7 @@ say() { echo "[chaos] $*"; }
 
 check_pods_ready() {
   local not_ready
-  not_ready=$(kubectl get pods -n "$NS" -o jsonpath='{.items[?(@.status.phase!="Running")].metadata.name}' 2>/dev/null | wc -l | tr -d ' ')
+  not_ready=$(kubectl get pods -n "$NS" -o jsonpath='{range .items[?(@.status.phase!="Running")]}{.metadata.name}{"\n"}{end}' 2>/dev/null | grep -c . | tr -d ' ')
   if [ "$not_ready" -gt 0 ]; then
     say "FAIL: $not_ready pods not in Running state"
     kubectl get pods -n "$NS" -o wide
@@ -55,7 +55,7 @@ wait_for_recovery() {
   deadline=$(($(date +%s) + timeout))
   while [ "$(date +%s)" -lt "$deadline" ]; do
     local ready
-    ready=$(kubectl get pods -n "$NS" -l "$label" -o jsonpath='{.items[?(@.status.phase=="Running")].metadata.name}' 2>/dev/null | wc -l | tr -d ' ')
+    ready=$(kubectl get pods -n "$NS" -l "$label" -o jsonpath='{range .items[?(@.status.phase=="Running")]}{.metadata.name}{"\n"}{end}' 2>/dev/null | grep -c . | tr -d ' ')
     if [ "$ready" -gt 0 ]; then
       say "$label recovered"
       return 0

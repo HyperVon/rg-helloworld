@@ -3,21 +3,28 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# Derive printed toolchain labels from versions.env (single source of truth)
+# instead of hardcoding pins that drift from the real versions.
+set +e
+# shellcheck disable=SC1091
+source "$ROOT_DIR/versions.env" 2>/dev/null
+set -e
+
 REQUIRED_TOOLS=(
-  "go:Go toolchain (1.26.5)"
-  "java:JDK 21+"
-  "javac:JDK 21+"
-  "mvn:Apache Maven (3.9.16)"
-  "cmake:CMake (4.4.2)"
-  "clang-format:clang-format (22.1.8)"
-  "python3:Python 3.13+"
-  "node:Node.js 24 LTS"
+  "go:Go toolchain (${GO_VERSION})"
+  "java:JDK ${JAVA_VERSION}+"
+  "javac:JDK ${JAVA_VERSION}+"
+  "mvn:Apache Maven (${MAVEN_VERSION})"
+  "cmake:CMake (${CMAKE_VERSION})"
+  "clang-format:clang-format (${CLANG_FORMAT_VERSION})"
+  "python3:Python ${PYTHON_VERSION}+"
+  "node:Node.js ${NODE_VERSION}"
   "npm:npm"
-  "ruby:Ruby 3.4+"
+  "ruby:Ruby ${RUBY_VERSION}+"
   "bundle:Bundler"
-  "cargo:Cargo (Rust 1.97.1)"
-  "rustc:rustc (Rust 1.97.1)"
-  "dotnet:.NET SDK 10.0.302"
+  "cargo:Cargo (Rust ${RUST_VERSION})"
+  "rustc:rustc (Rust ${RUST_VERSION})"
+  "dotnet:.NET SDK ${DOTNET_SDK_VERSION}"
 )
 
 OPTIONAL_TOOLS=(
@@ -91,11 +98,12 @@ setup_node() {
 }
 
 setup_ruby() {
-  if [ ! -f "$ROOT_DIR/services/adjudicator-ruby/Gemfile.lock" ]; then
-    echo ">> bundle install (adjudicator-ruby)"
-    (cd "$ROOT_DIR/services/adjudicator-ruby" && bundle install)
+  local dir="$1"
+  if [ ! -f "$ROOT_DIR/services/$dir/Gemfile.lock" ]; then
+    echo ">> bundle install ($dir)"
+    (cd "$ROOT_DIR/services/$dir" && bundle install)
   else
-    echo ">> bundle dependencies present (adjudicator-ruby)"
+    echo ">> bundle dependencies present ($dir)"
   fi
 }
 
@@ -126,7 +134,9 @@ echo "Preparing language-level dependencies:"
 mkdir -p "$ROOT_DIR/.local/diagnostics"
 setup_venv
 setup_node
-setup_ruby
+for dir in adjudicator-ruby artifact-inspector-ruby; do
+  setup_ruby "$dir"
+done
 setup_gradle_wrapper
 
 echo ""

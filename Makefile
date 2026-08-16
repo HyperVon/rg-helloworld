@@ -7,6 +7,11 @@
 #   STRICT=1 makes missing toolchains a hard failure instead of a skip.
 
 SHELL := /bin/bash
+# Run every recipe in a single shell so guard `exit` actually aborts the whole
+# target (not just its own line). `-e` restores the fail-fast behavior that
+# per-line shells gave us for free (see CI-1).
+SHELLFLAGS := -ec
+.ONESHELL:
 RUBY_PATH := $(if $(wildcard /opt/homebrew/opt/ruby/bin),/opt/homebrew/opt/ruby/bin/:)
 export PATH := $(RUBY_PATH)$(PATH)
 
@@ -17,7 +22,7 @@ JAVA_DIR    := services/glyph-catalog-java
 CPP_DIR     := services/geometry-engine-cpp
 DOTNET_DIR  := services/rasterizer-dotnet
 PYTHON_DIR  := services/image-pipeline-python
-NODE_DIRS   := services/ocr-worker-node services/event-gateway-node services/telemetry-element
+NODE_DIRS   := services/ocr-worker-node services/event-gateway-node services/telemetry-element services/web-shell
 RUBY_DIRS    := services/adjudicator-ruby services/artifact-inspector-ruby
 RUST_DIR    := services/phrase-assembler-rust
 
@@ -32,9 +37,9 @@ CARGO   := $(if $(wildcard $(HOME)/.cargo/bin/cargo),$(HOME)/.cargo/bin/cargo,ca
 RUSTFMT := $(if $(wildcard $(HOME)/.cargo/bin/rustfmt),$(HOME)/.cargo/bin/rustfmt,rustfmt)
 DOTNET  := $(if $(wildcard $(HOME)/.dotnet/dotnet),$(HOME)/.dotnet/dotnet,dotnet)
 
-.PHONY: help prerequisites contracts contract-test format lint unit coverage build
-.PHONY: help prerequisites contracts contract-test format lint unit coverage build
-.PHONY: integration images cluster infra deploy wait run demo e2e chaos diagnostics down destroy clean disk-guard proto-gen proto-gen-check low-memory
+.PHONY: help test-guard guard-skip-demo prerequisites contracts contract-test format lint unit coverage build
+.PHONY: integration images cluster infra deploy wait run demo e2e chaos diagnostics down destroy clean
+.PHONY: disk-guard low-memory proto-gen proto-gen-check
 .PHONY: format-go format-java format-kotlin format-cpp format-dotnet format-python format-node format-ruby format-rust
 .PHONY: lint-go lint-java lint-kotlin lint-cpp lint-dotnet lint-python lint-node lint-ruby lint-rust
 .PHONY: unit-go unit-java unit-kotlin unit-cpp unit-dotnet unit-python unit-node unit-ruby unit-rust
@@ -44,22 +49,38 @@ DOTNET  := $(if $(wildcard $(HOME)/.dotnet/dotnet),$(HOME)/.dotnet/dotnet,dotnet
 help:
 	@echo "Rube Goldberg Hello World — make targets"
 	@echo ""
-	@echo "Milestone 0 (implemented):"
+	@echo "Implementation & verification:"
 	@echo "  prerequisites   check toolchains and prepare language dependencies"
+	@echo "  contracts       validate contract specs parse correctly"
+	@echo "  contract-test   validate examples + prohibited-field static scan"
+	@echo "  proto-gen       regenerate Go/C# gRPC stubs"
+	@echo "  proto-gen-check assert generated gRPC stubs are up to date"
 	@echo "  format          format all languages"
 	@echo "  lint            lint all languages"
-	@echo "  contracts       validate contract specs parse correctly"
-	@echo "  contract-test   validate examples + prohibited-field tests"
 	@echo "  unit            run all unit + contract tests"
 	@echo "  coverage        unit tests + 90% coverage gates per language"
 	@echo "  build           compile all skeleton services"
 	@echo "  integration     cross-language artifact integration tests"
 	@echo "  e2e             full milestone acceptance (gates + integration)"
+	@echo "  test-guard      assert STRICT=1 differs from default skip behavior"
 	@echo "  clean           remove local build outputs"
 	@echo ""
-	@echo "Later milestones (stubs):"
-	@echo "  images cluster infra deploy wait run demo"
-	@echo "  chaos diagnostics down destroy"
+	@echo "Platform / operations:"
+	@echo "  disk-guard      warn when free disk space is low"
+	@echo "  low-memory      profile memory under constrained limits"
+	@echo "  images          build all service container images"
+	@echo "  cluster         create the local k3d cluster + registry"
+	@echo "  infra           apply terraform local environment"
+	@echo "  deploy          deploy all services to the cluster"
+	@echo "  wait            block until services are ready"
+	@echo "  run             run the CLI end-to-end (port-forwarded API)"
+	@echo "  demo            run smoke-test after wait"
+	@echo "  diagnostics     collect cluster diagnostics"
+	@echo "  chaos           run chaos experiments"
+	@echo "  down            delete the local k3d cluster"
+	@echo "  destroy         tear down terraform"
+	@echo ""
+	@echo "Set STRICT=1 to fail (not skip) when a required toolchain is missing."
 
 # ---------------------------------------------------------------------------
 # Guards and helpers
@@ -265,9 +286,9 @@ lint-ruby:
 lint-rust:
 	$(call guard_tool,$(CARGO),Cargo)
 	@echo ">> cargo fmt --check ($(RUST_DIR))"
-	cd $(RUST_DIR) && $(CARGO) fmt --check
+	(cd $(RUST_DIR) && $(CARGO) fmt --check)
 	@echo ">> cargo clippy -D warnings ($(RUST_DIR))"
-	cd $(RUST_DIR) && $(CARGO) clippy --all-targets -- -D warnings
+	(cd $(RUST_DIR) && $(CARGO) clippy --all-targets -- -D warnings)
 
 coverage: contract-test coverage-go coverage-java coverage-kotlin coverage-cpp coverage-dotnet coverage-python coverage-node coverage-ruby coverage-rust
 
@@ -365,8 +386,8 @@ unit-cpp:
 unit-dotnet:
 	$(call guard_tool,$(DOTNET),dotnet)
 	@echo ">> dotnet test ($(DOTNET_DIR))"
-	cd $(DOTNET_DIR)/rasterizer.Tests && $(DOTNET) test --nologo --verbosity quiet
-	cd $(DOTNET_DIR) && $(DOTNET) test --nologo --verbosity quiet
+	(cd $(DOTNET_DIR)/rasterizer.Tests && $(DOTNET) test --nologo --verbosity quiet)
+	(cd $(DOTNET_DIR) && $(DOTNET) test --nologo --verbosity quiet)
 
 unit-python:
 	$(call guard_tool,python3,Python 3)
@@ -435,10 +456,10 @@ build-rust:
 
 clean:
 	@rm -rf $(BUILD_DIR)
-	@cd $(KOTLIN_DIR) && rm -rf build .kotlin 2>/dev/null || true
-	@cd $(JAVA_DIR) && mvn -q clean 2>/dev/null || true
-	@cd $(DOTNET_DIR) && rm -rf bin obj 2>/dev/null || true
-	@cd $(RUST_DIR) && $(CARGO) clean 2>/dev/null || true
+	@(cd $(KOTLIN_DIR) && rm -rf build .kotlin 2>/dev/null) || true
+	@(cd $(JAVA_DIR) && mvn -q clean 2>/dev/null) || true
+	@(cd $(DOTNET_DIR) && rm -rf bin obj 2>/dev/null) || true
+	@(cd $(RUST_DIR) && $(CARGO) clean 2>/dev/null) || true
 	@for d in $(NODE_DIRS); do rm -rf $$d/out 2>/dev/null || true; done
 	@find $(PYTHON_DIR) -name __pycache__ -type d -exec rm -rf {} + 2>/dev/null || true
 	@echo "clean: done"
@@ -448,7 +469,22 @@ clean:
 # ---------------------------------------------------------------------------
 
 integration:
-	@bash tests/integration/run_integration.sh
+	@mkdir -p .local/diagnostics; \
+	bash tests/integration/run_integration.sh 2>&1 | tee .local/diagnostics/integration.log; \
+	status=$${PIPESTATUS[0]}; \
+	skipped=$$(grep -oE 'skipped=[0-9]+' .local/diagnostics/integration.log | tail -1 | cut -d= -f2 || true); \
+	skipped=$${skipped:-0}; \
+	if [ -n "$${GITHUB_STEP_SUMMARY:-}" ]; then \
+		{ echo "## Integration test skips"; echo ""; grep -E '\[skip\]' .local/diagnostics/integration.log || echo "none"; } >> "$$GITHUB_STEP_SUMMARY"; \
+	fi; \
+	if [ "$$status" -ne 0 ]; then exit $$status; fi; \
+	if [ "$${CI:-}" = "true" ] || [ -n "$(STRICT)" ]; then \
+		if [ "$$skipped" -gt 0 ]; then \
+			echo "FAIL: $$skipped integration step(s) were skipped under CI/STRICT — install the full toolchain so coverage is real"; \
+			exit 1; \
+		fi; \
+	fi; \
+	echo "integration: OK"
 
 disk-guard:
 	@bash scripts/disk-guard.sh
@@ -468,8 +504,16 @@ deploy:
 wait:
 	@bash scripts/wait-ready.sh
 
+# Default API URL points at the port the helper forwards to (run-orchestrator
+# 8080 in-cluster -> 18080 locally; see scripts/rghw-portforward.sh).
+RGHW_API_URL ?= http://localhost:18080
+
 run:
-	@cd cmd/rghw && go run . run --api-url "http://localhost:8080"
+	@if [ -z "$(RGHW_NO_PORTFORWARD)" ]; then \
+		bash scripts/rghw-portforward.sh & \
+		sleep 3; \
+	fi
+	@cd cmd/rghw && go run . run --api-url "$(RGHW_API_URL)"
 
 demo: wait
 	@bash scripts/smoke-test.sh
@@ -491,3 +535,28 @@ down:
 
 destroy:
 	cd infra/terraform/environments/local && terraform destroy -auto-approve
+
+# ---------------------------------------------------------------------------
+# Guard regression check (CI-1)
+# ---------------------------------------------------------------------------
+
+# Sentinel target: guarded by a tool that never exists. Under the default
+# (non-STRICT) build the guard must SKIP and the guarded command must NOT run;
+# under STRICT=1 the missing tool must make the recipe FAIL.
+guard-skip-demo:
+	$(call guard_tool,zzz_rghw_missing_tool_xyz,RGHW-Missing-Tool)
+	@echo "GUARDED_COMMAND_RAN"
+
+test-guard:
+	@echo ">> test-guard: assert SKIP (default) differs from STRICT"
+	@if $(MAKE) -s guard-skip-demo >/dev/null 2>&1; then \
+		echo "  default: guard skipped, recipe succeeded (no hard-fail)"; \
+	else \
+		echo "  FAIL: default run should skip, not fail"; exit 1; \
+	fi
+	@if $(MAKE) -s STRICT=1 guard-skip-demo >/dev/null 2>&1; then \
+		echo "  FAIL: STRICT should fail on missing required tool"; exit 1; \
+	else \
+		echo "  STRICT: guard failed as required on missing tool"; \
+	fi
+	@echo "test-guard: OK"
