@@ -8,6 +8,15 @@
     "auto": true,
     "prune": true
   },
+  "provider": {
+    "kilo": {
+      "options": {
+        "timeout": false,
+        "chunkTimeout": 120000,
+        "headerTimeout": 60000
+      }
+    }
+  },
   "lsp": false,
   "plugin": [
     "context-mode",

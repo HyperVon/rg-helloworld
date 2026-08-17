@@ -1,0 +1,93 @@
+name: "CodeQL"
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "30 8 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: actions
+            build-mode: none
+          - language: c-cpp
+            build-mode: none
+          - language: csharp
+            build-mode: none
+          - language: go
+            build-mode: autobuild
+          - language: java-kotlin
+            build-mode: manual
+          - language: javascript-typescript
+            build-mode: none
+          - language: python
+            build-mode: none
+          - language: ruby
+            build-mode: none
+          - language: rust
+            build-mode: none
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Load toolchain pins from versions.env
+        run: |
+          set -a
+          . versions.env
+          set +a
+          while IFS='=' read -r k v; do
+            [ -z "$k" ] && continue
+            case "$k" in \#*) continue;; esac
+            case "$k" in [A-Za-z_]*) ;; *) continue;; esac
+            v="${v%%[[:space:]]#*}"
+            v="${v%%#*}"
+            echo "$k=$v" >> "$GITHUB_ENV"
+          done < versions.env
+
+      - name: Setup Java (for java-kotlin analysis)
+        if: matrix.language == 'java-kotlin'
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+
+      - name: Build Java and Kotlin services
+        if: matrix.language == 'java-kotlin'
+        run: |
+          echo "Building Java glyph catalog..."
+          (cd services/glyph-catalog-java && mvn -B -ntp clean compile -DskipTests)
+          echo "Building Kotlin run orchestrator..."
+          (cd services/run-orchestrator-kotlin && chmod +x gradlew && ./gradlew --console=plain classes testClasses)
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
+        with:
+          category: "/language:${{ matrix.language }}"
