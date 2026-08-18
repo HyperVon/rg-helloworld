@@ -34,18 +34,7 @@ adjudication -> assembly.
    executable is named `rghw` (not `rghw` or any variant of "Hello World").
 8. Every output artifact records input artifact IDs and SHA-256 hashes.
 9. Kafka consumers must be idempotent (deterministic operation IDs).
-10. The target application and unattended repository automation must not call
-    paid services or external runtime APIs. A human-approved agent-development
-    harness (including Kilo) and its target-owned, explicitly approved ARR
-    adapter may use configured remote model/provider/MCP services, including
-    paid models, for agent development, bounded model-metadata discovery, and
-    approved subagent tasks. This carve-out does not authorize the application
-    itself or ARR core to call providers directly. Metadata discovery and every
-    real provider task require separate human approval. Credentials remain
-    harness-managed and must never be read, persisted, logged, or copied into
-    repository artifacts; prompts, tokens, and raw provider responses must not
-    be written to repository files.
-11. The whole acceptance environment runs on one laptop.
+10. The whole acceptance environment runs on one laptop.
 
 ## Milestone workflow
 
@@ -247,14 +236,3 @@ These receipt-managed skills were adopted from Agent Guidance Kit.
 | Build a repository-grounded design-time threat model | [threat-modeling](skills/threat-modeling/SKILL.md) |
 | Propose local skill improvements upstream via fork and PR | [upstream-contribution](skills/upstream-contribution/SKILL.md) |
 <!-- agent-guidance-kit:routes:end -->
-
-<!-- agent-runtime-router:routes:start -->
-## Agent Runtime Router skills
-
-These receipt-managed skills were installed from Agent Runtime Router.
-
-| Task | Skill |
-| :--- | :--- |
-| Use explicit routing, inventory, or dry-run planning | [agent-runtime-router](skills/agent-runtime-router/SKILL.md) |
-| Audit, refresh, or repair the local router installation | [agent-runtime-router-maintenance](skills/agent-runtime-router-maintenance/SKILL.md) |
-<!-- agent-runtime-router:routes:end -->
