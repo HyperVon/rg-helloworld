@@ -8,6 +8,11 @@ set +e
 # shellcheck disable=SC1091
 source "$ROOT_DIR/versions.env" 2>/dev/null
 set -e
+if [ -z "${GO_VERSION:-}" ] || [ -z "${KUBECTL_VERSION:-}" ] || [ -z "${K3D_VERSION:-}" ] || \
+   [ -z "${TERRAFORM_VERSION:-}" ] || [ -z "${HELM_VERSION:-}" ]; then
+  echo "ERROR: could not load pinned versions from $ROOT_DIR/versions.env" >&2
+  exit 1
+fi
 
 OS="$(uname -s)"
 PKG=""
@@ -48,7 +53,7 @@ pkg_install() {
   echo ">> installing via $PKG: $*"
   case "$PKG" in
     brew)   brew install "$@" ;;
-    apt)    as_root apt-get update -qq && DEBIAN_FRONTEND=noninteractive as_root apt-get install -y "$@" ;;
+    apt)    as_root apt-get update -qq && as_root env DEBIAN_FRONTEND=noninteractive apt-get install -y "$@" ;;
     dnf)    as_root dnf install -y "$@" ;;
     pacman) as_root pacman -Sy --noconfirm --needed "$@" ;;
   esac
@@ -103,12 +108,15 @@ install_go() {
     pkg_install go
     return
   fi
-  local arch tarball
+  local arch tarball tmp
   arch="$(download_arch)"
   tarball="go${GO_VERSION}.linux-${arch}.tar.gz"
   echo ">> installing Go ${GO_VERSION} to /usr/local (${tarball})"
+  tmp="$(fetch_to_tmp "https://go.dev/dl/${tarball}")"
+  verify_sha "$tmp" "Go ${GO_VERSION}" "GO_SHA256_LINUX_${arch}"
   as_root rm -rf /usr/local/go
-  curl -fsSL "https://go.dev/dl/${tarball}" | as_root tar -C /usr/local -xz
+  as_root tar -C /usr/local -xzf "$tmp"
+  rm -f "$tmp"
   export PATH="/usr/local/go/bin:$PATH"
 }
 
@@ -233,6 +241,8 @@ install_dotnet() {
 # uv provisions the pinned CPython for the Python venv even when the system
 # python3 is newer than the pinned wheel set supports (user-local, no sudo).
 install_uv() {
+  # UV_VERSION comes from the sourced versions.env; shellcheck cannot see it.
+  # shellcheck disable=SC2153
   echo ">> installing uv ${UV_VERSION} (~/.local/bin)"
   curl -fsSL "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-installer.sh" | sh
   export PATH="$HOME/.local/bin:$PATH"
@@ -277,8 +287,11 @@ ensure_docker_runtime() {
   fi
   if [ "$(id -u)" -ne 0 ] && ! id -nG "$(id -un)" | grep -qw docker; then
     echo ">> adding $(id -un) to the docker group (effective after re-login)"
-    as_root usermod -aG docker "$(id -un)" || true
-    echo "NOTE: log out and back in, or run: sg docker -c './rghw.sh --fresh'"
+    if as_root usermod -aG docker "$(id -un)"; then
+      echo "NOTE: log out and back in, or run: sg docker -c './rghw.sh --fresh'"
+    else
+      echo "WARN: could not add $(id -un) to the docker group; docker.sock will be inaccessible until fixed manually" >&2
+    fi
   fi
 }
 
@@ -289,12 +302,37 @@ fetch_to_tmp() {
   printf '%s' "$tmp"
 }
 
+# Verify a downloaded artifact against its versions.env pin
+# (<TOOL>_SHA256_LINUX_<arch>). A missing pin warns instead of failing so a
+# version bump never bricks the installer, but every pin that exists is
+# enforced: a mismatch refuses the root install outright.
+verify_sha() {
+  local file="$1" tool="$2" var actual
+  # Pin names are uppercase; download_arch yields lowercase.
+  var="$(printf '%s' "$3" | tr '[:lower:]' '[:upper:]')"
+  if [ -z "${!var+x}" ]; then
+    echo "WARN: ${var} not pinned in versions.env; skipping checksum verification for $tool" >&2
+    return 0
+  fi
+  if [ -z "${!var}" ]; then
+    echo "ERROR: ${var} is set but empty in versions.env; refusing to install $tool" >&2
+    exit 1
+  fi
+  actual="$(sha256sum "$file" | awk '{print $1}')"
+  if [ "$actual" != "${!var}" ]; then
+    echo "ERROR: $tool checksum mismatch (${var} expected, got ${actual}); refusing to install" >&2
+    exit 1
+  fi
+  echo ">> verified $tool checksum"
+}
+
 install_kubectl() {
   if [ "$PKG" = "brew" ]; then pkg_install kubectl; return; fi
   local arch tmp
   arch="$(download_arch)"
   echo ">> installing kubectl v${KUBECTL_VERSION} to /usr/local/bin"
   tmp="$(fetch_to_tmp "https://dl.k8s.io/release/v${KUBECTL_VERSION}/bin/linux/${arch}/kubectl")"
+  verify_sha "$tmp" "kubectl v${KUBECTL_VERSION}" "KUBECTL_SHA256_LINUX_${arch}"
   as_root install -m 0755 "$tmp" /usr/local/bin/kubectl
   rm -f "$tmp"
 }
@@ -305,6 +343,7 @@ install_k3d() {
   arch="$(download_arch)"
   echo ">> installing k3d v${K3D_VERSION} to /usr/local/bin"
   tmp="$(fetch_to_tmp "https://github.com/k3d-io/k3d/releases/download/v${K3D_VERSION}/k3d-linux-${arch}")"
+  verify_sha "$tmp" "k3d v${K3D_VERSION}" "K3D_SHA256_LINUX_${arch}"
   as_root install -m 0755 "$tmp" /usr/local/bin/k3d
   rm -f "$tmp"
 }
@@ -315,6 +354,7 @@ install_terraform() {
   arch="$(download_arch)"
   echo ">> installing terraform ${TERRAFORM_VERSION} to /usr/local/bin"
   tmp="$(fetch_to_tmp "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_${arch}.zip")"
+  verify_sha "$tmp" "terraform ${TERRAFORM_VERSION}" "TERRAFORM_SHA256_LINUX_${arch}"
   dir="$(mktemp -d)"
   unzip -oq "$tmp" -d "$dir"
   as_root install -m 0755 "$dir/terraform" /usr/local/bin/terraform
@@ -327,6 +367,7 @@ install_helm() {
   arch="$(download_arch)"
   echo ">> installing helm v${HELM_VERSION} to /usr/local/bin"
   tmp="$(fetch_to_tmp "https://get.helm.sh/helm-v${HELM_VERSION}-linux-${arch}.tar.gz")"
+  verify_sha "$tmp" "helm v${HELM_VERSION}" "HELM_SHA256_LINUX_${arch}"
   dir="$(mktemp -d)"
   tar -xzf "$tmp" -C "$dir"
   as_root install -m 0755 "$dir/linux-${arch}/helm" /usr/local/bin/helm
@@ -351,7 +392,8 @@ persist_shell_path() {
     "# >>> ${marker} >>>" \
     "$path_line" \
     "# <<< ${marker} <<<")"
-  for rc in "$HOME/.bashrc" "$HOME/.profile"; do
+  # zsh is macOS's default login shell; cover it wherever an rc file exists.
+  for rc in "$HOME/.bashrc" "$HOME/.profile" "$HOME/.zshrc"; do
     [ -f "$rc" ] || continue
     if grep -qs "$marker" "$rc"; then continue; fi
     printf '\n%s\n' "$block" >> "$rc"

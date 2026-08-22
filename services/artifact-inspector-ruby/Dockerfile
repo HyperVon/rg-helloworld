@@ -1,5 +1,5 @@
 # Pinned to RUBY_VERSION=4.0.6 (see versions.env); never "latest".
-FROM ruby:3.4-alpine AS runtime
+FROM ruby:4.0.6-alpine AS runtime
 RUN addgroup -S -g 1001 rghw \
     && adduser -S -u 1001 -G rghw rghw
 WORKDIR /app

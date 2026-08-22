@@ -334,7 +334,8 @@ if [ -x "$BIN/vector-normalizer" ] && [ -x "$DOTNET" ]; then
   RASTERIZER_PID=$!
   READY=""
   for _ in $(seq 1 30); do
-    if nc -z 127.0.0.1 "$RASTERIZER_PORT" >/dev/null 2>&1; then
+    # bash built-in TCP probe; nc is not installed everywhere (e.g. Arch)
+    if (exec 3<>"/dev/tcp/127.0.0.1/$RASTERIZER_PORT") 2>/dev/null; then
       READY="yes"
       break
     fi

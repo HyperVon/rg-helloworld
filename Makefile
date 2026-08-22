@@ -35,6 +35,9 @@ RGHW_PYTHON ?= $(VENV_PY)
 export RGHW_PYTHON
 BUILD_DIR := .local/build
 CPP_BUILD := $(BUILD_DIR)/geometry-engine-cpp
+# Coverage needs Debug+instrumentation while unit/build need Release; sharing one
+# CMake cache flip-flops flags across gates and has produced broken binaries.
+CPP_COVERAGE_BUILD := $(BUILD_DIR)/geometry-engine-cpp-coverage
 
 CARGO   := $(if $(wildcard $(HOME)/.cargo/bin/cargo),$(HOME)/.cargo/bin/cargo,cargo)
 RUSTFMT := $(if $(wildcard $(HOME)/.cargo/bin/rustfmt),$(HOME)/.cargo/bin/rustfmt,rustfmt)
@@ -361,10 +364,10 @@ coverage-cpp:
 	if ! command -v g++ >/dev/null 2>&1; then echo "SKIP: GNU g++ required for C++ coverage (CI enforces)"; exit 0; fi; \
 	if ! g++ --version 2>&1 | grep -q "Free Software Foundation"; then echo "SKIP: GNU g++ required for C++ coverage (CI enforces)"; exit 0; fi; \
 	echo ">> ctest + gcovr (90% line gate) ($(CPP_DIR))"; \
-	cmake -S $(CPP_DIR) -B $(CPP_BUILD) -DCMAKE_BUILD_TYPE=Debug -DENABLE_COVERAGE=ON >/dev/null && \
-	cmake --build $(CPP_BUILD) >/dev/null && \
-	ctest --test-dir $(CPP_BUILD) --output-on-failure >/dev/null && \
-	cd $(CPP_DIR) && gcovr --root . --object-directory "$(abspath $(CPP_BUILD))" \
+	cmake -S $(CPP_DIR) -B $(CPP_COVERAGE_BUILD) -DCMAKE_BUILD_TYPE=Debug -DENABLE_COVERAGE=ON >/dev/null && \
+	cmake --build $(CPP_COVERAGE_BUILD) >/dev/null && \
+	ctest --test-dir $(CPP_COVERAGE_BUILD) --output-on-failure >/dev/null && \
+	cd $(CPP_DIR) && gcovr --root . --object-directory "$(abspath $(CPP_COVERAGE_BUILD))" \
 	  --filter 'src/.*' --filter 'include/.*' --exclude 'src/kafka.cpp' --fail-under-line 90
 
 coverage-dotnet:
