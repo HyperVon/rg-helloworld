@@ -61,6 +61,7 @@ From the repository root:
 
 ```bash
 make prerequisites   # toolchain check + language deps (venv, npm ci, bundle)
+make setup           # install missing toolchains + infra (Linux/macOS), then verify
 make format          # format all languages
 make lint            # lint all languages (STRICT=1 fails on missing tools)
 make unit            # unit tests for all skeleton services

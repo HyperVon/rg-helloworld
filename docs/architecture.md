@@ -2303,6 +2303,7 @@ rube-goldberg-hello-world/
 │   └── anti-cheating/
 ├── scripts/
 │   ├── prerequisites.sh
+│   ├── install-prerequisites.sh
 │   ├── k3d-create.sh
 │   ├── k3d-delete.sh
 │   ├── build-images.sh
@@ -2340,6 +2341,7 @@ Required targets:
 ```text
 make help
 make prerequisites
+make setup
 make contracts
 make format
 make lint

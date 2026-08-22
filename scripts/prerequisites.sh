@@ -28,10 +28,10 @@ REQUIRED_TOOLS=(
 )
 
 OPTIONAL_TOOLS=(
-  "docker:Docker (Milestone 2+)"
-  "kubectl:kubectl (Milestone 2+)"
-  "terraform:Terraform (Milestone 2+)"
-  "k3d:k3d (Milestone 2+)"
+  "docker:Docker (required for ./rghw.sh)"
+  "kubectl:kubectl (required for ./rghw.sh)"
+  "terraform:Terraform (required for ./rghw.sh)"
+  "k3d:k3d (required for ./rghw.sh)"
   "shellcheck:shellcheck (repo lint)"
   "markdownlint-cli2:markdownlint-cli2 (repo lint)"
   "gcovr:gcovr (C++ coverage gate, CI only)"
@@ -49,6 +49,7 @@ find_tool() {
     return 0
   fi
   case "$tool" in
+    go) [ -x /usr/local/go/bin/go ] && echo /usr/local/go/bin/go && return 0 ;;
     cargo|rustc) [ -x "$HOME/.cargo/bin/$tool" ] && echo "$HOME/.cargo/bin/$tool" && return 0 ;;
     dotnet) [ -x "$HOME/.dotnet/dotnet" ] && echo "$HOME/.dotnet/dotnet" && return 0 ;;
   esac
@@ -73,14 +74,35 @@ check_tool() {
   fi
 }
 
+find_python() {
+  local candidate
+  for candidate in "python${PYTHON_VERSION%.*}" python3; do
+    if command -v "$candidate" >/dev/null 2>&1; then
+      command -v "$candidate"
+      return 0
+    fi
+  done
+  echo "ERROR: no Python interpreter found (need ${PYTHON_VERSION})" >&2
+  return 1
+}
+
 setup_venv() {
-  if [ ! -x "$ROOT_DIR/.venv/bin/ruff" ]; then
-    echo ">> creating Python venv and installing pinned dev tools"
-    python3 -m venv "$ROOT_DIR/.venv"
-    "$ROOT_DIR/.venv/bin/pip" install --quiet -r "$ROOT_DIR/services/image-pipeline-python/requirements-dev.txt"
-  else
+  if [ -x "$ROOT_DIR/.venv/bin/ruff" ]; then
     echo ">> Python venv already prepared"
+    return
   fi
+  echo ">> creating Python venv and installing pinned dev tools"
+  if command -v uv >/dev/null 2>&1; then
+    uv venv --seed --python "${PYTHON_VERSION}" "$ROOT_DIR/.venv"
+    uv pip install --quiet --python "$ROOT_DIR/.venv/bin/python" \
+      -r "$ROOT_DIR/services/image-pipeline-python/requirements-dev.txt"
+    return
+  fi
+  local py
+  py="$(find_python)"
+  echo ">> uv not found; using $($py --version) (install uv for the pinned interpreter)"
+  "$py" -m venv "$ROOT_DIR/.venv"
+  "$ROOT_DIR/.venv/bin/pip" install --quiet -r "$ROOT_DIR/services/image-pipeline-python/requirements-dev.txt"
 }
 
 setup_node() {
@@ -99,6 +121,11 @@ setup_node() {
 
 setup_ruby() {
   local dir="$1"
+  # System rubies (Arch/Ubuntu) are not user-writable; keep gems local per the
+  # repo convention (services/*/vendor, gitignored) instead of /usr/lib.
+  if ! grep -qs 'BUNDLE_PATH' "$ROOT_DIR/services/$dir/.bundle/config"; then
+    (cd "$ROOT_DIR/services/$dir" && bundle config set --local path vendor/bundle)
+  fi
   if (cd "$ROOT_DIR/services/$dir" && ! bundle check >/dev/null 2>&1); then
     echo ">> bundle install ($dir)"
     (cd "$ROOT_DIR/services/$dir" && bundle install)
@@ -124,10 +151,18 @@ for entry in "${REQUIRED_TOOLS[@]}"; do
 done
 
 echo ""
-echo "Optional tools (needed in later milestones):"
+echo "Optional tools (first four are required for ./rghw.sh):"
 for entry in "${OPTIONAL_TOOLS[@]}"; do
   check_tool "${entry%%:*}" "${entry#*:}" 0
 done
+
+echo ""
+echo "Summary: $PASS required tools found, $MISSING missing"
+if [ "$MISSING" -gt 0 ]; then
+  echo "Missing required tools: $MISSING (see [FAIL] rows above)"
+  echo "Suggested: run 'make setup' to install missing toolchains (Linux/macOS)"
+  exit 2
+fi
 
 echo ""
 echo "Preparing language-level dependencies:"
@@ -139,11 +174,4 @@ for dir in adjudicator-ruby artifact-inspector-ruby; do
 done
 setup_gradle_wrapper
 
-echo ""
-echo "Summary: $PASS required tools found, $MISSING missing"
-if [ "$MISSING" -gt 0 ]; then
-  echo "Missing required tools: $MISSING (see [FAIL] rows above)"
-  echo "Suggested: brew install <tool>; rustup toolchain install 1.97.1; ~/.dotnet via dotnet-install.sh"
-  exit 2
-fi
 echo "prerequisites: OK"

@@ -13,7 +13,10 @@ SHELL := /bin/bash
 SHELLFLAGS := -ec
 .ONESHELL:
 RUBY_PATH := $(if $(wildcard /opt/homebrew/opt/ruby/bin),/opt/homebrew/opt/ruby/bin/:)
-export PATH := $(RUBY_PATH)$(PATH)
+GO_PATH := $(if $(wildcard /usr/local/go/bin),/usr/local/go/bin/:)
+CARGO_PATH := $(if $(wildcard $(HOME)/.cargo/bin),$(HOME)/.cargo/bin/:)
+DOTNET_PATH := $(if $(wildcard $(HOME)/.dotnet),$(HOME)/.dotnet/:)
+export PATH := $(GO_PATH)$(CARGO_PATH)$(DOTNET_PATH)$(RUBY_PATH)$(PATH)
 
 GO_CLI_DIR  := cmd/rghw
 GO_NORM_DIR := services/vector-normalizer-go
@@ -37,7 +40,7 @@ CARGO   := $(if $(wildcard $(HOME)/.cargo/bin/cargo),$(HOME)/.cargo/bin/cargo,ca
 RUSTFMT := $(if $(wildcard $(HOME)/.cargo/bin/rustfmt),$(HOME)/.cargo/bin/rustfmt,rustfmt)
 DOTNET  := $(if $(wildcard $(HOME)/.dotnet/dotnet),$(HOME)/.dotnet/dotnet,dotnet)
 
-.PHONY: help test-guard guard-skip-demo prerequisites contracts contract-test format lint unit coverage build
+.PHONY: help test-guard guard-skip-demo prerequisites setup init contracts contract-test format lint unit coverage build
 .PHONY: integration images cluster infra deploy wait run demo e2e chaos diagnostics down destroy clean
 .PHONY: disk-guard low-memory proto-gen proto-gen-check
 .PHONY: format-go format-java format-kotlin format-cpp format-dotnet format-python format-node format-ruby format-rust
@@ -51,6 +54,7 @@ help:
 	@echo ""
 	@echo "Implementation & verification:"
 	@echo "  prerequisites   check toolchains and prepare language dependencies"
+	@echo "  setup           install missing toolchains (Linux/macOS), then verify (alias: init)"
 	@echo "  contracts       validate contract specs parse correctly"
 	@echo "  contract-test   validate examples + prohibited-field static scan"
 	@echo "  proto-gen       regenerate Go/C# gRPC stubs"
@@ -147,6 +151,13 @@ endef
 
 prerequisites:
 	@bash scripts/prerequisites.sh
+
+# Installs missing toolchains (Linux/macOS: brew/apt/dnf/pacman), then runs
+# scripts/prerequisites.sh to verify and prepare language-level dependencies.
+setup:
+	@bash scripts/install-prerequisites.sh
+
+init: setup
 
 contracts:
 	@echo ">> Validating contract specs parse correctly"
@@ -429,7 +440,7 @@ unit-ruby:
 	$(call guard_tool,ruby,Ruby)
 	@for d in $(RUBY_DIRS); do \
 		echo ">> minitest ($$d)"; \
-		(cd $$d && for f in test/*_test.rb; do ruby -Ilib -Itest "$$f"; done) || exit 1; \
+		(cd $$d && for f in test/*_test.rb; do bundle exec ruby -Ilib -Itest "$$f"; done) || exit 1; \
 	done
 
 unit-rust:

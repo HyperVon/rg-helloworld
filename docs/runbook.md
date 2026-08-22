@@ -63,7 +63,7 @@ Common Windows gotchas:
 
 ### 2.3 Toolchains — pinned versions
 
-Install these before the first run. `make prerequisites` checks each and installs language-level deps. All versions are pinned in `versions.env` (no floating `latest`).
+Install these before the first run. `make setup` installs the missing toolchains automatically on Linux (apt/dnf/pacman) and macOS (Homebrew): the language toolchains (including rustup, `.dotnet`, uv — which provisions the pinned CPython for the Python venv — and the pinned Go tarball) plus the infrastructure `./rghw.sh` needs — Docker, kubectl, k3d, Terraform, and Helm (pinned upstream binaries on Linux). On Linux it also enables the docker daemon and adds your user to the `docker` group; the group change takes effect after re-login (or use `sg docker -c './rghw.sh --fresh'`). `make prerequisites` then checks each and installs language-level deps. All versions are pinned in `versions.env` (no floating `latest`).
 
 | Tool | Version | Purpose |
 | --- | --- | --- |

@@ -998,6 +998,12 @@ pieces were deferred (the `--once` mode covers them in the integration harness):
 | 2026-08-06 | M8 images pushed to registry | PASS (ocr-worker:milestone8, adjudicator:milestone8) |
 | 2026-08-06 | k3d smoke test | PASS (all M8 pods running; ocr-worker, adjudicator, run-orchestrator ready) |
 | 2026-08-06 | `make integration` | PASS (M5–M8 blocks all pass; failures=0, skipped=0) |
+| 2026-08-22 | Fresh-machine bring-up: `make setup` provisions all language toolchains + pinned infra (Docker/kubectl/k3d/Terraform/Helm) from scratch on Arch Linux | PASS (`scripts/install-prerequisites.sh`, pacman path; shellcheck clean) |
+| 2026-08-22 | Toolchain PATH persistence verified after re-login (Makefile GO/CARGO/DOTNET augmentation, installer rc-file block, `find_tool` fallbacks incl. `/usr/local/go/bin/go`) | PASS (`make prerequisites`: 17 required found, 0 missing) |
+| 2026-08-22 | Adjudicator CrashLoopBackOff root cause fixed (host `vendor/bundle` leaked via `COPY . /app/` shipped Arch-built librdkafka needing libsasl2.so.3/glibc 2.38): `.dockerignore vendor/` in both Ruby services; Dockerfile base `ruby:4.0.6-trixie` matching versions.env + runtime `libsasl2-2` | PASS (in-image `ldd` of librdkafka.so: 0 unresolved deps) |
+| 2026-08-22 | Rebuilt adjudicator image deployed to live cluster (crictl rmi cache bust + pod recreate); pod stays 1/1 Running past Kafka consumer init | PASS (0 restarts at 78s+, all 11 services Ready) |
+| 2026-08-22 | End-to-end `./rghw.sh --fresh` on fresh Arch Linux host (user-run): cluster create → ~12 images → Terraform infra → deploy → e2e | PASS (user confirmed) |
+| 2026-08-22 | Ruby gates hardened for Arch hosts (split-package `ruby-erb` added to `make setup` pacman list; `unit-ruby` runs tests via `bundle exec` so pinned minitest 6.0.6 is used instead of relying on ruby-shipped defaults) | PASS (adjudicator 14+5 runs, inspector 9 runs; 0 failures; shellcheck clean) |
 
 ### Milestone 8 limitations
 
