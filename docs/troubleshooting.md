@@ -224,3 +224,41 @@ bash scripts/gen-proto.sh
 # Verify both sides use same proto version
 grep "version" contracts/proto/rasterizer/v1/rasterizer.proto
 ```
+
+### 10. Ruby service CrashLoopBackOff with `Could not open library '...librdkafka.so'`
+
+**Symptoms:** Adjudicator pods crash at boot (exit 1) while every other service rolls out green; logs show `Could not open library '/app/vendor/bundle/ruby/*/gems/rdkafka-*/ext/librdkafka.so'`, and `ldd` on that file inside the image reports `libsasl2.so.3: cannot open shared object` and/or `version 'GLIBC_2.xx' not found`. `make deploy` fails waiting for the rollout.
+
+**Causes:**
+
+- Host Ruby gems leaked into the image: the repo's `.bundle/config` sets
+  `BUNDLE_PATH: vendor/bundle`, so a host-side `bundle install` populates
+  `services/*/vendor/`; `COPY . /app/` swept that directory in because the
+  services' `.dockerignore` did not exclude it.
+- The in-image `bundle install` then found gems already present and skipped
+  native rebuilds, shipping host-compiled binaries into the container. On a
+  non-Debian host (e.g. Arch) those need the host's `libsasl2.so.3` soname and
+  newer glibc than Debian ships.
+
+**Remediation:**
+
+Prevented since the fix: both Ruby services' `.dockerignore` files exclude
+`vendor/`, so gems always compile inside the image against its own libraries,
+and the adjudicator runtime image installs `libsasl2-2` alongside `libpq5`.
+For an already-poisoned cluster (image built before the fix):
+
+```bash
+# Rebuild + push with the clean context
+docker build -f services/adjudicator-ruby/Dockerfile \
+  -t localhost:5001/adjudicator:milestone8 services/adjudicator-ruby
+docker push localhost:5001/adjudicator:milestone8
+
+# Bust the k3d node's image cache (imagePullPolicy is IfNotPresent), then roll
+docker exec k3d-rube-goldberg-server-0 crictl rmi rghello-registry:5001/adjudicator:milestone8
+kubectl delete pod -n rube-goldberg -l app=adjudicator
+kubectl rollout status deploy/adjudicator -n rube-goldberg --timeout=150s
+
+# Sanity-check any rebuilt image: expect 0
+docker run --rm --entrypoint sh localhost:5001/adjudicator:milestone8 -c \
+  'ldd $(ls -d /app/vendor/bundle/ruby/*/gems/rdkafka-*/ext/librdkafka.so) | grep -c "not found"'
+```

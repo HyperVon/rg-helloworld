@@ -66,6 +66,7 @@ Repo `3.6GB` (`du -sh .`), built images `~21GB` virtual (`docker system df` 2026
 ## Quick start
 
 ```bash
+make setup          # one-time: install missing toolchains + infra (Linux/macOS), then verify
 make prerequisites   # check toolchains and install language-level dependencies
 make format          # format every language
 make lint            # lint every language

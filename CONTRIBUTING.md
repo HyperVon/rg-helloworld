@@ -13,6 +13,7 @@ The project is milestone-driven. Before opening an issue or PR, read:
 ## Development setup
 
 ```bash
+make setup          # one-time: install missing toolchains + infra (Linux/macOS), then verify
 make prerequisites   # checks toolchains and prepares language dependencies
 make format          # format all languages
 make lint            # lint all languages

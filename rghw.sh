@@ -232,6 +232,12 @@ if [[ -x "$PROJECT_ROOT/scripts/prerequisites.sh" ]]; then
   fi
 fi
 
+# 1a. Cluster infrastructure -- fail fast with a fix, not a k3d Error 127 later
+for tool in docker kubectl k3d terraform; do
+  command -v "$tool" >/dev/null 2>&1 || \
+    die "missing '$tool' -- run 'make setup' to install it, then log out/in (or: sg docker -c './rghw.sh --fresh')"
+done
+
 # 1b. Disk guard (only in --fresh): prevent the k3d node from hitting
 # ephemeral-storage disk-pressure, which evicts every pod and taints the node
 # NoSchedule so `make wait` hangs forever. Prunes dangling host images and

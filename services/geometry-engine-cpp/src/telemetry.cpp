@@ -46,6 +46,12 @@ namespace {
 // Tracks whether initialize() has run so it is idempotent.
 bool g_started = false;
 
+#if defined(RGHW_WITH_CURL_OTLP)
+// The best-effort OTLP exporter runs on this worker; shutdown() joins it so a
+// still-running curl_easy_perform can never race process teardown.
+std::thread g_otlp_worker;
+#endif
+
 #if defined(RGHW_WITH_OPENTELEMETRY)
 std::shared_ptr<opentelemetry::sdk::trace::TracerProvider> g_tracer_provider;
 std::shared_ptr<opentelemetry::sdk::logs::LoggerProvider> g_logger_provider;
@@ -230,8 +236,8 @@ void initialize(const std::string& serviceName, const std::string& otlpEndpoint)
 #elif defined(RGHW_WITH_CURL_OTLP)
   // Dependency-free fallback: emit the structured startup line to stderr, then
   // best-effort POST an OTLP/JSON log record over HTTP. The HTTP push runs on
-  // a detached thread with a short timeout so an unreachable collector can
-  // never block startup or shutdown.
+  // a worker thread with a short timeout; shutdown() joins it, so an
+  // unreachable collector can delay exit by at most that timeout.
   std::cerr << startupLogLine(name) << '\n';
   std::cerr.flush();
   try {
@@ -242,7 +248,7 @@ void initialize(const std::string& serviceName, const std::string& otlpEndpoint)
     }
     const std::string url = "http://" + host + "/v1/logs";
     const std::string body = otlpLogsJson(name);
-    std::thread([url, body] {
+    g_otlp_worker = std::thread([url, body] {
       try {
         CURL* curl = curl_easy_init();
         if (curl == nullptr) {
@@ -262,7 +268,7 @@ void initialize(const std::string& serviceName, const std::string& otlpEndpoint)
       } catch (...) {
         // Best-effort export; never propagate failures from the worker thread.
       }
-    }).detach();
+    });
   } catch (...) {
     std::cerr << "[otel] failed to schedule OTLP HTTP export; service continues\n";
   }
@@ -286,6 +292,12 @@ void shutdown() noexcept {
   g_started = false;
 #if defined(RGHW_WITH_OPENTELEMETRY)
   shutdownOpenTelemetry();
+#elif defined(RGHW_WITH_CURL_OTLP)
+  // The worker's curl handle is bounded by its own 2s HTTP timeout, so this
+  // join cannot hang; it only removes the exit race with process teardown.
+  if (g_otlp_worker.joinable()) {
+    g_otlp_worker.join();
+  }
 #endif
 }
 

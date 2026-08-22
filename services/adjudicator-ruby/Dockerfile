@@ -1,7 +1,7 @@
 # Adjudicator: Ruby service for OCR consensus and quality decisions.
 # Base image is tag-pinned (never "latest").
 # Pinned to RUBY_VERSION=4.0.6 (see versions.env).
-FROM ruby:3.4.4-bookworm AS base
+FROM ruby:4.0.6-trixie AS base
 
 WORKDIR /app
 COPY . /app/
@@ -11,10 +11,10 @@ RUN gem install bundler -v 4.0.16 \
     && bundle install
 
 # Pinned to RUBY_VERSION=4.0.6 (see versions.env).
-FROM ruby:3.4.4-bookworm
+FROM ruby:4.0.6-trixie
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends libpq5 && \
+    apt-get install -y --no-install-recommends libpq5 libsasl2-2 && \
     rm -rf /var/lib/apt/lists/*
 
 RUN gem install bundler -v 4.0.16
