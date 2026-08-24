@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <iostream>
+#include <mutex>
 #include <string>
 #include <thread>
 
@@ -50,6 +51,10 @@ bool g_started = false;
 // The best-effort OTLP exporter runs on this worker; shutdown() joins it so a
 // still-running curl_easy_perform can never race process teardown.
 std::thread g_otlp_worker;
+// Refcounts successful curl_global_init calls so shutdown() pairs exactly one
+// curl_global_cleanup with each across repeated initialize/shutdown cycles.
+std::mutex curl_global_mutex;
+int g_curl_global_refs = 0;
 #endif
 
 #if defined(RGHW_WITH_OPENTELEMETRY)
@@ -238,6 +243,25 @@ void initialize(const std::string& serviceName, const std::string& otlpEndpoint)
   // best-effort POST an OTLP/JSON log record over HTTP. The HTTP push runs on
   // a worker thread with a short timeout; shutdown() joins it, so an
   // unreachable collector can delay exit by at most that timeout.
+  //
+  // libcurl requires curl_global_init before any other curl call and forbids
+  // concurrent implicit init from multiple threads. Running it here on the
+  // main thread also registers libcurl/OpenSSL's exit cleanup BEFORE the
+  // shutdown() atexit handler, so process teardown cannot free crypto state
+  // while this worker thread is still lazily initializing OpenSSL (observed
+  // as SIGSEGV inside pthread_rwlock_unlock during exit). The refcount gives
+  // every initialize/shutdown cycle its own explicit paired init/cleanup.
+  {
+    std::lock_guard<std::mutex> lock(curl_global_mutex);
+    if (g_curl_global_refs == 0) {
+      const CURLcode rc = curl_global_init(CURL_GLOBAL_DEFAULT);
+      if (rc != CURLE_OK) {
+        std::cerr << "[otel] curl_global_init failed: " << curl_easy_strerror(rc) << '\n';
+        return;
+      }
+    }
+    ++g_curl_global_refs;
+  }
   std::cerr << startupLogLine(name) << '\n';
   std::cerr.flush();
   try {
@@ -297,6 +321,16 @@ void shutdown() noexcept {
   // join cannot hang; it only removes the exit race with process teardown.
   if (g_otlp_worker.joinable()) {
     g_otlp_worker.join();
+  }
+  // Paired with the curl_global_init in initialize(): drop one reference and
+  // clean up only when the last cycle releases. Safe here because the worker
+  // has been joined, so no other thread can still be using curl or OpenSSL
+  // global state.
+  {
+    std::lock_guard<std::mutex> lock(curl_global_mutex);
+    if (g_curl_global_refs > 0 && --g_curl_global_refs == 0) {
+      curl_global_cleanup();
+    }
   }
 #endif
 }

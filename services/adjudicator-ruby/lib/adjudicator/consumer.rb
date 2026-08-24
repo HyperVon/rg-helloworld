@@ -2,7 +2,7 @@
 
 require 'rdkafka'
 require 'json'
-require '/app/lib/adjudicator'
+require_relative '../adjudicator'
 
 module AdjudicatorConsumer
   KAFKA_BOOTSTRAP = ENV.fetch('KAFKA_BOOTSTRAP', 'kafka.rube-goldberg.svc.cluster.local:9092')
@@ -53,8 +53,8 @@ module AdjudicatorConsumer
       attempt: attempt
     )
 
-    input_artifacts = data['inputArtifacts'] || []
-    output_artifacts = data['outputArtifacts'] || []
+    input_artifacts = data['outputArtifacts'] || []
+    output_artifacts = []
 
     publish_events(producer, data, result, input_artifacts, output_artifacts)
   rescue JSON::ParserError => e

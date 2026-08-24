@@ -171,9 +171,7 @@ GeometryOutcome processBlueprint(const std::string& inputEventJson, const Geomet
   outputData.objectItems()["attempt"] = Json::number(static_cast<double>(attempt));
   outputData.objectItems()["inputMaturity"] = Json::number(10.0);
   outputData.objectItems()["outputMaturity"] = Json::number(20.0);
-  Json inputArtifacts = Json::array();
-  inputArtifacts.arrayItems().push_back(Json::str(outcome.blueprintArtifactKey));
-  outputData.objectItems()["inputArtifacts"] = std::move(inputArtifacts);
+  outputData.objectItems()["inputArtifacts"] = data.at("outputArtifacts");
   Json outputArtifacts = Json::array();
   outputArtifacts.arrayItems().push_back(Json::str(outcome.geometryArtifactKey));
   outputData.objectItems()["outputArtifacts"] = std::move(outputArtifacts);

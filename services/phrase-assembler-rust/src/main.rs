@@ -9,13 +9,14 @@ use opentelemetry_sdk::logs::SdkLoggerProvider;
 use opentelemetry_sdk::trace::SdkTracerProvider;
 use phrase_assembler::{
     OTEL_SERVICE_NAME, VERSION, banner, flush_run_buffer, group_id, input_topic, kafka_bootstrap,
-    otel_endpoint, output_topic, process_adjudicated_payload, run_assemble_once,
+    otel_endpoint, output_topic, process_adjudicated_payload, register_token_step,
+    run_assemble_once,
 };
 use rdkafka::ClientConfig;
 use rdkafka::Message;
 use rdkafka::consumer::{Consumer, StreamConsumer};
 use rdkafka::producer::{FutureProducer, FutureRecord};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::env;
 use std::process;
 use std::time::Duration;
@@ -119,6 +120,8 @@ async fn run_kafka_consumer() -> Result<(), Box<dyn std::error::Error>> {
     let buffers: HashMap<String, (Vec<phrase_assembler::AdjudicatedToken>, Instant)> =
         HashMap::new();
     let buffers = std::sync::Arc::new(std::sync::Mutex::new(buffers));
+    let seen_steps: std::sync::Arc<std::sync::Mutex<HashMap<String, HashSet<String>>>> =
+        std::sync::Arc::new(std::sync::Mutex::new(HashMap::new()));
     const FLUSH_DELAY: Duration = Duration::from_secs(5);
 
     let mut consumer_stream = consumer.stream();
@@ -136,6 +139,22 @@ async fn run_kafka_consumer() -> Result<(), Box<dyn std::error::Error>> {
                         match process_adjudicated_payload(payload) {
                             Ok(token) => {
                                 let run_id = token.run_id.clone().unwrap_or_default();
+                                if !register_token_step(
+                                    &mut seen_steps.lock().unwrap(),
+                                    &run_id,
+                                    &token.step_id,
+                                    token.attempt,
+                                    token.position,
+                                ) {
+                                    tracing::info!(
+                                        run_id = %run_id,
+                                        step_id = %token.step_id,
+                                        attempt = token.attempt,
+                                        position = token.position,
+                                        "duplicate adjudicated token redelivered; ignoring"
+                                    );
+                                    continue;
+                                }
                                 let mut bufs = buffers.lock().unwrap();
                                 let entry = bufs.entry(run_id).or_insert_with(|| (Vec::new(), Instant::now()));
                                 entry.0.push(token);

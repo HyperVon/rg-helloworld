@@ -82,6 +82,7 @@ Event IDs are derived from a deterministic operation ID:
   or MinIO.
 - Full Kafka consumer logic is deferred but the core transformation logic is
   complete and testable.
-- The Dockerfile uses `python:3.13-slim` as the base image to avoid the
+- The Dockerfile uses a `-slim` Python base image (`3.14.6-slim` since the
+  milestone-11 toolchain standardization) to avoid the
   full Python image weight while providing system libraries needed by
   Pillow's C extensions.

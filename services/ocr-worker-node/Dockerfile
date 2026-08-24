@@ -1,7 +1,7 @@
 # OCR worker: Node.js service that runs Tesseract locally.
 # Base image is tag-pinned (never "latest").
 # Pinned to NODE_VERSION=26.6.0 (see versions.env).
-FROM node:24.6.0-bookworm-slim AS builder
+FROM node:26.6.0-bookworm-slim AS builder
 
 WORKDIR /app
 COPY package.json package-lock.json* ./
@@ -13,7 +13,7 @@ COPY tests ./tests
 RUN npm run build
 
 # Pinned to NODE_VERSION=26.6.0 (see versions.env).
-FROM node:24.6.0-bookworm-slim
+FROM node:26.6.0-bookworm-slim
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends tesseract-ocr && \

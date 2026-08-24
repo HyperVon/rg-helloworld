@@ -596,6 +596,93 @@ class TestEvents(unittest.TestCase):
         self.assertNotEqual(op1, op3)
 
 
+class TestWorkerLineage(unittest.TestCase):
+    def _glyph(self, position: int, object_key: str = ""):
+        from rg_image_pipeline.composition import RasterizedGlyphInput
+
+        return RasterizedGlyphInput(
+            position=position,
+            object_key=object_key,
+            minio_uri=None,
+            sha256=f"sha-{position}" if object_key else "",
+            width=4,
+            height=4,
+            advance_width=1.0,
+            baseline=0.0,
+            kind="GAP" if not object_key else "DRAWABLE",
+            image_bytes=None,
+        )
+
+    def test_phrase_composed_event_records_real_lineage(self):
+        from rg_image_pipeline.worker import _build_phrase_composed_event
+
+        result = compose_phrase([self._glyph(0, "runs/r/raster-0.png")])
+        event = _build_phrase_composed_event(
+            "r",
+            result,
+            "runs/r/phrase.png",
+            "runs/r/manifest.json",
+            ["runs/r/raster-0.png"],
+        )["data"]
+        self.assertEqual(event["inputArtifacts"], ["runs/r/raster-0.png"])
+        self.assertEqual(event["outputArtifacts"], ["runs/r/phrase.png", "runs/r/manifest.json"])
+        for key in event["inputArtifacts"] + event["outputArtifacts"]:
+            self.assertNotEqual(key, "")
+            self.assertFalse(key.endswith("-manifest"))
+
+    def test_ocr_prepared_event_input_is_composed_image_not_own_output(self):
+        from rg_image_pipeline.worker import _build_ocr_prepared_event
+
+        class FakeImage:
+            sha256 = "ocrhash"
+            width = 8
+            height = 8
+
+        class FakeResult:
+            ocr_image = FakeImage()
+
+        crops = [{"position": 0, "objectKey": "runs/r/crop-0.png"}]
+        event = _build_ocr_prepared_event(
+            "r", FakeResult(), "runs/r/ocr.png", crops, "runs/r/phrase.png"
+        )["data"]
+        self.assertEqual(event["inputArtifacts"], ["runs/r/phrase.png"])
+        self.assertNotIn("ocrhash", event["inputArtifacts"])
+        self.assertEqual(event["outputArtifacts"], ["runs/r/ocr.png", "runs/r/crop-0.png"])
+
+    def test_accept_record_dedupes_by_step_id_across_flushes(self):
+        from rg_image_pipeline.worker import accept_record
+
+        seen: dict[str, set[str]] = {}
+        record = {"stepId": "op-1", "position": 0, "attempt": 1}
+        self.assertTrue(accept_record(seen, "run-1", "rg.glyph-rasterized.v1", record))
+        self.assertFalse(accept_record(seen, "run-1", "rg.glyph-rasterized.v1", record))
+        # A flush pops the pending buffer but never the seen keys.
+        self.assertFalse(accept_record(seen, "run-1", "rg.glyph-rasterized.v1", record))
+
+    def test_accept_record_falls_back_to_type_and_position(self):
+        from rg_image_pipeline.worker import accept_record
+
+        seen: dict[str, set[str]] = {}
+        gap = {"position": 5}
+        other = {"position": 0}
+        self.assertTrue(accept_record(seen, "run-1", "rg.geometry-expanded.v1", gap))
+        self.assertFalse(accept_record(seen, "run-1", "rg.geometry-expanded.v1", gap))
+        self.assertTrue(accept_record(seen, "run-1", "rg.glyph-rasterized.v1", other))
+        self.assertTrue(accept_record(seen, "run-2", "rg.geometry-expanded.v1", gap))
+
+    def test_accept_record_accepts_siblings_sharing_step_id(self):
+        from rg_image_pipeline.worker import accept_record
+
+        seen: dict[str, set[str]] = {}
+        # Sibling glyphs of one plan step share the stepId; every position lands.
+        for position in range(3):
+            record = {"stepId": "op-1", "position": position, "attempt": 1}
+            self.assertTrue(accept_record(seen, "run-1", "rg.glyph-rasterized.v1", record))
+        # A quality retry repeats the position under a bumped attempt.
+        retry = {"stepId": "op-1", "position": 2, "attempt": 2}
+        self.assertTrue(accept_record(seen, "run-1", "rg.glyph-rasterized.v1", retry))
+
+
 class TestCompositionManifest(unittest.TestCase):
     def test_positions(self):
         manifest = CompositionManifest(

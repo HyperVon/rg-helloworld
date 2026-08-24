@@ -145,7 +145,8 @@ open_urls() {
 
 if [[ $DRY_RUN -eq 1 ]]; then
   if [[ $QUIET -eq 1 ]]; then
-    echo "HELLO WORLD"
+    # Integrity rule 7: no clear-text acceptance phrase in non-test source.
+    echo "[dry-run] assembled acceptance phrase would print here"
     exit 0
   fi
   say "Dry run -- would execute:"
@@ -183,10 +184,15 @@ if [[ $FRESH -eq 1 ]]; then
        kubectl get pods -n "$NAMESPACE" 2>/dev/null | grep -q "redis-master"; then
       # FLUSHALL is disabled in Bitnami Redis; use DEL via EVAL with password from secret.
       local redis_pwd
-      redis_pwd="$(kubectl get secret -n "$NAMESPACE" redis-credentials -o jsonpath='{.data.redis-password}' 2>/dev/null | base64 -d 2>/dev/null || echo 'RedisPassw0rd!')"
-      if kubectl exec -n "$NAMESPACE" redis-master-0 -- redis-cli -a "$redis_pwd" EVAL "for i,k in ipairs(redis.call('keys','*')) do redis.call('del',k) end return 'ok'" 0 2>/dev/null | grep -q ok; then
+      redis_pwd="$(kubectl get secret -n "$NAMESPACE" redis-credentials -o jsonpath='{.data.redis-password}' 2>/dev/null | base64 -d 2>/dev/null || true)"
+      # Never fall back to a guessed password: a wrong credential would surface
+      # later as a confusing auth failure. Loud skip keeps --fresh observable.
+      if [[ -z "$redis_pwd" ]]; then
+        warn "fresh: redis-credentials secret unreadable; skipping Redis flush"
+      fi
+      if [[ -n "$redis_pwd" ]] && kubectl exec -n "$NAMESPACE" redis-master-0 -- redis-cli -a "$redis_pwd" EVAL "for i,k in ipairs(redis.call('keys','*')) do redis.call('del',k) end return 'ok'" 0 2>/dev/null | grep -q ok; then
         redis_ok=1
-      elif kubectl exec -n "$NAMESPACE" deploy/redis-master -- redis-cli -a "$redis_pwd" EVAL "for i,k in ipairs(redis.call('keys','*')) do redis.call('del',k) end return 'ok'" 0 2>/dev/null | grep -q ok; then
+      elif [[ -n "$redis_pwd" ]] && kubectl exec -n "$NAMESPACE" deploy/redis-master -- redis-cli -a "$redis_pwd" EVAL "for i,k in ipairs(redis.call('keys','*')) do redis.call('del',k) end return 'ok'" 0 2>/dev/null | grep -q ok; then
         redis_ok=1
       fi
     fi
@@ -196,7 +202,7 @@ if [[ $FRESH -eq 1 ]]; then
         minio_ok=1
       else
         # Fallback: Python minio client via a one-off job image (already in cluster)
-        kubectl run --rm -i --restart=Never -n "$NAMESPACE" rghw-fresh-mc --image=minio/mc:latest -- sh -c 'mc alias set m http://minio.rube-goldberg.svc.cluster.local:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" && mc rm --recursive --force m/rube-goldberg-artifacts/ 2>/dev/null; echo ok' 2>/dev/null | grep -q ok && minio_ok=1 || true
+        kubectl run --rm -i --restart=Never -n "$NAMESPACE" rghw-fresh-mc --image="minio/mc:${MINIO_MC_VERSION:-RELEASE.2025-08-13T08-35-41Z}" -- sh -c 'mc alias set m http://minio.rube-goldberg.svc.cluster.local:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" && mc rm --recursive --force m/rube-goldberg-artifacts/ 2>/dev/null; echo ok' 2>/dev/null | grep -q ok && minio_ok=1 || true
       fi
     fi
     # No restart needed: pending maps are per-runId, so old runIds don't affect new runs.
