@@ -1,4 +1,5 @@
 use sha2::{Digest, Sha256};
+use std::collections::{HashMap, HashSet};
 
 pub const VERSION: &str = "0.5.0-milestone11";
 pub const SERVICE_NAME: &str = "phrase-assembler";
@@ -24,6 +25,8 @@ pub struct AdjudicatedToken {
     pub input_artifact: String,
     #[serde(default)]
     pub run_id: Option<String>,
+    #[serde(default)]
+    pub step_id: String,
 }
 
 #[derive(Debug, Clone, serde::Deserialize)]
@@ -288,7 +291,24 @@ pub fn symbol_adjudicated_to_token(data: &SymbolAdjudicatedData) -> AdjudicatedT
         confidence: data.symbol.confidence,
         input_artifact,
         run_id: Some(data.run_id.clone()),
+        step_id: data.step_id.clone(),
     }
+}
+
+// Kafka delivery is at-least-once with auto commit, so a redelivered
+// symbols-adjudicated event must not be buffered twice for a run. Seen step IDs
+// are kept after a flush so late redeliveries cannot re-seed an assembled run.
+pub fn register_token_step(
+    seen: &mut HashMap<String, HashSet<String>>,
+    run_id: &str,
+    step_id: &str,
+) -> bool {
+    if step_id.is_empty() {
+        return true;
+    }
+    seen.entry(run_id.to_string())
+        .or_default()
+        .insert(step_id.to_string())
 }
 
 pub fn run_assemble_once(
@@ -612,6 +632,22 @@ mod tests {
     }
 
     #[test]
+    fn register_token_step_dedupes_redeliveries() {
+        let mut seen: HashMap<String, HashSet<String>> = HashMap::new();
+        assert!(register_token_step(&mut seen, "run-1", "step-1"));
+        assert!(!register_token_step(&mut seen, "run-1", "step-1"));
+        assert!(register_token_step(&mut seen, "run-1", "step-2"));
+        assert!(register_token_step(&mut seen, "run-2", "step-1"));
+    }
+
+    #[test]
+    fn register_token_step_allows_empty_step_id() {
+        let mut seen: HashMap<String, HashSet<String>> = HashMap::new();
+        assert!(register_token_step(&mut seen, "run-1", ""));
+        assert!(register_token_step(&mut seen, "run-1", ""));
+    }
+
+    #[test]
     fn process_adjudicated_payload_valid() {
         let payload = r#"{
             "specversion": "1.0",
@@ -723,6 +759,7 @@ mod tests {
                 confidence: 0.9,
                 input_artifact: "a1".to_string(),
                 run_id: None,
+                step_id: String::new(),
             },
             AdjudicatedToken {
                 position: 1,
@@ -731,6 +768,7 @@ mod tests {
                 confidence: 0.9,
                 input_artifact: "a2".to_string(),
                 run_id: None,
+                step_id: String::new(),
             },
         ];
         let (text, event) = flush_run_buffer("run-1".to_string(), tokens).unwrap();
@@ -749,6 +787,7 @@ mod tests {
                 confidence: 0.9,
                 input_artifact: "a1".to_string(),
                 run_id: None,
+                step_id: String::new(),
             },
             AdjudicatedToken {
                 position: 0,
@@ -757,6 +796,7 @@ mod tests {
                 confidence: 0.9,
                 input_artifact: "a2".to_string(),
                 run_id: None,
+                step_id: String::new(),
             },
         ];
         assert!(flush_run_buffer("run-1".to_string(), tokens).is_err());
@@ -794,6 +834,7 @@ mod tests {
                 confidence: 0.9,
                 input_artifact: "a1".to_string(),
                 run_id: None,
+                step_id: String::new(),
             },
             AdjudicatedToken {
                 position: 2,
@@ -802,6 +843,7 @@ mod tests {
                 confidence: 0.9,
                 input_artifact: "a2".to_string(),
                 run_id: None,
+                step_id: String::new(),
             },
         ];
         let result = assemble(tokens);

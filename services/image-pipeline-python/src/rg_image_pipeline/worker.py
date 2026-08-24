@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import logging
 import os
 from collections import defaultdict
 from typing import Any
@@ -26,6 +27,23 @@ OCR_OUTPUT_TOPIC = os.environ.get("KAFKA_OCR_IMAGES_TOPIC", "rg.ocr-images.v1")
 BUCKET = os.environ.get("PIPELINE_BUCKET", "rube-goldberg-artifacts")
 SOURCE = "image-pipeline"
 
+logger = logging.getLogger("image-pipeline")
+
+
+def accept_record(
+    seen: dict[str, set[str]], run_id: str, event_type: str, data: dict[str, Any]
+) -> bool:
+    # Upstream consumers run with at-least-once delivery and auto commit; a
+    # redelivery after a flush must not re-seed the buffer or skew composition,
+    # so seen keys are kept for the process lifetime (bounded by ~11 small
+    # strings per run).
+    dedupe_key = data.get("stepId") or f"{event_type}:{data.get('position')}"
+    known = seen.setdefault(run_id, set())
+    if dedupe_key in known:
+        return False
+    known.add(dedupe_key)
+    return True
+
 
 async def run_worker() -> None:
     init_telemetry()
@@ -40,6 +58,7 @@ async def run_worker() -> None:
 
     pending: dict[str, list[dict[str, Any]]] = defaultdict(list)
     timers: dict[str, asyncio.Task] = {}
+    seen: dict[str, set[str]] = defaultdict(set)
 
     async def flush_run(run_id: str) -> None:
         records = pending.pop(run_id, [])
@@ -81,11 +100,13 @@ async def run_worker() -> None:
                     event.get("type") == "rg.geometry-expanded.v1"
                     and data.get("geometry", {}).get("kind") == "GAP_GEOMETRY"
                 )
-                if is_rasterized or is_gap:
+                if (is_rasterized or is_gap) and accept_record(
+                    seen, run_id, event.get("type", ""), data
+                ):
                     pending[run_id].append(data)
                     on_rasterized(run_id)
             except Exception as e:
-                print(f"image-pipeline compose consumer error: {e}")
+                logger.warning("compose consumer error: %s", e)
                 with contextlib.suppress(Exception):
                     await consumer.stop()
                 consumer = await create_consumer(
@@ -105,7 +126,7 @@ async def run_worker() -> None:
                 if event.get("type") == "rg.phrase-composed.v1":
                     await _preprocess_and_publish(run_id, data, minio, producer)
             except Exception as e:
-                print(f"image-pipeline preprocess consumer error: {e}")
+                logger.warning("preprocess consumer error: %s", e)
                 with contextlib.suppress(Exception):
                     await consumer.stop()
                 consumer = await create_consumer(
@@ -199,12 +220,17 @@ async def _compose_and_publish(run_id: str, glyphs: list[Any], minio: Any, produ
     put_bytes(minio, BUCKET, phrase_key, result.image_bytes, "image/png")
     put_bytes(minio, BUCKET, manifest_key, result.manifest_bytes, "application/json")
 
-    event = _build_phrase_composed_event(run_id, result, phrase_key, manifest_key)
+    input_keys = sorted({g.object_key for g in glyphs if getattr(g, "object_key", "")})
+    event = _build_phrase_composed_event(run_id, result, phrase_key, manifest_key, input_keys)
     await publish(producer, OUTPUT_TOPIC, event)
 
 
 def _build_phrase_composed_event(
-    run_id: str, result: Any, phrase_key: str, manifest_key: str
+    run_id: str,
+    result: Any,
+    phrase_key: str,
+    manifest_key: str,
+    input_keys: list[str],
 ) -> dict[str, Any]:
     step_id = build_operation_id(run_id, "compose-phrase", 1, result.phrase_image.sha256)
     layout = []
@@ -226,8 +252,8 @@ def _build_phrase_composed_event(
         "attempt": 1,
         "inputMaturity": 40,
         "outputMaturity": 50,
-        "inputArtifacts": [],
-        "outputArtifacts": [result.phrase_image.sha256, result.phrase_image.sha256 + "-manifest"],
+        "inputArtifacts": input_keys,
+        "outputArtifacts": [phrase_key, manifest_key],
         "transformation": {"name": "compose-phrase", "version": "1.0"},
         "compositionManifest": {"layout": layout},
         "phraseImage": {
@@ -300,12 +326,16 @@ async def _preprocess_and_publish(
             }
         )
 
-    event = _build_ocr_prepared_event(run_id, result, ocr_key, crop_keys)
+    event = _build_ocr_prepared_event(run_id, result, ocr_key, crop_keys, phrase_key)
     await publish(producer, OCR_OUTPUT_TOPIC, event)
 
 
 def _build_ocr_prepared_event(
-    run_id: str, result: Any, ocr_key: str, crop_keys: list[dict[str, Any]]
+    run_id: str,
+    result: Any,
+    ocr_key: str,
+    crop_keys: list[dict[str, Any]],
+    input_key: str,
 ) -> dict[str, Any]:
     step_id = build_operation_id(run_id, "prepare-ocr-image", 1, result.ocr_image.sha256)
     data = {
@@ -314,8 +344,8 @@ def _build_ocr_prepared_event(
         "attempt": 1,
         "inputMaturity": 50,
         "outputMaturity": 60,
-        "inputArtifacts": [result.ocr_image.sha256],
-        "outputArtifacts": [result.ocr_image.sha256, *[c["objectKey"] for c in crop_keys]],
+        "inputArtifacts": [input_key],
+        "outputArtifacts": [ocr_key, *[c["objectKey"] for c in crop_keys]],
         "transformation": {"name": "prepare-ocr-image", "version": "1.0"},
         "ocrImage": {
             "objectKey": ocr_key,

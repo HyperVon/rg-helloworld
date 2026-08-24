@@ -157,7 +157,7 @@ make wait          # wait-ready.sh ignores terminal Succeeded/Failed pods and pr
 make demo          # wait + scripts/smoke-test.sh (Kafka + MinIO + rghw run)
 ```
 
-`make demo` is defined as `wait` + `scripts/smoke-test.sh` (*Makefile:461, architecture §25*). The smoke test reads PostgreSQL, Redis, and MinIO credentials from the namespace secrets without printing them. The full first-time sequence from `architecture §4.1` is `prerequisites -> contracts -> build -> images -> cluster -> infra -> wait -> e2e`.
+`make demo` is defined as `wait` + `scripts/smoke-test.sh` (see the `demo:` target in the `Makefile`, architecture §25). The smoke test reads PostgreSQL, Redis, and MinIO credentials from the namespace secrets without printing them. The full first-time sequence from `architecture §4.1` is `prerequisites -> contracts -> build -> images -> cluster -> infra -> wait -> e2e`.
 
 ### 4.2 Step-by-step explanation
 
@@ -165,7 +165,7 @@ make demo          # wait + scripts/smoke-test.sh (Kafka + MinIO + rghw run)
 | --- | --- | --- | --- |
 | 1 | `make prerequisites` | Runs `scripts/prerequisites.sh`: checks every toolchain, creates `.venv`, runs `npm ci`, `bundle install`, `cargo fetch` | No `SKIP` warnings (or `STRICT=1` passes) |
 | 2 | `make cluster` | `scripts/k3d-create.sh` creates k3d cluster `rube-goldberg` per `infra/k3d/cluster.yaml` (1 server, 0 agents, registry `rghello-registry:5001`), waits for `kubectl wait --for=condition=ready pod --all -A --timeout=180s` | `k3d cluster list` shows `rube-goldberg`, `kubectl cluster-info` |
-| 3 | `make images` | `scripts/build-images.sh` builds 12 images (`glyph-catalog:milestone5`, `geometry-engine:milestone5`, `run-orchestrator:milestone6`, `vector-normalizer:milestone6`, `rasterizer:milestone6`, `image-pipeline:milestone7`, `ocr-worker:milestone8`, `adjudicator:milestone8`, `phrase-assembler:milestone9`, `event-gateway:milestone11`, `telemetry-element:milestone11`, `artifact-inspector:milestone11`, `web-shell:milestone11`) and pushes to `localhost:5001` | `docker images` (filter `5001`) |
+| 3 | `make images` | `scripts/build-images.sh` builds 13 images (`glyph-catalog:milestone5`, `geometry-engine:milestone5`, `run-orchestrator:milestone6`, `vector-normalizer:milestone6`, `rasterizer:milestone6`, `image-pipeline:milestone7`, `ocr-worker:milestone8`, `adjudicator:milestone8`, `phrase-assembler:milestone9`, `event-gateway:milestone11`, `telemetry-element:milestone11`, `artifact-inspector:milestone11`, `web-shell:milestone11`) and pushes to `localhost:5001` | `docker images` (filter `5001`) |
 | 4 | `make infra` | `cd infra/terraform/environments/local && terraform init && terraform apply -auto-approve` provisions namespace `rube-goldberg`, secrets (`postgres-credentials`, `redis-credentials`, `minio-credentials`, `grafana-credentials`), Helm releases (PostgreSQL 18.8.6, Kafka KRaft, Redis, MinIO, Prometheus, Loki, Tempo), PVCs | `terraform show`, `helm list -n rube-goldberg` |
 | 5 | `make deploy` | Applies hand-written manifests under `infra/k8s/` (deployments, services, jobs, cronjobs, network policies, Grafana dashboards) | `kubectl get deployments -n rube-goldberg` |
 | 6 | `make wait` | `scripts/wait-ready.sh`: waits for non-terminal pods and excludes `Succeeded`/`Failed` jobs, with diagnostics on timeout | All live pods `1/1 Running`; completed or failed terminal jobs do not block readiness |
@@ -199,7 +199,7 @@ rghw run --api-url http://rghw.localhost/api  # ingress mode (default)
 rghw run --timeout 3m --quiet             # suppress stderr progress
 ```
 
-`make run` is shorthand for `cd cmd/rghw && go run . run --api-url "http://localhost:8080"` (*Makefile:459*).
+`make run` is shorthand for `cd cmd/rghw && go run . run --api-url "http://localhost:8080"` (see the `run:` target in the `Makefile`).
 
 ### 5.2 Standard-stream contract (architecture §4.3)
 
@@ -248,7 +248,11 @@ kubectl logs -n rube-goldberg deploy/phrase-assembler --tail=50 | grep assembled
 
 # via MinIO artifact
 kubectl port-forward -n rube-goldberg svc/minio 9000:9000 &
-mc alias set local http://localhost:9000 minioadmin minioadmin
+# Credentials are random per install (Terraform random_password); read them
+# from the secret instead of assuming defaults.
+MC_ROOT_USER="$(kubectl get secret -n rube-goldberg minio-credentials -o jsonpath='{.data.root-user}' | base64 -d)"
+MC_ROOT_PASSWORD="$(kubectl get secret -n rube-goldberg minio-credentials -o jsonpath='{.data.root-password}' | base64 -d)"
+mc alias set local http://localhost:9000 "$MC_ROOT_USER" "$MC_ROOT_PASSWORD"
 mc ls -r local/rube-goldberg-artifacts
 ```
 
@@ -268,7 +272,7 @@ All UIs are namespace `rube-goldberg`. The stack includes 4 Grafana dashboards (
 | **Prometheus** | — | `kubectl port-forward svc/prometheus 9090:9090` → `http://localhost:9090`/-/healthy → `Prometheus Server is Healthy` | Metrics: `rg_runs_total{status}`, `rg_active_runs`, `rg_step_*`, `rg_kafka_consumer_lag`, `rg_ocr_confidence` (§20.2); see §6.1.2 for valid PromQL queries | Prometheus 3.5.0 |
 | **Loki** | — | `kubectl port-forward svc/loki 3100:3100` → `http://localhost:3100`/ready → `ready` | JSON structured logs from every service (§20.3) | Grafana Loki 3.5.2 |
 | **Tempo** | — | `kubectl port-forward svc/tempo 3200:3200` → `http://localhost:3200`/status | Distributed traces: one `rube-goldberg.run` root span per run with children `orchestrator.create-run`, `soap.plan-phrase`, `kafka.produce/consume`, `geometry.expand`, `grpc.render-glyph`, `image.compose`, `ocr.*`, `adjudicate.symbol`, `assemble.phrase` (§20.1) | Grafana Tempo 2.4.0 (minimal local backend `/tmp/tempo/blocks`) |
-| **OTel Collector** | — | `kubectl port-forward svc/otel-collector 4317:4317` (gRPC) / 4318 (HTTP) | Telemetry intake, `Everything is ready` (0.91.0), forwards to Prometheus/Tempo/Loki | OTel Collector (`infra/k8s/milestone11/otel-collector.yaml`) |
+| **OTel Collector** | — | `kubectl port-forward svc/otel-collector 4317:4317` (gRPC) / 4318 (HTTP) | Telemetry intake, `Everything is ready` (0.128.0), forwards to Prometheus/Tempo/Loki | OTel Collector (`infra/k8s/milestone11/otel-collector.yaml`) |
 | **MinIO Console** | `http://minio.rghw.localhost/` | `kubectl port-forward svc/minio 9000:9000` (API) / 9001 (console if enabled) → `http://localhost:9000` | Bucket `rube-goldberg-artifacts`, artifact MinIO keys, SHA-256 verification | MinIO |
 | **PostgreSQL** | — | `kubectl port-forward svc/postgresql 5432:5432` → `psql -h localhost -U postgres` | Run projections, expected-codepoint table (restricted to orchestrator role) | PostgreSQL |
 | **Redis** | — | `kubectl port-forward svc/redis-master 6379:6379` → `redis-cli` | Redis Streams `rg:run:{runId}:events` backing SSE | Redis |
@@ -372,7 +376,7 @@ If a query returns `No Data` in Grafana but `curl` above returns a vector, the d
 ```bash
 # all UIs responding (port-forward mode)
 curl -sf http://localhost:3000/ | head -5        # web-shell: contains "Rube Goldberg Hello World"
-curl -sf http://localhost:8081/healthz           # event-gateway
+curl -sf http://localhost:8081/health              # event-gateway
 curl -sf http://localhost:3002/api/health | jq . # grafana -> {"database":"ok","version":"12.0.2"}
 curl -sf http://localhost:9090/-/healthy         # prometheus -> Prometheus Server is Healthy
 curl -sf 'http://localhost:9090/api/v1/query?query=rg_runs_total' | jq .  # prometheus -> rg_runs_total vector
@@ -385,14 +389,16 @@ For ingress mode, replace `localhost:3000` with `rghw.localhost`, `localhost:300
 
 ### 6.4 SSE streaming details
 
-The event gateway replays missed events via `Last-Event-ID` and sends a full snapshot first (*architecture §19.5*). To test:
+The event gateway sends a full snapshot first, then live events, and replays missed events via its `?lastEventId=` query parameter (*architecture §19.5*). The orchestrator exposes an equivalent stream at `/api/v1/runs/{runId}/stream`, which honors the standard `Last-Event-ID` header. To test:
 
 ```bash
 # start a run and capture its ID from stderr
 rghw run --api-url http://localhost:8080 2> /tmp/run.log
 RUN_ID=$(grep -oE '[0-9a-f-]{36}' /tmp/run.log | head -1)
-# stream via gateway directly
-curl -N -H "Accept: text/event-stream" http://localhost:8081/api/v1/runs/$RUN_ID/stream
+# stream via gateway directly (replay from a specific event id)
+curl -N -H "Accept: text/event-stream" "http://localhost:8081/events/$RUN_ID?lastEventId=1"
+# or via the orchestrator stream
+curl -N http://localhost:8080/api/v1/runs/$RUN_ID/stream
 ```
 
 ## 7. Development modes
@@ -486,13 +492,14 @@ kubectl exec -n rube-goldberg deploy/minio -- mc mb local/rube-goldberg-artifact
 kubectl get pods -n rube-goldberg -l app=postgresql
 kubectl logs -n rube-goldberg pod/<postgres-pod-name>
 kubectl get svc -n rube-goldberg postgresql
-# local password is PostgresPassw0rd! (scripts/smoke-test.sh)
-PGPASSWORD=PostgresPassw0rd! psql -h localhost -p 5432 -U postgres -c "SELECT 1"
+# password is random per install (Terraform random_password); smoke-test.sh
+# reads it from the postgres-credentials secret at runtime
+PGPASSWORD="$(kubectl get secret -n rube-goldberg postgres-credentials -o jsonpath='{.data.password}' | base64 -d)" psql -h localhost -p 5432 -U postgres -c "SELECT 1"
 ```
 
 ### Web shell 404
 
-`artifact-inspector` returns 404 at `/` but serves `/artifacts?runId=...`. `web-shell` serves `assets/index-*.js` at `/` on `10.42.0.168:3000` inside cluster or `localhost:3000` via port-forward. Verify:
+`web-shell` serves `assets/index-*.js` at `/` on `10.42.0.168:3000` inside cluster or `localhost:3000` via port-forward; `artifact-inspector` renders its run form at `/` and `/inspector`. Verify:
 
 ```bash
 kubectl logs -n rube-goldberg deploy/web-shell

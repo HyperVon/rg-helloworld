@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+import logging
 import os
 from typing import Any
 
@@ -12,6 +13,8 @@ KAFKA_BOOTSTRAP = os.environ.get(
     "KAFKA_BOOTSTRAP_SERVERS", "kafka.rube-goldberg.svc.cluster.local:9092"
 )
 GROUP_ID = os.environ.get("KAFKA_CONSUMER_GROUP", "image-pipeline-v1")
+
+logger = logging.getLogger("image-pipeline.kafka")
 
 
 async def create_consumer(topics: list[str], group_id: str = GROUP_ID) -> AIOKafkaConsumer:
@@ -28,13 +31,12 @@ async def create_consumer(topics: list[str], group_id: str = GROUP_ID) -> AIOKaf
         try:
             await consumer.start()
             if attempt > 0:
-                print(f"[kafka-consumer] connected on attempt {attempt + 1}", flush=True)
+                logger.info("kafka consumer connected on attempt %d", attempt + 1)
             return consumer
         except Exception as e:  # noqa: BLE001
             last_err = e
-            print(
-                f"[kafka-consumer] attempt {attempt + 1}/30 failed: {e} — retrying in 2s",
-                flush=True,
+            logger.warning(
+                "kafka consumer attempt %d/30 failed: %s — retrying in 2s", attempt + 1, e
             )
             with contextlib.suppress(Exception):
                 await consumer.stop()
@@ -52,13 +54,12 @@ async def create_producer() -> AIOKafkaProducer:
         try:
             await producer.start()
             if attempt > 0:
-                print(f"[kafka-producer] connected on attempt {attempt + 1}", flush=True)
+                logger.info("kafka producer connected on attempt %d", attempt + 1)
             return producer
         except Exception as e:  # noqa: BLE001
             last_err = e
-            print(
-                f"[kafka-producer] attempt {attempt + 1}/30 failed: {e} — retrying in 2s",
-                flush=True,
+            logger.warning(
+                "kafka producer attempt %d/30 failed: %s — retrying in 2s", attempt + 1, e
             )
             with contextlib.suppress(Exception):
                 await producer.stop()

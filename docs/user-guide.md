@@ -51,7 +51,7 @@ Manual bring-up (what the script automates):
 ```bash
 make prerequisites   # toolchain + npm ci / bundle / venv
 make cluster         # k3d + registry localhost:5001
-make images          # 12 images (glyph-catalog … web-shell)
+make images          # 13 images (glyph-catalog … web-shell)
 make infra           # Terraform: Kafka, MinIO, Postgres, Redis, secrets
 make deploy          # kubectl apply milestone 5-11 manifests
 make wait            # 25 pods 1/1 Running
@@ -72,7 +72,7 @@ make run             # rghw run --api-url http://localhost:8080
 | **OCR Worker** | `ocr-worker` | Node | OCR crops → `HE…` observations per position (60→70) | Grafana OCR Lab, Loki logs |
 | **Adjudicator** | `adjudicator` | Ruby | observations → adjudicated symbols (70→80, `GAP` tokens) | Grafana Deep Dive, adjudicator logs |
 | **Phrase Assembler** | `phrase-assembler` | Rust | adjudicated events → `HELLO WORLD` (80→90, Whitespace provenance) | `GET /api/v1/runs/{id}/artifacts` → `sha256` |
-| **Event Gateway** | `event-gateway` | Node | Redis Stream → SSE `/api/v1/runs/{id}/stream` | Web Shell live, `curl -N` stream |
+| **Event Gateway** | `event-gateway` | Node | Redis Stream → SSE `/events/{id}` (orchestrator also exposes `/api/v1/runs/{id}/stream`) | Web Shell live, `curl -N` stream |
 | **Telemetry** | `telemetry-element` | TypeScript Web Component | `<rg-telemetry-panel>` step ledger | Embedded in Web Shell |
 
 Supporting: Kafka (13 topics `rg.*.v1`: 11 application topics + 2 infrastructure — `rg.run-events.v1`, `rg.dead-letter.v1`), Redis Streams (`rg:run:{id}:events`), MinIO (`rube-goldberg-artifacts`), PostgreSQL, OpenTelemetry Collector → Prometheus/Loki/Tempo → Grafana.
@@ -93,7 +93,7 @@ rghw run --help                          # after go install
 | `rghw run --api-url http://rghw.localhost/api` | Ingress mode (default per architecture §21.4) | — |
 | `rghw run --api-url http://localhost:8080 --timeout 3m` | Port-forward mode, custom timeout (exit 3 on timeout) | — |
 | `rghw run --quiet` | Only `HELLO WORLD` on stdout, no stderr progress | `RESULT=$(rghw run --quiet)` |
-| `rghw version` | `run-orchestrator 0.5.0-milestone11` | — |
+| `rghw version` | `rghw 0.0.0-skeleton` (build stamp; orchestrator image carries its own milestone tag) | — |
 
 **Stream contract:** stderr `[01/10] … [10/10] …` + URLs/runId; stdout **exactly** `HELLO WORLD\n` on exit 0 (so `test "$(rghw run --quiet)" = "HELLO WORLD"`). Exit codes: `0` success, `1` system, `2` invalid, `3` timeout, `4` OCR failed, `5` output mismatch, `130` cancelled.
 
@@ -102,7 +102,7 @@ Low-level checks:
 ```bash
 curl -sf http://localhost:8080/healthz
 curl -s http://localhost:8080/api/v1/runs | jq
-curl -N -H "Accept: text/event-stream" http://localhost:8081/api/v1/runs/<id>/stream
+curl -N "http://localhost:8081/events/<id>"          # gateway SSE (snapshot first, ?lastEventId= to replay)
 ```
 
 ## 5. Web UIs — what they are and how to use them
@@ -123,7 +123,7 @@ All UIs are in namespace `rube-goldberg`. Two access modes: **ingress** (`rghw.l
 4. **Manual fallback** is behind `Or enter run ID manually` (collapsed `<details>`) — only needed if the list is empty.
 5. **Process Graph** shows 11 nodes `Run Planning → … → Terminal` green `completed`, yellow `running`, grey `pending`. The current stage is in Telemetry below.
 6. **Telemetry** shows `Attempt`, `Progress`, `Stage: SUCCEEDED/…`, `Events received`. On `SUCCEEDED`, `View Artifacts` opens a modal that fetches `GET /api/v1/runs/{id}/artifacts`.
-7. No page reload needed — the graph animates via SSE; reload mid-run resumes via `Last-Event-ID`.
+7. No page reload needed — the graph animates via SSE; a mid-run reload resumes from the gateway's snapshot + `?lastEventId=` replay.
 
 *If the dropdown is empty:* run `rghw run` or `go -C cmd/rghw run . run --api-url http://localhost:8080` first. The list polls every 5s.
 
@@ -160,12 +160,12 @@ All UIs are in namespace `rube-goldberg`. Two access modes: **ingress** (`rghw.l
 
 ```bash
 RUN_ID=$(curl -s http://localhost:8080/api/v1/runs | jq -r '.runs[0].runId')
-curl -N -H "Accept: text/event-stream" http://localhost:8081/api/v1/runs/$RUN_ID/stream
-# or via orchestrator directly
+curl -N "http://localhost:8081/events/$RUN_ID"
+# or via orchestrator directly (supports Last-Event-ID header replay)
 curl -N http://localhost:8080/api/v1/runs/$RUN_ID/stream
 ```
 
-You see `: connected` then `data: {"status":"PLANNING"…}` etc., heartbeats `event:heartbeat` every 15s, and a final `data: {"status":"SUCCEEDED","assembledText":"HELLO WORLD"…}` after which the server closes. Mid-run reloads replay via `Last-Event-ID` — the gateway sends a snapshot first.
+You see `: connected` then `data: {"status":"PLANNING"…}` etc., heartbeats `event:heartbeat` every 15s, and a final `data: {"status":"SUCCEEDED","assembledText":"HELLO WORLD"…}` after which the server closes. The gateway sends a snapshot first; add `?lastEventId=<id>` to replay from a specific event.
 
 Health: `curl -s http://localhost:8081/health` → `{"status":"ok"}`.
 
@@ -190,7 +190,7 @@ Screenshots: `docs/screenshots/grafana*.png` (captured via Playwright at `SUCCEE
 
 ### 5.6 Prometheus, Loki, Tempo, OTel
 
-*Images:* Prometheus 3.5, Loki 3.5.2, Tempo 2.4.0 (minimal local backend `/tmp/tempo/blocks`), OTel Collector 0.91
+*Images:* Prometheus 3.5, Loki 3.5.2, Tempo 2.4.0 (minimal local backend `/tmp/tempo/blocks`), OTel Collector 0.128.0
 
 **Prometheus** `http://localhost:9090` (`/-/healthy` → `Prometheus Server is Healthy`) — valid PromQL (see runbook §6.1.2):
 
@@ -211,14 +211,16 @@ Quick check: `curl -s 'http://localhost:9090/api/v1/query?query=rg_runs_total' |
 
 **Tempo** `http://localhost:3200` (`/status` → `server listening http [::]:3200 grpc [::]:9095`) — one root span `rube-goldberg.run` per run with children `orchestrator.create-run`, `soap.plan-phrase`, `kafka.produce/consume`, `geometry.expand`, `grpc.render-glyph`, `image.compose`, `ocr.*`, `adjudicate.symbol`, `assemble.phrase`. Traces arrive via OTel Collector `otel-collector:4317` (gRPC). Inside Grafana, Run Deep Dive links Loki logs → Tempo.
 
-**OTel Collector** `http://localhost:4317` gRPC / `4318` HTTP — `kubectl logs deploy/otel-collector -n rube-goldberg | grep "Everything is ready"` → `0.91.0`.
+**OTel Collector** `http://localhost:4317` gRPC / `4318` HTTP — `kubectl logs deploy/otel-collector -n rube-goldberg | grep "Everything is ready"` → `0.128.0`.
 
 ### 5.7 MinIO, Kafka, Redis, Postgres
 
-**MinIO Console** `http://localhost:9000` (API) / `http://localhost:9001` if console enabled (`minio-console` svc) — bucket `rube-goldberg-artifacts`, keys like `phrase/<runId>/svg/<glyph>.svg` with SHA-256 sidecars. Login `minioadmin/minioadmin` (from `minio-credentials`). CLI:
+**MinIO Console** `http://localhost:9000` (API) / `http://localhost:9001` if console enabled (`minio-console` svc) — bucket `rube-goldberg-artifacts`, keys like `phrase/<runId>/svg/<glyph>.svg` with SHA-256 sidecars. Credentials are random per install (Terraform `random_password`) and live in secret `minio-credentials`. CLI:
 
 ```bash
-mc alias set local http://localhost:9000 minioadmin minioadmin
+MC_ROOT_USER="$(kubectl get secret -n rube-goldberg minio-credentials -o jsonpath='{.data.root-user}' | base64 -d)"
+MC_ROOT_PASSWORD="$(kubectl get secret -n rube-goldberg minio-credentials -o jsonpath='{.data.root-password}' | base64 -d)"
+mc alias set local http://localhost:9000 "$MC_ROOT_USER" "$MC_ROOT_PASSWORD"
 mc ls -r local/rube-goldberg-artifacts
 ```
 
@@ -226,7 +228,11 @@ mc ls -r local/rube-goldberg-artifacts
 
 **Redis** `localhost:6379` (`redis-master`, streams `rg:run:{id}:events` backing SSE) — `redis-cli XLEN rg:run:<id>:events`.
 
-**PostgreSQL** `localhost:5432` (`postgres-postgresql`, secret `postgres-credentials`, password `PostgresPassw0rd!`) — projections, not on the critical path. `psql -h localhost -U postgres`.
+**PostgreSQL** `localhost:5432` (`postgres-postgresql`, secret `postgres-credentials`) — projections, not on the critical path. Password is random per install; read it from the secret:
+
+```bash
+PGPASSWORD="$(kubectl get secret -n rube-goldberg postgres-credentials -o jsonpath='{.data.password}' | base64 -d)" psql -h localhost -U postgres
+```
 
 ## 6. Running the applications — what to run when
 
@@ -249,41 +255,42 @@ open http://localhost:3002  # Grafana — login admin / secret
 go -C cmd/rghw run . run --timeout 5m --api-url http://localhost:8080
 ```
 
-### 6.3 Service-level `--once` (for debugging a stage without Kafka/K8s)
+### 6.3 Service-level one-shot mode (for debugging a stage without Kafka/K8s)
 
-Every service has a deterministic `--once` that reads one artifact and writes the next — used by integration tests (`tests/integration/run_integration.sh`) and handy locally:
+Most services have a deterministic one-shot mode that reads one artifact and writes the next — used by integration tests (`tests/integration/run_integration.sh`) and handy locally. The glyph catalog is SOAP-only (it serves plans over HTTP/SOAP; it has no `--once`), so integration drives it via its WSDL endpoint.
 
 ```bash
-# Java SOAP → blueprints (11)
-java -jar services/glyph-catalog-java/target/glyph-catalog-*.jar --once --message "HELLO WORLD"
-
 # C++ geometry expand (10→20)
 ./services/geometry-engine-cpp/build/geometry_engine --once --input /tmp/blueprints.json
 
 # Go normalizer (20→30)
 go -C services/vector-normalizer-go run . --once --input /tmp/geometry.json
 
-# C# rasterizer via gRPC (--rasterizer-url for real server, else local)
+# C# rasterizer CLI
 dotnet run --project services/rasterizer-dotnet/cli -- --once --input /tmp/normalized.json
 
-# Python compose (30→40→50) + preprocess (50→60)
-PYTHONPATH=services/image-pipeline-python/src python -m rg_image_pipeline --once --stage compose
-PYTHONPATH=services/image-pipeline-python/src python -m rg_image_pipeline --once --stage preprocess --phrase-image /tmp/phrase.png
+# Python compose (40→50) + preprocess (50→60) are argparse subcommands of rg_image_pipeline.cli:
+PYTHONPATH=services/image-pipeline-python/src python -m rg_image_pipeline.cli compose /tmp/glyphs/*.json \
+  --output-phrase-image /tmp/phrase.png --output-manifest /tmp/composition-manifest.json
+PYTHONPATH=services/image-pipeline-python/src python -m rg_image_pipeline.cli preprocess \
+  --phrase-image /tmp/phrase.png --composition-manifest /tmp/composition-manifest.json \
+  --output-ocr-image /tmp/ocr.png --output-crops-dir /tmp/crops
 
-# Node OCR (60→70)
-node services/ocr-worker-node/out/index.js --once --ocr-image /tmp/ocr.png
+# Node OCR (60→70): positional args, no flags
+node services/ocr-worker-node/out/index.js once /tmp/ocr.png /tmp/preprocess-report.json /tmp/crops /tmp/observations.json
 
-# Ruby adjudicator (70→80)
-ruby -Iservices/adjudicator-ruby/lib services/adjudicator-ruby/bin/adjudicator --once --observations /tmp/observations.json
+# Ruby adjudicator (70→80): positional args, no flags
+ruby -Iservices/adjudicator-ruby/lib services/adjudicator-ruby/bin/adjudicator once \
+  /tmp/observations.json /tmp/layout.json /tmp/adjudicated.json
 
-# Rust assembler (80→90)
-cargo run -p phrase-assembler -- --once --input /tmp/adjudicated.json
+# Rust assembler (80→90): --input= uses an equals sign
+cargo run -p phrase-assembler -- --once --input=/tmp/adjudicated.json
 
 # Go + Rust together is how M9 verifies HELLO WORLD without a cluster:
 # tests/integration/run_integration.sh sections 5.5–5.9
 ```
 
-Each `--once` is idempotent (deterministic operation IDs) and validates `inputMaturity → outputMaturity` strictly increases, rejecting prohibited fields.
+Each one-shot invocation is idempotent (deterministic operation IDs) and validates `inputMaturity → outputMaturity` strictly increases, rejecting prohibited fields.
 
 ### 6.4 Observability one-liners
 

@@ -70,7 +70,10 @@ std::string blueprintEvent(const std::string& kind, int position, const std::str
   data.objectItems()["stepId"] = rghw::Json::str("44444444-4444-4444-8444-444444444444");
   data.objectItems()["attempt"] = rghw::Json::number(1.0);
   data.objectItems()["inputArtifacts"] = rghw::Json::array();
-  data.objectItems()["outputArtifacts"] = rghw::Json::array();
+  rghw::Json planOutputs = rghw::Json::array();
+  planOutputs.arrayItems().push_back(
+      rghw::Json::str("runs/22222222-2222-4222-8222-222222222222/plan/glyphs.json"));
+  data.objectItems()["outputArtifacts"] = std::move(planOutputs);
   rghw::Json transformation = rghw::Json::object();
   transformation.objectItems()["name"] = rghw::Json::str("plan-glyphs");
   transformation.objectItems()["version"] = rghw::Json::str("1.0.0");
@@ -203,8 +206,9 @@ int main() {
   expectEq(outcome.blueprintArtifactKey, directory + "/blueprint.json", "blueprint artifact key");
   expectEq(outcome.geometryArtifactKey, directory + "/geometry-attempt-1-" + operationId + ".json",
            "geometry artifact key embeds the operation id");
-  expectEq(data.at("inputArtifacts").arrayItems()[0].asString(), outcome.blueprintArtifactKey,
-           "input artifact reference");
+  expectEq(data.at("inputArtifacts").serialize(),
+           rghw::Json::parse(input).at("data").at("outputArtifacts").serialize(),
+           "input artifacts trace the consumed blueprint outputs");
   expectEq(data.at("outputArtifacts").arrayItems()[0].asString(), outcome.geometryArtifactKey,
            "output artifact reference");
   expectEq(outcome.blueprintArtifactJson, rghw::Json::parse(input).at("data").serialize(),

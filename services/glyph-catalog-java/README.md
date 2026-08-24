@@ -33,7 +33,7 @@ mvn -B -DskipTests package     # build
 
 ## Dependencies
 
-- Spring Boot 3.5.3, Spring WS 4.0.13, wsdl4j 1.6.3, H2 2.3.232, JAXB 4
+- Spring Boot 4.1.0, Spring WS 5.0.2, wsdl4j 1.6.3, H2 2.4.240, JAXB 4
   (generated from `contracts/soap/glyph-catalog.xsd`) — all pinned in
   `pom.xml` and `versions.env`.
 - JUnit Jupiter 6.1.2, JaCoCo 0.8.15, Spotless 3.9.0.

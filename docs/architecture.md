@@ -2302,7 +2302,6 @@ rube-goldberg-hello-world/
 │   ├── k3d-create.sh
 │   ├── k3d-delete.sh
 │   ├── build-images.sh
-│   ├── push-images.sh
 │   ├── wait-ready.sh
 │   ├── smoke-test.sh
 │   └── collect-diagnostics.sh

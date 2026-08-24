@@ -1,5 +1,5 @@
-# Pinned to PYTHON_VERSION=3.13.15 (see versions.env); never "latest".
-FROM python:3.13.15-slim AS base
+# Pinned to PYTHON_VERSION=3.14.6 (see versions.env); never "latest".
+FROM python:3.14.6-slim AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

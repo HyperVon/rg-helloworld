@@ -115,9 +115,9 @@ make cluster && make images && make infra && make wait && make demo
 # then
 rghw run                          # prints HELLO WORLD to stdout
 rghw run --api-url http://localhost:8080 --timeout 90s  # port-forward mode
-kubectl port-forward -n rube-goldberg svc/web-shell 3000:3000 &      # Web Shell → http://localhost:3000
-kubectl port-forward -n rube-goldberg svc/grafana 3002:3000 &        # Grafana  → http://localhost:3002
-kubectl port-forward -n rube-goldberg svc/event-gateway 8081:8080 &  # SSE      → http://localhost:8081
+kubectl port-forward -n rube-goldberg svc/web-shell 3000:80 &        # Web Shell → http://localhost:3000
+kubectl port-forward -n rube-goldberg svc/grafana 3002:80 &          # Grafana  → http://localhost:3002
+kubectl port-forward -n rube-goldberg svc/event-gateway 8081:80 &    # SSE      → http://localhost:8081
 ```
 
 See [docs/user-guide.md](docs/user-guide.md) for how to use each UI, and [docs/runbook.md §6](docs/runbook.md#6-web-uis-and-observability) / [§3](docs/runbook.md#3-host-names-and-ingress) for the full catalog and port-forward details. The `rghw.sh` scripts automate the port-forwards and print the same table after every run.

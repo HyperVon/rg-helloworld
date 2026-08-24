@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <iostream>
+#include <mutex>
 #include <string>
 #include <thread>
 
@@ -238,6 +239,15 @@ void initialize(const std::string& serviceName, const std::string& otlpEndpoint)
   // best-effort POST an OTLP/JSON log record over HTTP. The HTTP push runs on
   // a worker thread with a short timeout; shutdown() joins it, so an
   // unreachable collector can delay exit by at most that timeout.
+  //
+  // libcurl requires curl_global_init before any other curl call and forbids
+  // concurrent implicit init from multiple threads. Running it here on the
+  // main thread also registers libcurl/OpenSSL's exit cleanup BEFORE the
+  // shutdown() atexit handler, so process teardown cannot free crypto state
+  // while this worker thread is still lazily initializing OpenSSL (observed
+  // as SIGSEGV inside pthread_rwlock_unlock during exit).
+  static std::once_flag curl_global_once;
+  std::call_once(curl_global_once, [] { curl_global_init(CURL_GLOBAL_DEFAULT); });
   std::cerr << startupLogLine(name) << '\n';
   std::cerr.flush();
   try {
@@ -298,6 +308,10 @@ void shutdown() noexcept {
   if (g_otlp_worker.joinable()) {
     g_otlp_worker.join();
   }
+  // Paired with the curl_global_init in initialize(); safe here because the
+  // worker has been joined, so no other thread can still be using curl or
+  // OpenSSL global state.
+  curl_global_cleanup();
 #endif
 }
 
