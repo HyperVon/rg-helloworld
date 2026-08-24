@@ -436,25 +436,30 @@ class HttpApiTest {
         testApplication {
             application { module() }
             Services.eventProducer = FakeEventProducer()
-            val client = createClient {}
-            val first = client.createRun("Hello World")
-            // small delay ensures distinct createdAt timestamps for sorting
-            Thread.sleep(15)
-            val second = client.createRun("Hello World")
-            val response = client.get("/api/v1/runs")
-            assertEquals(HttpStatusCode.OK, response.status)
-            val body = response.bodyAsText()
-            val parsed = Json.parseToJsonElement(body).jsonObject
-            val runsArray = parsed["runs"] as kotlinx.serialization.json.JsonArray
-            assertEquals(2, runsArray.size, "expected 2 runs: $body")
-            val firstObj = runsArray[0].jsonObject
-            val secondObj = runsArray[1].jsonObject
-            // newest first: second should be first element
-            assertEquals(second, firstObj["runId"]!!.jsonPrimitive.content, "newest run should be first: $body")
-            assertEquals(first, secondObj["runId"]!!.jsonPrimitive.content, "older run should be second: $body")
-            assertTrue(body.contains("\"links\""), "list entries should include links: $body")
-            assertTrue(body.contains("\"status\""), body)
-            assertTrue(body.contains("\"createdAt\""), body)
+            val originalClock = Services.clock
+            var seq = 0L
+            Services.clock = { java.time.Instant.ofEpochMilli(1_000_000L + seq++) }
+            try {
+                val client = createClient {}
+                val first = client.createRun("Hello World")
+                val second = client.createRun("Hello World")
+                val response = client.get("/api/v1/runs")
+                assertEquals(HttpStatusCode.OK, response.status)
+                val body = response.bodyAsText()
+                val parsed = Json.parseToJsonElement(body).jsonObject
+                val runsArray = parsed["runs"] as kotlinx.serialization.json.JsonArray
+                assertEquals(2, runsArray.size, "expected 2 runs: $body")
+                val firstObj = runsArray[0].jsonObject
+                val secondObj = runsArray[1].jsonObject
+                // newest first: second should be first element
+                assertEquals(second, firstObj["runId"]!!.jsonPrimitive.content, "newest run should be first: $body")
+                assertEquals(first, secondObj["runId"]!!.jsonPrimitive.content, "older run should be second: $body")
+                assertTrue(body.contains("\"links\""), "list entries should include links: $body")
+                assertTrue(body.contains("\"status\""), body)
+                assertTrue(body.contains("\"createdAt\""), body)
+            } finally {
+                Services.clock = originalClock
+            }
         }
 
     @Test

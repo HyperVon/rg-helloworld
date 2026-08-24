@@ -6,7 +6,7 @@ import sys
 
 from . import __version__
 from .composition import RasterizedGlyphInput, compose_phrase
-from .imaging import CompositionManifest, LayoutEntry
+from .imaging import CompositionManifest, LayoutEntry, sha256_bytes
 from .preprocessing import PreprocessParams
 from .preprocessing_impl import preprocess_phrase_image
 
@@ -25,6 +25,15 @@ def run_compose_once(args: argparse.Namespace) -> int:
                 image_bytes = bytes.fromhex(image_bytes)
             except ValueError:
                 image_bytes = None
+        if image_bytes is not None and sha256:
+            actual_sha256 = sha256_bytes(image_bytes)
+            if actual_sha256 != sha256:
+                print(
+                    f"error: glyph at position {position} sha256 mismatch: "
+                    f"manifest {sha256} != bytes {actual_sha256}",
+                    file=sys.stderr,
+                )
+                return 1
         glyphs.append(
             RasterizedGlyphInput(
                 position=position,
@@ -42,7 +51,11 @@ def run_compose_once(args: argparse.Namespace) -> int:
     if not glyphs:
         print("error: no glyph inputs provided", file=sys.stderr)
         return 1
-    result = compose_phrase(glyphs, scale_factor=float(args.scale_factor or 1))
+    try:
+        result = compose_phrase(glyphs, scale_factor=float(args.scale_factor or 1))
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
     if args.output_phrase_image:
         with open(args.output_phrase_image, "wb") as f:
             f.write(result.image_bytes)
@@ -80,10 +93,14 @@ def run_compose_once(args: argparse.Namespace) -> int:
 
 
 def run_preprocess_once(args: argparse.Namespace) -> int:
-    with open(args.phrase_image, "rb") as f:
-        phrase_bytes = f.read()
-    with open(args.composition_manifest) as f:
-        manifest_data = json.load(f)
+    try:
+        with open(args.phrase_image, "rb") as f:
+            phrase_bytes = f.read()
+        with open(args.composition_manifest) as f:
+            manifest_data = json.load(f)
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"error: cannot read phrase inputs: {e}", file=sys.stderr)
+        return 1
     manifest = CompositionManifest(
         layout=[
             LayoutEntry(

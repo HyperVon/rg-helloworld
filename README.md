@@ -124,7 +124,7 @@ See [docs/user-guide.md](docs/user-guide.md) for how to use each UI, and [docs/r
 
 ## Web UIs — the ridiculous punchline
 
-> **WOW → WTF pipeline.** Eleven services, ten languages, Kafka on one laptop, and the full Grafana stack — all to print one line. Every screenshot below is captured via Playwright against a live `SUCCEEDED` run (`6dd077ad…`) after `./rghw.sh`.
+> **WOW → WTF pipeline.** Fourteen services, nine languages, Kafka on one laptop, and the full Grafana stack — all to print one line. Every screenshot below is captured via Playwright against a live `SUCCEEDED` run (`6dd077ad…`) after `./rghw.sh`.
 
 ### Web Shell (React Flow)
 
@@ -205,15 +205,15 @@ make integration     cross-language integration tests
 make images          build container images and push to the local registry
 make cluster         create the k3d cluster
 make infra           apply Terraform
-make deploy          deploy applications (later milestone)
+make deploy          deploy applications
 make wait            wait for readiness
 make run             start a run via the CLI
-make demo            full demonstration (later milestone)
+make demo            full demonstration
 make e2e             full milestone acceptance
 make chaos           chaos tests
 make diagnostics     collect diagnostics
-make down            delete the k3d cluster (later milestone)
-make destroy         delete the local environment (later milestone)
+make down            delete the k3d cluster
+make destroy         delete the local environment
 ```
 
 ## Development notes

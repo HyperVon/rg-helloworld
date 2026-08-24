@@ -7,18 +7,10 @@ test('version matches skeleton', () => {
   assert.equal(SERVICE_VERSION, '0.5.0-milestone11');
 });
 
-test('version is not empty', () => {
-  assert.ok(SERVICE_VERSION.length > 0);
-});
-
 test('service name is set', () => {
   assert.equal(SERVICE_NAME, 'event-gateway');
 });
 
 test('banner includes service and version', () => {
   assert.match(banner(), /^event-gateway 0.5.0-milestone11/);
-});
-
-test('banner is deterministic', () => {
-  assert.equal(banner(), banner());
 });

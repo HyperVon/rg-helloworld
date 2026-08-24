@@ -10,9 +10,12 @@ The test is dependency-light (stdlib only). It reads event JSON Schemas and the
 AsyncAPI definition from `contracts/` at runtime (nothing is hardcoded except the
 downstream sample event and the fallback pipeline order). PyYAML is used to derive the
 pipeline ordering when available; otherwise a documented fallback ordering is used.
+The clean/dirty round trip uses the production validator from
+`services/image-pipeline-python` (`rg_image_pipeline.events.validate_no_prohibited_fields`),
+which is stdlib-only as well.
 
 Run standalone:
-    python tests/anti-chealing/test_prohibited_fields.py
+    python tests/anti-cheating/test_prohibited_fields.py
 Or via pytest:
     pytest tests/anti-cheating/test_prohibited_fields.py
 """
@@ -24,7 +27,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 CONTRACTS = ROOT / "contracts"
 SCHEMA_DIR = CONTRACTS / "events"
+EXAMPLE_DIR = CONTRACTS / "examples"
 ASYNCAPI_FILE = CONTRACTS / "asyncapi" / "domain-events.yaml"
+IMAGE_PIPELINE_SRC = ROOT / "services" / "image-pipeline-python" / "src"
 
 PROHIBITED_FIELDS = {
     "message",
@@ -36,6 +41,12 @@ PROHIBITED_FIELDS = {
 }
 
 BOUNDARY_EVENT = "GlyphBlueprintProduced"
+
+PLAINTEXT_PHRASE = "hello world"
+
+# QualityRetry legitimately re-enters its stage at the same maturity rank;
+# every other transformation must strictly increase it.
+MATURITY_FLAT_EXCEPTIONS = {"QualityRetry"}
 
 # Fallback pipeline order (message name -> schema file) used when the AsyncAPI
 # spec cannot be parsed. Mirrors contracts/asyncapi/domain-events.yaml.
@@ -86,20 +97,6 @@ FAILURES = []
 
 def fail(msg):
     FAILURES.append(msg)
-
-
-def collect_prohibited_in_object(obj):
-    """Recursively collect any prohibited field NAMES present as keys in `obj`."""
-    found = set()
-    if isinstance(obj, dict):
-        for key, value in obj.items():
-            if key in PROHIBITED_FIELDS:
-                found.add(key)
-            found |= collect_prohibited_in_object(value)
-    elif isinstance(obj, list):
-        for item in obj:
-            found |= collect_prohibited_in_object(item)
-    return found
 
 
 def collect_property_names(schema):
@@ -200,33 +197,97 @@ def test_downstream_schemas_have_no_prohibited_fields():
             print(f"  [ ok ] downstream event '{name}' has no prohibited fields")
 
 
-def test_validator_accepts_clean_and_rejects_dirty_sample():
-    """Requirement 2: the validator accepts a clean downstream sample and rejects a dirty one."""
-    clean_offenders = collect_prohibited_in_object(CLEAN_DOWNSTREAM_SAMPLE)
-    if clean_offenders:
-        fail(
-            f"Test fixture error: clean downstream sample unexpectedly contains "
-            f"prohibited field(s): {', '.join(sorted(clean_offenders))}"
-        )
+def test_production_validator_accepts_clean_and_rejects_dirty_sample():
+    """Requirement 2: the production validator accepts a clean sample and rejects a dirty one."""
+    try:
+        sys.path.insert(0, str(IMAGE_PIPELINE_SRC))
+        from rg_image_pipeline.events import validate_no_prohibited_fields
+    except ImportError as e:
+        fail(f"production prohibited-field validator unavailable: {e}")
+        return
+
+    if validate_no_prohibited_fields(CLEAN_DOWNSTREAM_SAMPLE["data"]):
+        print("  [ ok ] image-pipeline validator accepts clean downstream sample")
     else:
-        print("  [ ok ] validator accepts clean downstream sample")
+        fail("production validator rejected the clean downstream sample")
 
     dirty = json.loads(json.dumps(CLEAN_DOWNSTREAM_SAMPLE))
     dirty["data"]["targetText"] = "HELLO"
-    dirty_offenders = collect_prohibited_in_object(dirty)
-    if "targetText" not in dirty_offenders:
-        fail("Validator failed to reject a downstream sample containing 'targetText'")
+    if validate_no_prohibited_fields(dirty["data"]):
+        fail("production validator accepted a downstream sample containing 'targetText'")
     else:
-        print(
-            "  [ ok ] validator rejects downstream sample with 'targetText' "
-            f"(detected: {', '.join(sorted(dirty_offenders))})"
+        print("  [ ok ] image-pipeline validator rejects a sample carrying 'targetText'")
+
+
+def iter_string_values(obj):
+    if isinstance(obj, dict):
+        for value in obj.values():
+            yield from iter_string_values(value)
+    elif isinstance(obj, list):
+        for item in obj:
+            yield from iter_string_values(item)
+    elif isinstance(obj, str):
+        yield obj
+
+
+def test_contracts_carry_no_plaintext_phrase_values():
+    """Requirement 7 guard: no contract schema or example embeds the plaintext phrase as a value."""
+    offenders = []
+    paths = sorted(SCHEMA_DIR.glob("*.schema.json")) + sorted(EXAMPLE_DIR.glob("*.json"))
+    for path in paths:
+        try:
+            with open(path) as f:
+                data = json.load(f)
+        except json.JSONDecodeError as e:
+            fail(f"{path.name} is not valid JSON: {e}")
+            continue
+        for value in iter_string_values(data):
+            if PLAINTEXT_PHRASE in value.lower():
+                offenders.append(f"{path.name}: {value!r}")
+    if offenders:
+        fail(
+            "plaintext phrase found in contract files: " + "; ".join(offenders)
         )
+    else:
+        print(f"  [ ok ] no '{PLAINTEXT_PHRASE}' values in {len(paths)} contract files")
+
+
+def test_maturity_ranks_increase_through_pipeline():
+    """Requirement 6 guard: pinned maturity consts strictly increase; only retries stay flat."""
+    pipeline = load_pipeline_order()
+    checked = 0
+    for name, filename in pipeline:
+        schema = load_schema(filename)
+        if schema is None:
+            continue
+        props = schema.get("properties", {})
+        input_maturity = props.get("inputMaturity", {}).get("const")
+        output_maturity = props.get("outputMaturity", {}).get("const")
+        if input_maturity is None or output_maturity is None:
+            continue
+        checked += 1
+        increases = output_maturity > input_maturity
+        flat_retry = (
+            output_maturity == input_maturity and name in MATURITY_FLAT_EXCEPTIONS
+        )
+        decreases = output_maturity < input_maturity
+        if decreases or not (increases or flat_retry):
+            fail(
+                f"maturity rank violation for '{name}' ({filename}): "
+                f"{input_maturity} -> {output_maturity}"
+            )
+        else:
+            print(f"  [ ok ] {name} maturity {input_maturity} -> {output_maturity}")
+    if checked == 0:
+        fail("no event schema pins inputMaturity/outputMaturity constants")
 
 
 def main():
     print("Anti-cheating test: prohibited fields must be absent after glyph planning\n")
     test_downstream_schemas_have_no_prohibited_fields()
-    test_validator_accepts_clean_and_rejects_dirty_sample()
+    test_production_validator_accepts_clean_and_rejects_dirty_sample()
+    test_contracts_carry_no_plaintext_phrase_values()
+    test_maturity_ranks_increase_through_pipeline()
 
     if FAILURES:
         print(f"\n{len(FAILURES)} failure(s):")

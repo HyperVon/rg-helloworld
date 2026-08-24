@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
-set -u
-set -o pipefail
+set -euo pipefail
 
 ROOT="."
 SHOW_FILES=0
@@ -66,9 +65,9 @@ if [ ! -d "$ROOT" ]; then
   exit 2
 fi
 
-STATS_FILE="$(mktemp -t project-source-stats)"
-UNKNOWN_FILE="$(mktemp -t project-unknown-text)"
-BINARY_FILE="$(mktemp -t project-binary-files)"
+STATS_FILE="$(mktemp -t project-source-stats.XXXXXX)"
+UNKNOWN_FILE="$(mktemp -t project-unknown-text.XXXXXX)"
+BINARY_FILE="$(mktemp -t project-binary-files.XXXXXX)"
 
 cleanup() {
   rm -f "$STATS_FILE" "$UNKNOWN_FILE" "$BINARY_FILE"

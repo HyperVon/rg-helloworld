@@ -93,10 +93,6 @@ rghw run --help                          # after go install
 | `rghw run --api-url http://rghw.localhost/api` | Ingress mode (default per architecture §21.4) | — |
 | `rghw run --api-url http://localhost:8080 --timeout 3m` | Port-forward mode, custom timeout (exit 3 on timeout) | — |
 | `rghw run --quiet` | Only `HELLO WORLD` on stdout, no stderr progress | `RESULT=$(rghw run --quiet)` |
-| `rghw run --json` | Machine-readable `{runId, status, assembledText}` | — |
-| `rghw run --run-id <uuid>` | Reattach to existing run (stream only) | — |
-| `rghw run --retain-artifacts` | Keep MinIO objects after run (default cleans) | — |
-| `rghw run --open-ui` | Open Web Shell after `SUCCEEDED` | — |
 | `rghw version` | `run-orchestrator 0.5.0-milestone11` | — |
 
 **Stream contract:** stderr `[01/10] … [10/10] …` + URLs/runId; stdout **exactly** `HELLO WORLD\n` on exit 0 (so `test "$(rghw run --quiet)" = "HELLO WORLD"`). Exit codes: `0` success, `1` system, `2` invalid, `3` timeout, `4` OCR failed, `5` output mismatch, `130` cancelled.
@@ -249,11 +245,8 @@ open http://localhost:3002  # Grafana — login admin / secret
 # quiet for scripts
 [ "$(go -C cmd/rghw run . run --quiet --api-url http://localhost:8080)" = "HELLO WORLD" ] && echo ok
 
-# JSON for automation
-go -C cmd/rghw run . run --json --api-url http://localhost:8080 | jq .assembledText
-
-# retain artifacts for later inspection
-go -C cmd/rghw run . run --retain-artifacts --api-url http://localhost:8080
+# custom timeout for slow clusters
+go -C cmd/rghw run . run --timeout 5m --api-url http://localhost:8080
 ```
 
 ### 6.3 Service-level `--once` (for debugging a stage without Kafka/K8s)

@@ -13,6 +13,13 @@ Make every kit adopter a potential contributor without auto-publishing.
 The proposer runs in the target repository; the maintainer reviews via
 `skill-reviewer` intake on this repository.
 
+> **Adopter note (this repository).** `make check`,
+> `scripts/validate_repository.py`, `scripts/public_hygiene_check.py`,
+> `evals/evals.json`, and the evaluation-summary tooling referenced below are
+> kit-side infrastructure in the Agent Guidance Kit source repo and do not
+> exist here. Run them from a clone of the kit fork, not from this repository;
+> use this repository's own gates for its verification.
+
 ## Contract
 
 - **Input:** target repository with local `.agents/skills/`, receipt history,
