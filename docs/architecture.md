@@ -924,9 +924,8 @@ The public run response must not expose the requested message while the run is i
 ## 10.3 Stream events
 
 ```http
-GET /api/v1/runs/{runId}/stream
+GET /api/v1/runs/{runId}/stream?lastEventId={optional-event-sequence}
 Accept: text/event-stream
-Last-Event-ID: optional-event-sequence
 ```
 
 Events:
@@ -1804,7 +1803,7 @@ Respect `prefers-reduced-motion`.
 The TypeScript event gateway:
 
 1. Reads the Redis Stream for a run.
-2. Accepts `Last-Event-ID`.
+2. Accepts `?lastEventId=` query parameter.
 3. Replays missed entries.
 4. Sends a full snapshot first.
 5. Sends heartbeats every fifteen seconds.

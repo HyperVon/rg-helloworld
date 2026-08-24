@@ -15,7 +15,7 @@ used.
 Use **Redis Streams** as the browser event projection:
 
 - `rg:run:{runId}:events` — UI event stream consumed by the TypeScript event
-  gateway and replayed to SSE clients via `Last-Event-ID`.
+  gateway and replayed to SSE clients via the `?lastEventId=` query parameter.
 - `rg:run:{runId}:summary` — current-state projection hash with a 24-hour TTL.
 - Redis is never authoritative; PostgreSQL constraints provide final
   correctness and Kafka remains the domain-event backbone.
