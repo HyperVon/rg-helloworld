@@ -19,20 +19,35 @@ Awaiting user decision (L / direction calls):
   pushes a duplicate token, `assemble()` fails `DuplicatePosition`, and the whole
   run buffer is dropped (`"assembly failed, dropping run buffer"`). Integrity
   rule 9. — services/phrase-assembler-rust/src/main.rs:105-147,187
+  → superseded by the [L] 2026-08-24 Done entry (register_token_step dedupe,
+  composite step:attempt:position key).
 - [L] 2026-08-23: image-pipeline publishes empty lineage on
   `rg.phrase-composed.v1` (`inputArtifacts: []`, consumes ~11 glyph events) and
   a synthetic `sha256 + "-manifest"` output descriptor. Integrity rule 8. —
   services/image-pipeline-python/src/rg_image_pipeline/worker.py:229-230
+  → superseded by the [M] 2026-08-23 approved-batch Done entry (real lineage
+  keys verified by integration gate).
 - [L] 2026-08-23: image-pipeline `prepare-ocr-image` records its own OUTPUT hash
   as the sole input artifact; the real input was the phrase-composed objectKey,
   so the lineage chain breaks between maturity 50 and 60. Integrity rule 8. —
   services/image-pipeline-python/src/rg_image_pipeline/worker.py:317
+  → superseded by the [M] 2026-08-23 approved-batch Done entry (same lineage
+  fix; keys now real S3 paths).
 - [L] 2026-08-23: image-pipeline buffers rasterized/geometry events per run with
   no dedupe before the >=11 flush heuristic; rebalance duplicates skew
   composition. Integrity rule 9. — worker.py:57,85
+  → superseded by the [L] 2026-08-24 Done entry (accept_record dedupe,
+  composite event_type:position:attempt:stepId key).
 - [L] 2026-08-23: `rghw.sh --dry-run --quiet` literally echoes the acceptance
   phrase from script source (documented 12-byte behavior). Integrity rule 7
   letter vs launcher-preview behavior. — rghw.sh:146-150
+  → superseded by the [M] 2026-08-23 approved-batch Done entry (literal
+  removal verified at rghw.sh:150).
+- [S] 2026-08-24 (from PR review T3): rghw.sh:205 keeps an inline
+  `MINIO_MC_VERSION` default that duplicates the versions.env pin because
+  rghw.sh does not source versions.env; a versions.env bump alone would leave
+  local runs on the old mc tag. Deferred fix decision: source versions.env in
+  rghw.sh or drop the duplicated default.
 - [M] 2026-08-23: Weak-but-present lineage family (key-only inputArtifacts, no
   sha256 mapping) in vector-normalizer-go worker.go:225,349-362,
   geometry-engine-cpp service.cpp:122,174-176, adjudicator passthrough
@@ -49,13 +64,18 @@ Awaiting user decision (L / direction calls):
   runbook says 3.14.6 + ruff `target-version="py314"` + status table says
   "Python 3.14+", while `versions.env PYTHON_VERSION=3.13.15` + image-pipeline
   Dockerfile builds `python:3.13.15-slim`. Needs one-direction decision.
+  → superseded by the [M] 2026-08-23 approved-batch Done entry
+  (standardized on Python 3.14.6).
 - [M] 2026-08-23: Four Node service images build on node:24.x
   (web-shell/event-gateway-node/telemetry-element `node:24-alpine`; ocr-worker
   `node:24.6.0-bookworm-slim`) while every toolchain source pins
   `NODE_VERSION=26.6.0` (.nvmrc, versions.env). Runtime major bump decision.
+  → superseded by the [M] 2026-08-23 approved-batch Done entry (images bumped
+  to node:26.6.0).
 - [M] 2026-08-23: scripts/projectstats.sh and scripts/push-images.sh have no
   Makefile target, doc reference, or caller (push-images duplicates in-script
   build+push inside smoke-test/build-images flow). Wire/document/remove decision.
+  → superseded by the [S] 2026-08-24 Done entry (both scripts removed).
 
 ## In progress
 
@@ -67,6 +87,20 @@ Awaiting user decision (L / direction calls):
 
 <!-- fixed and verified — keep the verification note -->
 
+- [L] 2026-08-24 (PR-review round): sibling-event dedupe correctness. The
+  adjudicator publishes one symbols-adjudicated event per symbol under a shared
+  parent stepId, and image-pipeline compose consumers receive per-glyph events
+  sharing one plan stepId, so naive stepId-keyed dedupe dropped siblings 2..N.
+  phrase-assembler-rust register_token_step now keys step:attempt:position
+  (AdjudicatedToken gained a serde-default attempt field) and image-pipeline
+  accept_record keys event_type:position:attempt:stepId: redeliveries repeat all
+  three (dropped) while quality retries bump only the attempt (accepted).
+  Regression tests cover siblings + retry-vs-redelivery in both services;
+  consumer.rb artifact tracing now covered by test/consumer_artifact_trace_test.rb
+  (process_message-level fake-producer assertions; consumer require made portable).
+  telemetry.cpp shutdown() pairs curl_global_cleanup with the one-shot init via
+  an atomic flag (exchange(false)) and logs non-zero CURLcode. Verified
+  2026-08-24: pre-commit gates exit=0, make integration failures=0 skipped=0.
 - [L] 2026-08-24: lineage consistency family resolved per chain rule "emitted
   inputArtifacts = outputArtifacts of the consumed event; outputArtifacts = keys
   this step wrote". geometry-engine-cpp service.cpp now emits

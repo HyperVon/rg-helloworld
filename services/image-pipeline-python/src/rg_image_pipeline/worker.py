@@ -37,7 +37,10 @@ def accept_record(
     # redelivery after a flush must not re-seed the buffer or skew composition,
     # so seen keys are kept for the process lifetime (bounded by ~11 small
     # strings per run).
-    dedupe_key = data.get("stepId") or f"{event_type}:{data.get('position')}"
+    # Sibling glyph events share the parent step's stepId, so the key must
+    # include position and attempt: redeliveries repeat all three (dropped)
+    # while quality retries bump only the attempt (accepted).
+    dedupe_key = f"{event_type}:{data.get('position')}:{data.get('attempt')}:{data.get('stepId')}"
     known = seen.setdefault(run_id, set())
     if dedupe_key in known:
         return False

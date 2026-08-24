@@ -27,6 +27,8 @@ pub struct AdjudicatedToken {
     pub run_id: Option<String>,
     #[serde(default)]
     pub step_id: String,
+    #[serde(default)]
+    pub attempt: i32,
 }
 
 #[derive(Debug, Clone, serde::Deserialize)]
@@ -292,23 +294,28 @@ pub fn symbol_adjudicated_to_token(data: &SymbolAdjudicatedData) -> AdjudicatedT
         input_artifact,
         run_id: Some(data.run_id.clone()),
         step_id: data.step_id.clone(),
+        attempt: data.attempt,
     }
 }
 
 // Kafka delivery is at-least-once with auto commit, so a redelivered
-// symbols-adjudicated event must not be buffered twice for a run. Seen step IDs
+// symbols-adjudicated event must not be buffered twice for a run. The
+// adjudicator publishes one event per symbol under a shared parent stepId, so
+// the seen key must include attempt and position: redeliveries repeat all three
+// (dropped) while quality retries bump only the attempt (accepted). Seen keys
 // are kept after a flush so late redeliveries cannot re-seed an assembled run.
 pub fn register_token_step(
     seen: &mut HashMap<String, HashSet<String>>,
     run_id: &str,
     step_id: &str,
+    attempt: i32,
+    position: i32,
 ) -> bool {
     if step_id.is_empty() {
         return true;
     }
-    seen.entry(run_id.to_string())
-        .or_default()
-        .insert(step_id.to_string())
+    let key = format!("{step_id}:{attempt}:{position}");
+    seen.entry(run_id.to_string()).or_default().insert(key)
 }
 
 pub fn run_assemble_once(
@@ -634,17 +641,29 @@ mod tests {
     #[test]
     fn register_token_step_dedupes_redeliveries() {
         let mut seen: HashMap<String, HashSet<String>> = HashMap::new();
-        assert!(register_token_step(&mut seen, "run-1", "step-1"));
-        assert!(!register_token_step(&mut seen, "run-1", "step-1"));
-        assert!(register_token_step(&mut seen, "run-1", "step-2"));
-        assert!(register_token_step(&mut seen, "run-2", "step-1"));
+        assert!(register_token_step(&mut seen, "run-1", "step-1", 1, 0));
+        assert!(!register_token_step(&mut seen, "run-1", "step-1", 1, 0));
+        assert!(register_token_step(&mut seen, "run-1", "step-2", 1, 0));
+        assert!(register_token_step(&mut seen, "run-2", "step-1", 1, 0));
+    }
+
+    #[test]
+    fn register_token_step_accepts_siblings_and_retries() {
+        let mut seen: HashMap<String, HashSet<String>> = HashMap::new();
+        // Sibling symbols share the parent observation's stepId.
+        assert!(register_token_step(&mut seen, "run-1", "step-1", 1, 0));
+        assert!(register_token_step(&mut seen, "run-1", "step-1", 1, 1));
+        assert!(register_token_step(&mut seen, "run-1", "step-1", 1, 2));
+        // A quality retry repeats position under a bumped attempt and must land.
+        assert!(!register_token_step(&mut seen, "run-1", "step-1", 1, 2));
+        assert!(register_token_step(&mut seen, "run-1", "step-1", 2, 2));
     }
 
     #[test]
     fn register_token_step_allows_empty_step_id() {
         let mut seen: HashMap<String, HashSet<String>> = HashMap::new();
-        assert!(register_token_step(&mut seen, "run-1", ""));
-        assert!(register_token_step(&mut seen, "run-1", ""));
+        assert!(register_token_step(&mut seen, "run-1", "", 1, 0));
+        assert!(register_token_step(&mut seen, "run-1", "", 1, 0));
     }
 
     #[test]
@@ -760,6 +779,7 @@ mod tests {
                 input_artifact: "a1".to_string(),
                 run_id: None,
                 step_id: String::new(),
+                attempt: 0,
             },
             AdjudicatedToken {
                 position: 1,
@@ -769,6 +789,7 @@ mod tests {
                 input_artifact: "a2".to_string(),
                 run_id: None,
                 step_id: String::new(),
+                attempt: 0,
             },
         ];
         let (text, event) = flush_run_buffer("run-1".to_string(), tokens).unwrap();
@@ -788,6 +809,7 @@ mod tests {
                 input_artifact: "a1".to_string(),
                 run_id: None,
                 step_id: String::new(),
+                attempt: 0,
             },
             AdjudicatedToken {
                 position: 0,
@@ -797,6 +819,7 @@ mod tests {
                 input_artifact: "a2".to_string(),
                 run_id: None,
                 step_id: String::new(),
+                attempt: 0,
             },
         ];
         assert!(flush_run_buffer("run-1".to_string(), tokens).is_err());
@@ -835,6 +858,7 @@ mod tests {
                 input_artifact: "a1".to_string(),
                 run_id: None,
                 step_id: String::new(),
+                attempt: 0,
             },
             AdjudicatedToken {
                 position: 2,
@@ -844,6 +868,7 @@ mod tests {
                 input_artifact: "a2".to_string(),
                 run_id: None,
                 step_id: String::new(),
+                attempt: 0,
             },
         ];
         let result = assemble(tokens);

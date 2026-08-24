@@ -1,5 +1,6 @@
 #include "telemetry.h"
 
+#include <atomic>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
@@ -51,6 +52,9 @@ bool g_started = false;
 // The best-effort OTLP exporter runs on this worker; shutdown() joins it so a
 // still-running curl_easy_perform can never race process teardown.
 std::thread g_otlp_worker;
+// Set by the one-shot curl_global_init so shutdown() can pair exactly one
+// curl_global_cleanup with it across repeated initialize/shutdown cycles.
+std::atomic<bool> g_curl_global_ready{false};
 #endif
 
 #if defined(RGHW_WITH_OPENTELEMETRY)
@@ -247,7 +251,14 @@ void initialize(const std::string& serviceName, const std::string& otlpEndpoint)
   // while this worker thread is still lazily initializing OpenSSL (observed
   // as SIGSEGV inside pthread_rwlock_unlock during exit).
   static std::once_flag curl_global_once;
-  std::call_once(curl_global_once, [] { curl_global_init(CURL_GLOBAL_DEFAULT); });
+  std::call_once(curl_global_once, [] {
+    const CURLcode rc = curl_global_init(CURL_GLOBAL_DEFAULT);
+    if (rc != CURLE_OK) {
+      std::cerr << "[otel] curl_global_init failed: " << curl_easy_strerror(rc) << '\n';
+      return;
+    }
+    g_curl_global_ready.store(true, std::memory_order_release);
+  });
   std::cerr << startupLogLine(name) << '\n';
   std::cerr.flush();
   try {
@@ -308,10 +319,13 @@ void shutdown() noexcept {
   if (g_otlp_worker.joinable()) {
     g_otlp_worker.join();
   }
-  // Paired with the curl_global_init in initialize(); safe here because the
-  // worker has been joined, so no other thread can still be using curl or
-  // OpenSSL global state.
-  curl_global_cleanup();
+  // Paired with the curl_global_init in initialize(); exchange(false) keeps
+  // init/cleanup one-to-one across repeated initialize/shutdown cycles, and is
+  // safe here because the worker has been joined, so no other thread can still
+  // be using curl or OpenSSL global state.
+  if (g_curl_global_ready.exchange(false, std::memory_order_acq_rel)) {
+    curl_global_cleanup();
+  }
 #endif
 }
 

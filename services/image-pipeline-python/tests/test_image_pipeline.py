@@ -653,7 +653,7 @@ class TestWorkerLineage(unittest.TestCase):
         from rg_image_pipeline.worker import accept_record
 
         seen: dict[str, set[str]] = {}
-        record = {"stepId": "op-1", "position": 0}
+        record = {"stepId": "op-1", "position": 0, "attempt": 1}
         self.assertTrue(accept_record(seen, "run-1", "rg.glyph-rasterized.v1", record))
         self.assertFalse(accept_record(seen, "run-1", "rg.glyph-rasterized.v1", record))
         # A flush pops the pending buffer but never the seen keys.
@@ -669,6 +669,18 @@ class TestWorkerLineage(unittest.TestCase):
         self.assertFalse(accept_record(seen, "run-1", "rg.geometry-expanded.v1", gap))
         self.assertTrue(accept_record(seen, "run-1", "rg.glyph-rasterized.v1", other))
         self.assertTrue(accept_record(seen, "run-2", "rg.geometry-expanded.v1", gap))
+
+    def test_accept_record_accepts_siblings_sharing_step_id(self):
+        from rg_image_pipeline.worker import accept_record
+
+        seen: dict[str, set[str]] = {}
+        # Sibling glyphs of one plan step share the stepId; every position lands.
+        for position in range(3):
+            record = {"stepId": "op-1", "position": position, "attempt": 1}
+            self.assertTrue(accept_record(seen, "run-1", "rg.glyph-rasterized.v1", record))
+        # A quality retry repeats the position under a bumped attempt.
+        retry = {"stepId": "op-1", "position": 2, "attempt": 2}
+        self.assertTrue(accept_record(seen, "run-1", "rg.glyph-rasterized.v1", retry))
 
 
 class TestCompositionManifest(unittest.TestCase):

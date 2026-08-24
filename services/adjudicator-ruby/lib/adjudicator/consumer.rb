@@ -2,7 +2,7 @@
 
 require 'rdkafka'
 require 'json'
-require '/app/lib/adjudicator'
+require_relative '../adjudicator'
 
 module AdjudicatorConsumer
   KAFKA_BOOTSTRAP = ENV.fetch('KAFKA_BOOTSTRAP', 'kafka.rube-goldberg.svc.cluster.local:9092')

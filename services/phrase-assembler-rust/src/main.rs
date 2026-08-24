@@ -143,10 +143,14 @@ async fn run_kafka_consumer() -> Result<(), Box<dyn std::error::Error>> {
                                     &mut seen_steps.lock().unwrap(),
                                     &run_id,
                                     &token.step_id,
+                                    token.attempt,
+                                    token.position,
                                 ) {
                                     tracing::info!(
                                         run_id = %run_id,
                                         step_id = %token.step_id,
+                                        attempt = token.attempt,
+                                        position = token.position,
                                         "duplicate adjudicated token redelivered; ignoring"
                                     );
                                     continue;

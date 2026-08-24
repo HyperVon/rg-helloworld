@@ -15,4 +15,4 @@ bundle exec ruby -r simplecov test/adjudicator_test.rb   # coverage
 ```
 
 Pinned in `Gemfile`/`Gemfile.lock`: minitest 6.0.6, rake 13.4.2,
-rubocop 1.89.0, simplecov 1.0.3. Ruby 4.0+ (see `.ruby-version`).
+rubocop 1.89.0, simplecov 1.0.3. Ruby 4.0+ (pinned by `versions.env` `RUBY_VERSION`).

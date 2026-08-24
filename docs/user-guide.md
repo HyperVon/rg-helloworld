@@ -161,7 +161,7 @@ All UIs are in namespace `rube-goldberg`. Two access modes: **ingress** (`rghw.l
 ```bash
 RUN_ID=$(curl -s http://localhost:8080/api/v1/runs | jq -r '.runs[0].runId')
 curl -N "http://localhost:8081/events/$RUN_ID"
-# or via orchestrator directly (supports Last-Event-ID header replay)
+# or via orchestrator directly (supports ?lastEventId= query-param replay)
 curl -N http://localhost:8080/api/v1/runs/$RUN_ID/stream
 ```
 

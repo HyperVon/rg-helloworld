@@ -76,7 +76,7 @@ Install these before the first run. `make setup` installs the missing toolchains
 | Rust | `1.97.1` (`rust-toolchain.toml`) | `services/phrase-assembler-rust` |
 | Node.js | `26.6.0` / `24 LTS` (`.nvmrc`) | `services/ocr-worker-node`, `services/event-gateway-node`, `services/telemetry-element` |
 | Python | `3.14.6` | `services/image-pipeline-python` |
-| Ruby | `4.0.6` (`.ruby-version`) | `services/adjudicator-ruby`, `services/artifact-inspector-ruby` |
+| Ruby | `4.0.6` (`versions.env` `RUBY_VERSION`) | `services/adjudicator-ruby`, `services/artifact-inspector-ruby` |
 | Java | `25` | `services/glyph-catalog-java` (Maven `3.9.16`/Spring) |
 | .NET | `10.0.302` (`global.json`) | `services/rasterizer-dotnet` |
 | Kotlin/JVM | JDK `21` + Gradle `9.6.1` wrapper | `services/run-orchestrator-kotlin` |
@@ -141,7 +141,7 @@ kubectl port-forward -n rube-goldberg svc/tempo 3200:3200 &
 kubectl port-forward -n rube-goldberg svc/minio 9000:9000 &
 ```
 
-Then use `rghw run --api-url http://localhost:8080` (or `make run` which does this by default).
+Then use `rghw run --api-url http://localhost:8080` (or `make run`, which defaults to `RGHW_API_URL=http://localhost:18080` and starts the port-forward script automatically — set `RGHW_NO_PORTFORWARD=1` to manage forwards yourself).
 
 ## 4. Full bring-up (first time)
 
@@ -267,12 +267,12 @@ All UIs are namespace `rube-goldberg`. The stack includes 4 Grafana dashboards (
 | **Web Shell** (primary) | `http://rghw.localhost/` | `kubectl port-forward svc/web-shell 3000:80` → `http://localhost:3000` — auto-lists runs via `GET /api/v1/runs`, auto-selects latest, dropdown + manual input | React Flow process graph of the pipeline, run state, maturity progression `0→100`, SSE live updates (see §6.1.1) | React + Vite + React Flow (`services/web-shell`, `infra/k8s/milestone10/web-shell.yaml:22` image `rghello-registry:5001/web-shell:milestone11`) |
 | **Telemetry Panel** | embedded in Web Shell | same as web-shell | Run ledger, numeric telemetry, `rg_runs_total`, `rg_step_duration_seconds` | TypeScript Web Component `<rg-telemetry-panel>` (`services/telemetry-element`) |
 | **Artifact Inspector** | `http://rghw.localhost/inspector/runs/{runId}` | `kubectl port-forward svc/artifact-inspector 3001:80` → `http://localhost:3001` (landing at `/` shows form, then `/inspector/runs/{runId}`) | server-rendered (no HTMX) intermediate images (glyph blueprints, geometry JSON, SVG, raster PNG, phrase image), metadata, SHA-256 lineage; view links use stable opaque descriptor IDs and the orchestrator's run-scoped MinIO byte proxy | Ruby + Sinatra templates (`services/artifact-inspector-ruby`, `GET /` and `/inspector` now show a form) |
-| **Event Gateway (SSE)** | `http://rghw.localhost/api/v1/runs/{runId}/stream` | `kubectl port-forward svc/event-gateway 8081:80` → `http://localhost:8081/health` → `{"status":"ok"}`; stream also via orchestrator `http://localhost:8080/api/v1/runs/{runId}/stream` | Raw Server-Sent Events: snapshot + heartbeats every 15s, `Last-Event-ID` replay, closes after terminal event (§19.5) | TypeScript (`services/event-gateway-node`, Redis Streams) + Kotlin orchestrator stream |
+| **Event Gateway (SSE)** | `http://rghw.localhost/api/v1/runs/{runId}/stream` | `kubectl port-forward svc/event-gateway 8081:80` → `http://localhost:8081/health` → `{"status":"ok"}`; stream also via orchestrator `http://localhost:8080/api/v1/runs/{runId}/stream` | Raw Server-Sent Events: snapshot + heartbeats every 15s, `?lastEventId=` replay, closes after terminal event (§19.5) | TypeScript (`services/event-gateway-node`, Redis Streams) + Kotlin orchestrator stream |
 | **Grafana** | `http://grafana.rghw.localhost/` | `kubectl port-forward svc/grafana 3002:80` → `http://localhost:3002` (→ `/login`) | 4 provisioned dashboards (see §6.2), Explore for Prometheus/Loki/Tempo | Grafana Enterprise 12.0.2 (`infra/k8s/milestone11/grafana.yaml`) |
 | **Prometheus** | — | `kubectl port-forward svc/prometheus 9090:9090` → `http://localhost:9090`/-/healthy → `Prometheus Server is Healthy` | Metrics: `rg_runs_total{status}`, `rg_active_runs`, `rg_step_*`, `rg_kafka_consumer_lag`, `rg_ocr_confidence` (§20.2); see §6.1.2 for valid PromQL queries | Prometheus 3.5.0 |
 | **Loki** | — | `kubectl port-forward svc/loki 3100:3100` → `http://localhost:3100`/ready → `ready` | JSON structured logs from every service (§20.3) | Grafana Loki 3.5.2 |
 | **Tempo** | — | `kubectl port-forward svc/tempo 3200:3200` → `http://localhost:3200`/status | Distributed traces: one `rube-goldberg.run` root span per run with children `orchestrator.create-run`, `soap.plan-phrase`, `kafka.produce/consume`, `geometry.expand`, `grpc.render-glyph`, `image.compose`, `ocr.*`, `adjudicate.symbol`, `assemble.phrase` (§20.1) | Grafana Tempo 2.4.0 (minimal local backend `/tmp/tempo/blocks`) |
-| **OTel Collector** | — | `kubectl port-forward svc/otel-collector 4317:4317` (gRPC) / 4318 (HTTP) | Telemetry intake, `Everything is ready` (0.128.0), forwards to Prometheus/Tempo/Loki | OTel Collector (`infra/k8s/milestone11/otel-collector.yaml`) |
+| **OTel Collector** | — | `kubectl port-forward svc/otel-collector 4317:4317` (gRPC) / 4318 (HTTP) | Telemetry intake, `Everything is ready` (0.128.0), forwards to Prometheus/Tempo/Loki | OTel Collector (`infra/k8s/milestone11/otel-collector-deploy.yaml`) |
 | **MinIO Console** | `http://minio.rghw.localhost/` | `kubectl port-forward svc/minio 9000:9000` (API) / 9001 (console if enabled) → `http://localhost:9000` | Bucket `rube-goldberg-artifacts`, artifact MinIO keys, SHA-256 verification | MinIO |
 | **PostgreSQL** | — | `kubectl port-forward svc/postgresql 5432:5432` → `psql -h localhost -U postgres` | Run projections, expected-codepoint table (restricted to orchestrator role) | PostgreSQL |
 | **Redis** | — | `kubectl port-forward svc/redis-master 6379:6379` → `redis-cli` | Redis Streams `rg:run:{runId}:events` backing SSE | Redis |
@@ -389,7 +389,7 @@ For ingress mode, replace `localhost:3000` with `rghw.localhost`, `localhost:300
 
 ### 6.4 SSE streaming details
 
-The event gateway sends a full snapshot first, then live events, and replays missed events via its `?lastEventId=` query parameter (*architecture §19.5*). The orchestrator exposes an equivalent stream at `/api/v1/runs/{runId}/stream`, which honors the standard `Last-Event-ID` header. To test:
+The event gateway sends a full snapshot first, then live events, and replays missed events via its `?lastEventId=` query parameter (*architecture §19.5*). The orchestrator exposes an equivalent stream at `/api/v1/runs/{runId}/stream`, which replays the same way via its own `?lastEventId=` query parameter. To test:
 
 ```bash
 # start a run and capture its ID from stderr
