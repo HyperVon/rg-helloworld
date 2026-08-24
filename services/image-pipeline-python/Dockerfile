@@ -25,7 +25,7 @@ RUN pip install --no-cache-dir \
     pillow==12.3.0 \
     numpy==2.3.5 \
     scikit-image==0.26.0 \
-    aiokafka==0.12.0 \
+    aiokafka==0.14.0 \
     minio==7.2.12 \
     jsonschema==4.25.0 \
     python-snappy==0.7.3
