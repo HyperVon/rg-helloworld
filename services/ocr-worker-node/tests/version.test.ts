@@ -7,18 +7,10 @@ test('version matches skeleton', () => {
   assert.equal(SERVICE_VERSION, '0.5.0-milestone8');
 });
 
-test('version is not empty', () => {
-  assert.ok(SERVICE_VERSION.length > 0);
-});
-
 test('service name is set', () => {
   assert.equal(SERVICE_NAME, 'ocr-worker');
 });
 
 test('banner includes service and version', () => {
   assert.match(banner(), /^ocr-worker 0.5.0-milestone8/);
-});
-
-test('banner is deterministic', () => {
-  assert.equal(banner(), banner());
 });

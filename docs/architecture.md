@@ -162,14 +162,10 @@ rghw run --message "HELLO WORLD"   # NOT SUPPORTED: the CLI has no --message fla
 Useful options:
 
 ```text
---message TEXT           (NOT IMPLEMENTED) Input phrase; the CLI currently ignores this and defaults to "HELLO WORLD"
+--message TEXT           Input phrase (must be "HELLO WORLD")
 --api-url URL            Orchestrator base URL
 --timeout DURATION       Maximum wait; defaults to 3m
 --quiet                  Suppress progress on stderr
---open-ui                Open the browser dashboard
---retain-artifacts       Prevent automatic run-artifact cleanup
---json                   Return a machine-readable result instead of plain text
---run-id UUID            Reattach to an existing run
 ```
 
 Normal execution:
@@ -1482,7 +1478,6 @@ Artifacts should be retained:
 
 - Successful run: one hour by default.
 - Failed run: twenty-four hours by default.
-- `--retain-artifacts`: no automatic deletion.
 
 A Kubernetes CronJob can remove expired artifacts.
 

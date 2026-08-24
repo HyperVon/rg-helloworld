@@ -10,6 +10,13 @@ description: >-
 
 # Skill Evaluation
 
+> **Adopter note (this repository).** `make check`,
+> `scripts/generate_evaluation_summary.py`, `scripts/validate_repository.py`,
+> and `docs/evaluations/*` are kit-side infrastructure from the Agent Guidance
+> Kit source repo and do not exist here. Where steps reference them, record
+> evaluation results under this repository's own diagnostics location
+> (`.local/diagnostics/`) or provision the tooling before running those steps.
+
 ## Contract
 
 - **Input:** a skill directory, realistic prompts, expected outcomes, optional

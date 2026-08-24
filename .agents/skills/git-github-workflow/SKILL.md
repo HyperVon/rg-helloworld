@@ -13,6 +13,12 @@ Keep Git history readable and GitHub collaboration safe with explicit approval
 gates. The agent proposes branches, commits, and PRs; it does not rewrite
 history or publish without authority.
 
+> **Adopter note (this repository).** `make check` and `docs/release.md`
+> referenced below are kit-side infrastructure from the Agent Guidance Kit
+> source repo and do not exist here. Use this repository's own gates
+> (`make lint`, `make unit`, `make coverage`, `make build`, and the PR
+> verification in `open-pr`) wherever those references appear.
+
 ## Contract
 
 - **Input:** intent (branch/commit/PR/issue/release), current `git status`,

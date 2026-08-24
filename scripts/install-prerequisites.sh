@@ -222,9 +222,29 @@ install_bundler_gem() {
   gem install bundler --no-document || as_root gem install bundler --no-document
 }
 
+verify_installer_sha256() {
+  local file="$1"
+  local expected="$2"
+  local actual
+  if command -v sha256sum >/dev/null 2>&1; then
+    actual="$(sha256sum "$file" | awk '{print $1}')"
+  else
+    actual="$(shasum -a 256 "$file" | awk '{print $1}')"
+  fi
+  if [ "$actual" != "$expected" ]; then
+    echo "ERROR: installer checksum mismatch (expected $expected, got $actual)" >&2
+    exit 1
+  fi
+}
+
 install_rust() {
-  echo ">> installing Rust ${RUST_VERSION} via rustup"
-  curl -fsSL https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain "${RUST_VERSION}" -c rustfmt -c clippy
+  echo ">> installing Rust ${RUST_VERSION} via rustup ${RUSTUP_VERSION}"
+  local tmp
+  tmp="$(mktemp)"
+  curl -fsSL "https://raw.githubusercontent.com/rust-lang/rustup/${RUSTUP_VERSION}/rustup-init.sh" -o "$tmp"
+  verify_installer_sha256 "$tmp" "${RUSTUP_INIT_SHA256:-}"
+  sh "$tmp" -y --profile minimal --default-toolchain "${RUST_VERSION}" -c rustfmt -c clippy
+  rm -f "$tmp"
   export PATH="$HOME/.cargo/bin:$PATH"
 }
 
@@ -244,7 +264,12 @@ install_uv() {
   # UV_VERSION comes from the sourced versions.env; shellcheck cannot see it.
   # shellcheck disable=SC2153
   echo ">> installing uv ${UV_VERSION} (~/.local/bin)"
-  curl -fsSL "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-installer.sh" | sh
+  local tmp
+  tmp="$(mktemp)"
+  curl -fsSL "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-installer.sh" -o "$tmp"
+  verify_installer_sha256 "$tmp" "${UV_INSTALLER_SHA256:-}"
+  sh "$tmp"
+  rm -f "$tmp"
   export PATH="$HOME/.local/bin:$PATH"
 }
 

@@ -197,10 +197,6 @@ rghw run --message "HELLO WORLD"          # default, explicit form
 rghw run --api-url http://localhost:8080  # port-forward mode
 rghw run --api-url http://rghw.localhost/api  # ingress mode (default)
 rghw run --timeout 3m --quiet             # suppress stderr progress
-rghw run --open-ui                        # open browser dashboard
-rghw run --retain-artifacts               # keep MinIO artifacts after run
-rghw run --json                           # machine-readable result
-rghw run --run-id <uuid>                  # reattach to existing run
 ```
 
 `make run` is shorthand for `cd cmd/rghw && go run . run --api-url "http://localhost:8080"` (*Makefile:459*).

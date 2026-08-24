@@ -9,6 +9,9 @@
 # This is the single source of truth consumed by scripts/collect-diagnostics.sh
 # and scripts/deploy.sh. Source it from any script that needs to reach
 # Kafka / Postgres / Redis / MinIO.
+#
+# Deliberately no `set -euo pipefail` here: this file is sourced, and shell
+# options would leak into every caller; callers own their strictness.
 
 # shellcheck disable=SC2034 # consumed by scripts that source this file
 INFRA_SELECTORS=(

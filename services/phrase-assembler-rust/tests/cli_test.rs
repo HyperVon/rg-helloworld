@@ -68,8 +68,10 @@ fn cli_once_with_missing_file_fails() {
 
 #[test]
 fn cli_no_args_sets_default_log() {
-    unsafe { std::env::remove_var("RUST_LOG") };
     let executable = env!("CARGO_BIN_EXE_phrase-assembler");
-    let output = Command::new(executable).output().expect("failed to run");
-    assert!(output.status.success() || output.status.code() == Some(0));
+    let output = Command::new(executable)
+        .env_remove("RUST_LOG")
+        .output()
+        .expect("failed to run");
+    assert!(output.status.success());
 }

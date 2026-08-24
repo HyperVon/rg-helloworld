@@ -31,7 +31,7 @@ adjudication -> assembly.
 7. Source code (excluding tests and contract examples) must not contain the
    clear-text phrase "Hello World" or variants. Use obfuscation languages
    like Whitespace or Brainfuck where needed for transformations. The CLI
-   executable is named `rghw` (not `rghw` or any variant of "Hello World").
+   executable is named `rghw` (not `helloworld` or any variant of "Hello World").
 8. Every output artifact records input artifact IDs and SHA-256 hashes.
 9. Kafka consumers must be idempotent (deterministic operation IDs).
 10. The whole acceptance environment runs on one laptop.
@@ -132,7 +132,7 @@ should remain thin and aligned with that file. For a task that matches a skill,
 read and follow that skill before inventing a process. Portable skills live in
 `.agents/skills/` (Kilo also exposes `.kilo/skills/` via `kilo.json` `skills.paths`).
 Kilo commands and agents live in `.kilo/command/` and `.kilo/agent/`. The cross-project integration decisions are
-recorded in [the guidance review](docs/agent-guidance-integration-review.md).
+recorded in [the guidance review](../docs/agent-guidance-integration-review.md).
 
 Adopted Agent Guidance Kit content is governed proposal-first and approval-gated:
 receipt-owned skill files are refreshed only while their target digest is unchanged,

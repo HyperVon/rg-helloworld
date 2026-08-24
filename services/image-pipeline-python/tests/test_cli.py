@@ -207,5 +207,67 @@ class PreprocessCLITest(unittest.TestCase):
             shutil.rmtree(crops_dir, ignore_errors=True)
 
 
+class NegativePathTest(unittest.TestCase):
+    def write_glyph_file(self, payload: dict) -> str:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            json.dump(payload, f)
+            return f.name
+
+    def glyph_payload(self, image_bytes: bytes, sha256: str) -> dict:
+        return {
+            "position": 0,
+            "object_key": "g-0",
+            "sha256": sha256,
+            "width": 32,
+            "height": 64,
+            "advance_width": 1.0,
+            "kind": "DRAWABLE",
+            "image_bytes": image_bytes.hex(),
+        }
+
+    def test_compose_rejects_sha256_mismatch(self):
+        glyph_bytes = make_glyph_bytes(32, 64)
+        wrong_sha = sha256_bytes(b"not-the-glyph-bytes")
+        glyph_file = self.write_glyph_file(self.glyph_payload(glyph_bytes, wrong_sha))
+        try:
+            with redirect_stderr(io.StringIO()) as err:
+                result = main(["compose", glyph_file])
+            self.assertEqual(result, 1)
+            self.assertIn("sha256 mismatch", err.getvalue())
+        finally:
+            Path(glyph_file).unlink(missing_ok=True)
+
+    def test_compose_rejects_corrupt_png(self):
+        corrupt = b"definitely not a png"
+        glyph_file = self.write_glyph_file(self.glyph_payload(corrupt, sha256_bytes(corrupt)))
+        try:
+            with redirect_stderr(io.StringIO()) as err:
+                result = main(["compose", glyph_file])
+            self.assertEqual(result, 1)
+            self.assertIn("not a PNG", err.getvalue())
+        finally:
+            Path(glyph_file).unlink(missing_ok=True)
+
+    def test_preprocess_missing_phrase_image_fails_cleanly(self):
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as mf:
+            json.dump({"layout": [], "totalWidth": 0, "totalHeight": 0}, mf)
+            manifest_file = mf.name
+        try:
+            with redirect_stderr(io.StringIO()) as err:
+                result = main(
+                    [
+                        "preprocess",
+                        "--phrase-image",
+                        "/nonexistent/phrase.png",
+                        "--composition-manifest",
+                        manifest_file,
+                    ]
+                )
+            self.assertEqual(result, 1)
+            self.assertIn("cannot read phrase inputs", err.getvalue())
+        finally:
+            Path(manifest_file).unlink(missing_ok=True)
+
+
 if __name__ == "__main__":
     unittest.main()

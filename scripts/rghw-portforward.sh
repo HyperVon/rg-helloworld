@@ -9,7 +9,7 @@
 #
 # The local/container ports are read from the live cluster when available and
 # otherwise default to the values used by scripts/smoke-test.sh (18080:8080).
-set -uo pipefail
+set -euo pipefail
 
 NAMESPACE="${RGHW_NAMESPACE:-rube-goldberg}"
 LOCAL_PORT="${RGHW_API_LOCAL_PORT:-18080}"

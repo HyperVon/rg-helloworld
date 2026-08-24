@@ -5,7 +5,7 @@ globs:
 alwaysApply: true
 ---
 
-Read `AGENTS.md` and `.kilo/operating.md` at the repository root before making
+Read `AGENTS.md` and `.agents/OPERATING.md` at the repository root before making
 changes and follow them.
 
 - Milestone-driven development: one milestone at a time per

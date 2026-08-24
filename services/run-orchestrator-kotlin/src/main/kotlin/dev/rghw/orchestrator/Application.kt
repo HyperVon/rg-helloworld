@@ -305,6 +305,7 @@ object Services {
     var planner: GlyphPlanner? = null
     var stageMonitor: StageMonitor? = null
     var artifactStore: ArtifactObjectStore? = null
+    var clock: () -> java.time.Instant = { java.time.Instant.now() }
 
     fun initKafka(
         producerFactory: (String) -> EventProducer = { bootstrap ->
@@ -568,7 +569,7 @@ suspend fun handleCreateRun(call: ApplicationCall) {
             status = RunStatus.PLANNING,
             message = request.message,
             idempotencyKey = idempotencyKey,
-            createdAt = Instant.now(),
+            createdAt = Services.clock(),
         )
     idempotentRuns[idempotencyKey] = runId
     runs[runId] = runState
@@ -827,6 +828,8 @@ fun collectRedisRuns(
     }
 }
 
+fun parseCreatedAt(value: String): java.time.Instant = runCatching { java.time.Instant.parse(value) }.getOrDefault(java.time.Instant.MIN)
+
 suspend fun handleListRuns(call: ApplicationCall) {
     val fromMemory =
         runs.values
@@ -863,7 +866,7 @@ suspend fun handleListRuns(call: ApplicationCall) {
         // Return in-memory runs only; do not fail the whole request on Redis issues.
     }
 
-    val sorted = fromMemory.sortedByDescending { it.createdAt }
+    val sorted = fromMemory.sortedByDescending { parseCreatedAt(it.createdAt) }
     call.respond(RunListResponse(runs = sorted))
 }
 

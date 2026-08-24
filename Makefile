@@ -185,9 +185,11 @@ contract-test:
 	@echo ">> Contract tests: schema validation, example validation, prohibited-field tests"
 	$(call guard_tool,python3,Python 3)
 	@if [ -x $(VENV)/bin/python3 ]; then \
-		$(VENV)/bin/python3 scripts/validate_contracts.py; \
+		$(VENV)/bin/python3 scripts/validate_contracts.py && \
+		$(VENV)/bin/python3 tests/anti-cheating/test_prohibited_fields.py; \
 	elif command -v python3 >/dev/null 2>&1; then \
-		PYTHONPATH=scripts python3 scripts/validate_contracts.py; \
+		PYTHONPATH=scripts python3 scripts/validate_contracts.py && \
+		python3 tests/anti-cheating/test_prohibited_fields.py; \
 	else \
 		echo "ERROR: python3 not found"; exit 1; \
 	fi

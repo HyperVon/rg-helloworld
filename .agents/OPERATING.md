@@ -102,3 +102,34 @@ data.
 Distinguish disposable execution artifacts from continuation artifacts. A plan,
 handoff, or PR body that the user may reference later needs a durable location
 or a named durable replacement before its temporary copy is removed.
+
+## 11. No blocking long processes
+
+Do not leave the user waiting on a foreground command that never exits (k3d
+port-forwards, `rghw run`, watchers, long sleeps). Start long-lived processes
+in the background; wait for readiness with short polls or log patterns rather
+than awaiting the process itself. Poll with short sleeps (5–10s, never 60s+)
+and post a visible one-line progress note after every poll. If blocked for
+~15–20s with no useful progress, say what you are waiting on. When done, kill
+the process and free its ports; never leave orphan k3d, Docker, Java, or Node
+processes behind.
+
+## 12. Verify user-visible UI changes
+
+When editing `services/web-shell`, `services/artifact-inspector-ruby`, `web/`,
+HTML/CSS/JavaScript, browser-facing routes, or documented screenshots:
+
+1. For responsive changes, verify fresh captures at phone (~390px), tablet
+   (~768px), laptop (~1280px), desktop (~1440px), and wide (~1920px)
+   viewports, using device pixel ratio 2 when the capture tool supports it.
+   For a non-responsive change, phone and laptop plus any directly affected
+   width are enough.
+2. Use a fresh build or hard refresh and confirm the served assets are current
+   before judging styling — stale CSS or JavaScript is not valid evidence.
+3. Exercise the changed browser interactions and states, not only unit tests;
+   browser behavior can regress while backend tests stay green.
+4. Capture fresh screenshots for user-visible changes. Keep throwaway evidence
+   under `.local/diagnostics/`; refresh committed documentation screenshots
+   only when the canonical presentation changed.
+5. Complete these visual and interaction checks before opening a PR; a
+   code-only claim is not sufficient for a visual change.

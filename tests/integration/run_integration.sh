@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Deliberately no `-e`: this script counts failures via check()/check_eval()
+# and continues, so a failing verification must not abort the run. Every
+# command whose result feeds a later assertion is explicitly guarded instead.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -7,6 +10,17 @@ SKIPPED=0
 FAILED=0
 
 say() { printf "  %s\n" "$1"; }
+
+pick_free_port() {
+  local port
+  while :; do
+    port=$(( (RANDOM % 10000) + 20000 ))
+    if ! (exec 3<>"/dev/tcp/127.0.0.1/$port") 2>/dev/null; then
+      printf '%s\n' "$port"
+      return 0
+    fi
+  done
+}
 
 skip() {
   SKIPPED=$((SKIPPED + 1))
@@ -141,7 +155,7 @@ echo ""
 echo "Verifying SOAP glyph catalog round trip:"
 
 if command -v java >/dev/null 2>&1 && command -v curl >/dev/null 2>&1; then
-  CATALOG_PORT=18083
+  CATALOG_PORT=$(pick_free_port)
   GLYPH_CATALOG_PORT=$CATALOG_PORT GLYPH_CATALOG_DB_URL=jdbc:h2:mem:integration \
     java -jar "$ROOT/services/glyph-catalog-java/target/glyph-catalog-java-0.1.0-milestone4.jar" \
     >/tmp/rghw-catalog.log 2>&1 &
@@ -207,13 +221,15 @@ if [ -x "$ROOT/.local/build/geometry-engine-cpp/geometry_engine" ] && [ -x "$BIN
   VENV_PY="$ROOT/.venv/bin/python"
 
   # Geometry expansion is deterministic: two runs produce identical events.
-  "$GEOMETRY_ONCE" --once < "$FIXTURE" > /tmp/rghw-geometry-1.json
-  "$GEOMETRY_ONCE" --once < "$FIXTURE" > /tmp/rghw-geometry-2.json
-  if cmp -s /tmp/rghw-geometry-1.json /tmp/rghw-geometry-2.json; then
+  GEOM1_OK=0
+  GEOM2_OK=0
+  "$GEOMETRY_ONCE" --once < "$FIXTURE" > /tmp/rghw-geometry-1.json && GEOM1_OK=1
+  "$GEOMETRY_ONCE" --once < "$FIXTURE" > /tmp/rghw-geometry-2.json && GEOM2_OK=1
+  if [ "$GEOM1_OK" = 1 ] && [ "$GEOM2_OK" = 1 ] && cmp -s /tmp/rghw-geometry-1.json /tmp/rghw-geometry-2.json; then
     say "[ ok ] geometry-engine --once is deterministic"
   else
     FAILED=$((FAILED + 1))
-    say "[FAIL] geometry-engine --once produced different outputs for the same input"
+    say "[FAIL] geometry-engine --once is nondeterministic or failed (run1=$GEOM1_OK run2=$GEOM2_OK)"
   fi
 
   # The event type and maturity ranks are correct (10 -> 20).
@@ -229,15 +245,17 @@ if [ -x "$ROOT/.local/build/geometry-engine-cpp/geometry_engine" ] && [ -x "$BIN
   # Normalization consumes the geometry event and emits the normalized
   # event plus SVG artifacts; deterministic and mature 20 -> 30.
   rm -rf /tmp/rghw-normalized-out
+  RUN1_OK=0
+  RUN2_OK=0
   "$BIN/vector-normalizer" --once --emit-artifacts-to /tmp/rghw-normalized-out \
-    < /tmp/rghw-geometry-1.json > /tmp/rghw-normalized-1.json
+    < /tmp/rghw-geometry-1.json > /tmp/rghw-normalized-1.json && RUN1_OK=1
   "$BIN/vector-normalizer" --once --emit-artifacts-to /tmp/rghw-normalized-out-2 \
-    < /tmp/rghw-geometry-1.json > /tmp/rghw-normalized-2.json
-  if cmp -s /tmp/rghw-normalized-1.json /tmp/rghw-normalized-2.json; then
+    < /tmp/rghw-geometry-1.json > /tmp/rghw-normalized-2.json && RUN2_OK=1
+  if [ "$RUN1_OK" = 1 ] && [ "$RUN2_OK" = 1 ] && cmp -s /tmp/rghw-normalized-1.json /tmp/rghw-normalized-2.json; then
     say "[ ok ] vector-normalizer --once is deterministic"
   else
     FAILED=$((FAILED + 1))
-    say "[FAIL] vector-normalizer --once produced different outputs for the same input"
+    say "[FAIL] vector-normalizer --once is nondeterministic or failed (run1=$RUN1_OK run2=$RUN2_OK)"
   fi
 
   if grep -q '"type":"rg.glyph-normalized.v1"' /tmp/rghw-normalized-1.json &&
@@ -327,7 +345,7 @@ echo "Verifying Milestone 6 gRPC rasterization (local rasterizer):"
 
 if [ -x "$BIN/vector-normalizer" ] && [ -x "$DOTNET" ]; then
   RASTERIZER_STORE_DIR=$(mktemp -d /tmp/rghw-raster-store.XXXXXX)
-  RASTERIZER_PORT=18505
+  RASTERIZER_PORT=$(pick_free_port)
   RASTERIZER_STORE=local RASTERIZER_LOCAL_DIR="$RASTERIZER_STORE_DIR" RASTERIZER_PORT=$RASTERIZER_PORT \
     "$DOTNET" "$ROOT/services/rasterizer-dotnet/cli/bin/Debug/net10.0/rasterizer.Cli.dll" serve \
     >/tmp/rghw-rasterizer.log 2>&1 &
@@ -359,10 +377,12 @@ if [ -x "$BIN/vector-normalizer" ] && [ -x "$DOTNET" ]; then
       cp /dev/null /tmp/rghw-m6-geometry.json
     fi
     if [ -s /tmp/rghw-m6-geometry.json ]; then
+      RASTER1_OK=0
+      RASTER2_OK=0
       "$BIN/vector-normalizer" --once --rasterizer-url "127.0.0.1:$RASTERIZER_PORT" \
-        < /tmp/rghw-m6-geometry.json > /tmp/rghw-raster-1.json
+        < /tmp/rghw-m6-geometry.json > /tmp/rghw-raster-1.json && RASTER1_OK=1
       "$BIN/vector-normalizer" --once --rasterizer-url "127.0.0.1:$RASTERIZER_PORT" \
-        < /tmp/rghw-m6-geometry.json > /tmp/rghw-raster-2.json
+        < /tmp/rghw-m6-geometry.json > /tmp/rghw-raster-2.json && RASTER2_OK=1
 
       RASTER_LINES=$(wc -l < /tmp/rghw-raster-1.json | tr -d ' ')
       if [ "$RASTER_LINES" = "2" ]; then
@@ -385,11 +405,11 @@ if [ -x "$BIN/vector-normalizer" ] && [ -x "$DOTNET" ]; then
       fi
 
       # Idempotency: the same request produces the identical event.
-      if cmp -s /tmp/rghw-raster-1.json /tmp/rghw-raster-2.json; then
+      if [ "$RASTER1_OK" = 1 ] && [ "$RASTER2_OK" = 1 ] && cmp -s /tmp/rghw-raster-1.json /tmp/rghw-raster-2.json; then
         say "[ ok ] --once --rasterizer-url is deterministic"
       else
         FAILED=$((FAILED + 1))
-        say "[FAIL] duplicate rasterization produced different events"
+        say "[FAIL] duplicate rasterization is nondeterministic or failed (run1=$RASTER1_OK run2=$RASTER2_OK)"
       fi
 
       # The PNG artifact exists in the local store under the event key and
@@ -573,15 +593,16 @@ print('fixtures created')
         cat /tmp/rghw-m7-compose.log
       fi
 
-      # Verify determinism: run again, compare SHA-256
-      eval "$IMAGE_PIPELINE compose $GLYPH_LIST --output-phrase-image /tmp/rghw-m7-phrase2.png --output-manifest /tmp/rghw-m7-manifest2.json" >/dev/null 2>&1
+      # Verify determinism: run again, compare SHA-256 (both runs must succeed).
+      COMPOSE2_OK=0
+      eval "$IMAGE_PIPELINE compose $GLYPH_LIST --output-phrase-image /tmp/rghw-m7-phrase2.png --output-manifest /tmp/rghw-m7-manifest2.json" >/dev/null 2>&1 && COMPOSE2_OK=1
       SHA1=$(shasum -a 256 /tmp/rghw-m7-phrase.png 2>/dev/null | awk '{print $1}')
       SHA2=$(shasum -a 256 /tmp/rghw-m7-phrase2.png 2>/dev/null | awk '{print $1}')
-      if [ "$SHA1" = "$SHA2" ]; then
+      if [ "$COMPOSE2_OK" = 1 ] && [ -n "$SHA1" ] && [ "$SHA1" = "$SHA2" ]; then
         say "[ ok ] composition is deterministic (sha256 match)"
       else
         FAILED=$((FAILED + 1))
-        say "[FAIL] composition is not deterministic: $SHA1 != $SHA2"
+        say "[FAIL] composition is nondeterministic or second run failed (ok=$COMPOSE2_OK): $SHA1 != $SHA2"
       fi
 
       # Run preprocessing --once
@@ -805,12 +826,13 @@ print('M9 fixtures created')
       done
       say "[ ok ] no prohibited fields in phrase-assembled event"
       # determinism
-      "$PHRASE_BIN" --once --input="$M9_FIXTURES/tokens.json" --output="$M9_FIXTURES/manifest2.json" --event-output="$M9_FIXTURES/event2.json" >/dev/null 2>&1
-      if cmp -s "$M9_FIXTURES/manifest.json" "$M9_FIXTURES/manifest2.json"; then
+      M9_RUN2_OK=0
+      "$PHRASE_BIN" --once --input="$M9_FIXTURES/tokens.json" --output="$M9_FIXTURES/manifest2.json" --event-output="$M9_FIXTURES/event2.json" >/dev/null 2>&1 && M9_RUN2_OK=1
+      if [ "$M9_RUN2_OK" = 1 ] && cmp -s "$M9_FIXTURES/manifest.json" "$M9_FIXTURES/manifest2.json"; then
         say "[ ok ] phrase-assembler --once deterministic"
       else
         FAILED=$((FAILED + 1))
-        say "[FAIL] phrase-assembler --once not deterministic"
+        say "[FAIL] phrase-assembler --once nondeterministic or second run failed (ok=$M9_RUN2_OK)"
       fi
     else
       FAILED=$((FAILED + 1))
